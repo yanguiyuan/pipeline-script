@@ -61,7 +61,8 @@ fun add(a:Int,b:Int){
         let mut e=Engine::default();
         e.compile("let a=4");
         e.compile("let b=3");
-        let r:i64=e.eval("a+b").unwrap().into();
+        e.run("a=3");
+        let r:i64=e.eval("a").unwrap().into();
         println!("{r}");
         e.run("println(a+b+3)");
     }

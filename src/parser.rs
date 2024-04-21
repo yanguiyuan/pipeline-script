@@ -110,9 +110,10 @@ impl PipelineParser{
                 },
                 Token::ParenthesisRight=>Ok(Stmt::Noop),
                 _=>{
-                    let expr=self.parse_expr()?;
-                    let pos=expr.position();
-                    return Ok(Stmt::EvalExpr(Box::new(expr),pos));
+                    // let expr=self.parse_expr()?;
+                    // let pos=expr.position();
+                    // return Ok(Stmt::EvalExpr(Box::new(expr),pos));
+                    self.parse_expr_stmt()
                 }
             }
         }
@@ -460,48 +461,46 @@ impl PipelineParser{
         return Err(PipelineError::UnexpectedToken(next,pos))
     }
 
-    // pub fn parse_expr_stmt(&mut self)->PipelineResult<Stmt> {
-    //     let lhs = self.parse_expr_call_chain()?;
-    //     let (token, mut pos0) = self.token_stream.peek();
-    //     Ok(match token {
-    //         Token::Assign => {
-    //             self.token_stream.next();
-    //             let expr = self.parse_expr()?;
-    //             pos0.add_span(expr.position().span);
-    //             if let Expr::Index(target, index, mut pos1) = lhs {
-    //                 pos1.add_span(pos0.span);
-    //                 return Ok(Stmt::IndexAssign(target, index, Box::new(expr), pos1))
-    //             }
-    //             return Ok(Stmt::Assign(Box::new((lhs.clone(), expr)), pos0))
-    //         }
-    //         Token::BraceLeft => {
-    //             let (mut args, pos) = self.parse_fn_call_args()?;
-    //             let mut fn_call_expr = FnCallExpr {
-    //                 name: "".into(),
-    //                 args: vec![],
-    //             };
-    //             match lhs {
-    //                 Expr::Variable(s, _) => {
-    //                     fn_call_expr.name = s;
-    //                 }
-    //                 Expr::MemberAccess(b, n, _) => {
-    //                     fn_call_expr.name = n;
-    //                     args.insert(0, *b)
-    //                 }
-    //                 _ => panic!("only variable and member_access expected")
-    //             }
-    //             fn_call_expr.args = args;
-    //
-    //             Stmt::FnCall(Box::new(fn_call_expr), pos)
-    //         }
-    //         _ => {
-    //             if let Expr::FnCall(fc, pos) = lhs {
-    //                 return Ok(Stmt::FnCall(Box::new(fc), pos))
-    //             }
-    //             return Ok(Stmt::Noop)
-    //         }
-    //     })
-    // }
+    pub fn parse_expr_stmt(&mut self)->PipelineResult<Stmt> {
+        let lhs = self.parse_expr_call_chain()?;
+        let (token, mut pos0) = self.token_stream.peek();
+        Ok(match token {
+            Token::Assign => {
+                self.token_stream.next();
+                let expr = self.parse_expr()?;
+                pos0.add_span(expr.position().span);
+                if let Expr::Index(target, index, mut pos1) = lhs {
+                    pos1.add_span(pos0.span);
+                    return Ok(Stmt::IndexAssign(target, index, Box::new(expr), pos1))
+                }
+                return Ok(Stmt::Assign(Box::new((lhs.clone(), expr)), pos0))
+            }
+            Token::BraceLeft => {
+                let (mut args, pos) = self.parse_fn_call_args()?;
+                let mut fn_call_expr = FnCallExpr {
+                    name: "".into(),
+                    args: vec![],
+                };
+                match lhs {
+                    Expr::Variable(s, _) => {
+                        fn_call_expr.name = s;
+                    }
+                    Expr::MemberAccess(b, n, _) => {
+                        fn_call_expr.name = n;
+                        args.insert(0, *b)
+                    }
+                    _ => panic!("only variable and member_access expected")
+                }
+                fn_call_expr.args = args;
+
+                Stmt::EvalExpr(Box::new(Expr::FnCall(fn_call_expr,pos.clone())), pos)
+            }
+            _ => {
+                let p=lhs.position();
+               return Ok(Stmt::EvalExpr(Box::new(lhs),p))
+            }
+        })
+    }
     pub fn parse_fn_call_args(&mut self)->PipelineResult<(Vec<Expr>,Position)>{
         self.parse_special_token(Token::BraceLeft)?;
         let mut v =vec![];
