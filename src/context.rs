@@ -394,7 +394,8 @@ impl Context{
                         let mut scope=scope.write().unwrap();
                         let  v0=Value::Mutable(v.as_arc());
                         v=Value::Refer(v0.as_weak());
-                        scope.set(format!("{}.{}",e.get_name(),k).as_str(),v0)
+                        let id=scope.data.len()+1;
+                        scope.set(format!("{}.{}.{}",e.get_name(),k,id).as_str(),v0)
                     }
                     props.insert(k.clone(),v);
                 }

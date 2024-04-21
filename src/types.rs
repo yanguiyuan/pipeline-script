@@ -340,6 +340,17 @@ impl Display for Dynamic {
     }
 }
 
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Immutable(i) => write!(f,"{}",i),
+            Value::Mutable(m) => m.read().unwrap().fmt(f),
+            Value::Refer(r) => r.upgrade().unwrap().read().unwrap().fmt(f),
+            Value::Signal(s) =>write!(f,"{:?}",s),
+        }
+    }
+}
+
 impl Eq for Dynamic {
 }
 impl Hash for Dynamic{
