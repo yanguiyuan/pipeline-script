@@ -94,21 +94,21 @@ impl Context{
             }
         }
     }
-    pub fn eval_stmt(&mut self, stmt:Stmt)->PipelineResult<Value>{
+    pub fn eval_stmt(&mut self, stmt:&Stmt)->PipelineResult<Value>{
         match stmt {
             // Stmt::FnCall(fc, pos) => {
             //     todo!()
             //     // self.eval_fn_call_expr_with_context(*fc)?;
             // }
             Stmt::EvalExpr(e,_)=>{
-                return self.eval_expr(*e);
+                return self.eval_expr(e);
             }
             Stmt::Import(s,_)=>{
                 // self.merge_into_main_module(s)?;
                 todo!()
             }
             Stmt::Let(l,_)=>{
-                let mut d =self.eval_expr( l.1)?;
+                let mut d =self.eval_expr( &l.1)?;
                 if !d.is_mutable(){
                     d=Value::Mutable(d.as_arc());
                 }
@@ -124,8 +124,8 @@ impl Context{
                 return Ok(Value::Signal(SignalType::Continue))
             }
             Stmt::Assign(e,_)=>{
-                let target=self.eval_expr(e.0)?;
-                let value=self.eval_expr(e.1)?;
+                let target=self.eval_expr(&e.0)?;
+                let value=self.eval_expr(&e.1)?;
                 if !target.can_mutable(){
                     panic!("it must be mutable")
                 }
@@ -134,11 +134,12 @@ impl Context{
                 *target=value.as_dynamic();
             }
             Stmt::Return(e,_)=>{
-                return self.eval_expr( *e)
+                let r=self.eval_expr( e)?;
+                return Ok(Value::Signal(SignalType::Return(Box::new(r))))
             }
             Stmt::If(b,_)=>{
                 for if_branch in b.get_branches(){
-                    let d=self.eval_expr(if_branch.get_condition().clone())?;
+                    let d=self.eval_expr(if_branch.get_condition())?;
                     let d=d.as_dynamic().as_bool();
                     match d {
                         None => {
@@ -148,7 +149,7 @@ impl Context{
                             let mut l=None;
                             if d {
                                 for i in if_branch.get_body() {
-                                    let t=self.eval_stmt( i.clone())?;
+                                    let t=self.eval_stmt( i)?;
                                     l=Some(t)
                                 }
                                 if let None=l{
@@ -161,17 +162,17 @@ impl Context{
                 }
                 if let Some(else_body)=b.get_else_body(){
                     let mut l=None;
-                    for i in else_body {
-                        l=Some(self.eval_stmt( i.clone())?);
+                    for i in &else_body {
+                        l=Some(self.eval_stmt( i)?);
                     }
                     return Ok(l.unwrap())
                 }
 
             }
             Stmt::IndexAssign(target,i,v,_)=>{
-                let i=self.eval_expr(*i)?;
-                let v=self.eval_expr(*v)?;
-                let target=self.eval_expr(*target)?;
+                let i=self.eval_expr(i)?;
+                let v=self.eval_expr(v)?;
+                let target=self.eval_expr(target)?;
                 let target=target.get_mut_arc();
                 let mut target=target.write().unwrap();
                 if target.is_array(){
@@ -187,7 +188,7 @@ impl Context{
                 }
             }
             Stmt::While(b,blocks,_)=>{
-                let d=self.eval_expr(*b.clone())?;
+                let d=self.eval_expr(b)?;
                 let d=d.as_dynamic().as_bool();
                 return match d {
                     None => {
@@ -197,8 +198,8 @@ impl Context{
 
                         let mut condition=d;
                         'outer:while condition {
-                            'inner:for i in &*blocks {
-                                let r=self.eval_stmt( i.clone())?;
+                            'inner:for i in blocks.iter() {
+                                let r=self.eval_stmt( i)?;
                                 if let Value::Signal(s)=r{
                                     match s {
                                         SignalType::Break => {
@@ -207,10 +208,13 @@ impl Context{
                                         SignalType::Continue => {
                                             break 'inner
                                         }
+                                        SignalType::Return(v) => {
+                                            return Ok(Value::Signal(SignalType::Return(v)))
+                                        }
                                     }
                                 }
                             }
-                            let d0=self.eval_expr(*b.clone())?;
+                            let d0=self.eval_expr(b)?;
                             condition=d0.as_dynamic().as_bool().unwrap();
                         }
                         Ok(().into())
@@ -218,7 +222,7 @@ impl Context{
                 }
             }
             Stmt::ForIn(one,other ,target, blocks, ..)=> {
-                let target = self.eval_expr( *target.clone())?;
+                let target = self.eval_expr( target)?;
                 let target = target.as_dynamic().as_array().unwrap();
                 let mut count=0;
                 'outer:for i in target{
@@ -237,8 +241,8 @@ impl Context{
                     scope.set_parent(parent_scope);
                     let mut scope=Arc::new(RwLock::new(scope));
                     let mut ctx =Context::with_value(&self, ContextKey::Scope, ContextValue::Scope(scope));
-                    'inner: for i in &*blocks {
-                        let r = ctx.eval_stmt(i.clone())?;
+                    'inner: for i in blocks.iter() {
+                        let r = ctx.eval_stmt(i)?;
                         if let Value::Signal(s) = r {
                             match s {
                                 SignalType::Break => {
@@ -246,6 +250,9 @@ impl Context{
                                 }
                                 SignalType::Continue => {
                                     break 'inner
+                                }
+                                SignalType::Return(v) => {
+                                    return Ok(Value::Signal(SignalType::Return(v)))
                                 }
                             }
                         }
@@ -256,15 +263,15 @@ impl Context{
         }
         Ok(().into())
     }
-    pub fn eval_expr(&mut self,expr:Expr)->PipelineResult<Value>{
-        match expr.clone() {
+    pub fn eval_expr(&mut self,expr:&Expr)->PipelineResult<Value>{
+        match expr {
             Expr::FnCall(fn_call, _)=>{
                 let mut v=vec![];
-                for i in fn_call.args{
-                    let r=self.eval_expr(i)?;
+                for i in &fn_call.args{
+                    let r=self.eval_expr(&i)?;
                     v.push(r);
                 }
-                self.get_module().write().unwrap().call(self,fn_call.name,v)
+                self.get_module().write().unwrap().call(self,&fn_call.name,v)
             }
             Expr::Variable(i,_)=>{
                 let d=self.get_value(&i);
@@ -284,28 +291,28 @@ impl Context{
             Expr::Map(v,_)=>{
                 let mut dv=HashMap::new();
                 for e in v{
-                    let key=self.eval_expr( e.0)?;
-                    let value=self.eval_expr( e.1)?;
+                    let key=self.eval_expr( &e.0)?;
+                    let value=self.eval_expr( &e.1)?;
                     dv.insert(key.as_dynamic().clone(),value);
                 }
                 Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Map(dv)))))
             }
             Expr::Index(s,e,_)=>{
-                let d=self.eval_expr(*s)?;
+                let d=self.eval_expr(s)?;
                 let d=d.as_dynamic();
                 match d {
                     Dynamic::Array(a) => {
-                        let index=self.eval_expr(*e)?;
+                        let index=self.eval_expr(e)?;
                         let index=index.as_dynamic().as_integer().unwrap();
                         Ok(a[index as usize].clone())
                     }
                     Dynamic::Map(m) => {
-                        let index=self.eval_expr(*e)?;
+                        let index=self.eval_expr(e)?;
                         let index=index.as_dynamic();
                         Ok(m[&index].clone())
                     }
                     Dynamic::String(s)=>{
-                        let index=self.eval_expr(*e)?;
+                        let index=self.eval_expr(e)?;
                         let index=index.as_dynamic().as_integer().unwrap();
                         let r=String::from(s.chars().nth(index as usize).unwrap());
                         Ok(r.into())
@@ -321,65 +328,65 @@ impl Context{
             Expr::BinaryExpr(op,l,r,_)=>{
                 match op {
                     Op::Plus => {
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r+r_r).into())
                     }
                     Op::Minus => {
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r-r_r).into())
                     }
                     Op::Mul=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r*r_r).into())
                     }
                     Op::Greater=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r>r_r).into())
                     }
                     Op::Less=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r<r_r).into())
                     }
                     Op::Equal=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r==r_r).into())
                     }
                     Op::NotEqual=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r!=r_r).into())
                     }
                     Op::Div=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r/r_r).into())
                     }
                     Op::Mod=>{
-                        let l_r=self.eval_expr(*l)?;
+                        let l_r=self.eval_expr(l)?;
                         let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(*r)?;
+                        let r_r=self.eval_expr(r)?;
                         let r_r=r_r.as_dynamic();
                         return Ok((l_r%r_r).into())
                     }
@@ -388,7 +395,7 @@ impl Context{
             Expr::Struct(e,_)=>{
                 let mut props=HashMap::new();
                 for (k,i) in e.get_props(){
-                    let mut v=self.eval_expr(i.clone())?;
+                    let mut v=self.eval_expr(i)?;
                     if v.is_immutable()||v.is_mutable(){
                         let scope=self.get_scope();
                         let mut scope=scope.write().unwrap();
@@ -414,15 +421,15 @@ impl Context{
                 )
             }
             Expr::MemberAccess(father,prop,_)=>{
-                let obj=self.eval_expr(*father)?;
+                let obj=self.eval_expr(father)?;
                 // println!("{:?}",obj);
                 let obj=obj.as_dynamic().as_struct().unwrap();
                 let r=obj.get_prop(&prop).unwrap();
                 return Ok(r)
             }
-            Expr::StringConstant(s,_)=>Ok(s.into()),
-            Expr::IntConstant(i, _) => Ok(i.into()),
-            Expr::FloatConstant(f, _) =>Ok(f.into()),
+            Expr::StringConstant(s,_)=>Ok(s.to_string().into()),
+            Expr::IntConstant(i, _) => Ok((*i).into()),
+            Expr::FloatConstant(f, _) =>Ok((*f).into()),
             Expr::FnClosure(f, _) => {
                 let mut ptr=FnPtr::new("");
                 ptr.set_fn_def(&(f.def));

@@ -32,7 +32,8 @@ pub struct Struct{
 #[derive(Clone, Debug)]
 pub enum SignalType{
     Break,
-    Continue
+    Continue,
+    Return(Box<Value>)
 }
 #[derive(Debug,Clone)]
 pub enum Value{

@@ -12,10 +12,10 @@ use rand::{random, Rng};
 use regex::Regex;
 use scanner_rust::Scanner;
 use ssh::LocalSession;
-use crate::context::{Context};
+use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::error::{PipelineError, PipelineResult};
 use crate::stmt::Stmt;
-use crate::types::Value;
+use crate::types::{SignalType, Value};
 
 trait NativeFunction<Marker>{
     fn into_pipe_function(self) ->Arc<PipeFn>;
@@ -102,30 +102,29 @@ impl Class {
 }
 impl Function {
     pub fn call(&self, ctx:&mut Context,  args:Vec<Value>) ->PipelineResult<Value>{
+        let mut scope=Scope::new();
+        let old_scope=ctx.get_scope();
+        scope.set_parent(old_scope);
+        let mut ctx=Context::with_value(ctx,ContextKey::Scope,ContextValue::Scope(Arc::new(RwLock::new(scope))));
         match self {
             Function::Native(n) => {
-                return (*n)(ctx,args);
+                return (*n)(&mut ctx,args);
             }
             Function::Script(s) => {
-                // let mut e=PipelineEngine::default_with_pipeline();
-                // let share_module=PipelineEngine::context_with_shared_module(&ctx);
-                // let modules=PipelineEngine::context_with_modules(&ctx);
-                // let modules=modules.write().unwrap();
-                // let mut i=Interpreter::with_shared_module(share_module);
-                // for m in modules.iter(){
-                //     i.register_module(m.0.clone(),m.1.clone());
-                // }
-                // e.set_interpreter(&i);
-                // let scope=PipelineEngine::context_with_scope(&ctx);
-                // let mut scope=scope.write().unwrap();
-                // let mut i=0;
-                // for a in &s.args{
-                //     scope.set(a.name.as_str(),args.get(i).unwrap().clone());
-                //     i+=1;
-                // }
-                // drop(scope);
-                // e.eval_stmt_blocks_from_ast_with_context(ctx,s.body.clone())
-                todo!()
+                let scope=ctx.get_scope();
+                let mut scope=scope.write().unwrap();
+                let mut index =0;
+                for i in &s.args{
+                    scope.set(i.name.as_str(),args[index].clone());
+                    index+=1;
+                }
+                for i in &s.body{
+                    let r=ctx.eval_stmt(i)?;
+                    if  let Value::Signal(SignalType::Return(return_value))=r{
+                        return Ok(*return_value)
+                    }
+                }
+                return Ok(().into())
             }
             Function::Method(s) => {
                 // let mut e=PipelineEngine::default_with_pipeline();
@@ -174,7 +173,7 @@ impl Module{
     }
     pub fn run_block(&self,ctx:&mut Context){
         for i in &self.block{
-            ctx.eval_stmt(i.clone()).unwrap();
+            ctx.eval_stmt(i).unwrap();
         }
     }
     pub fn get_classes(&self)->&HashMap<String,Class>{

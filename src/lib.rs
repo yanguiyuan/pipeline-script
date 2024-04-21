@@ -59,18 +59,12 @@ fun add(a:Int,b:Int){
     #[test]
     fn test_engine(){
         let mut e=Engine::default();
-        e.compile(r#"let a=Object{
-            name:"张三",
-            age:17,
-            child:Object{
-                name:"小孩",
-                age:12
-            }
-        }"#);
-        // e.run(r#"a.age=10"#);
-        let r=e.eval("a").unwrap();
-        println!("{r}");
-        e.run("println(a.age+3)");
+        e.compile(r#"
+        fun range(n:Int):Array{
+            return [1,2,3]
+        }
+        "#);
+        e.run("println(range(3))");
     }
 
     #[test]

@@ -72,7 +72,7 @@ impl Engine{
             self.has_run_main_block=true;
         }
         let mut r=Value::Immutable(Dynamic::Unit);
-        for i in block{
+        for i in &block{
             r=self.ctx.eval_stmt(i)?;
         }
         return Ok(r)
