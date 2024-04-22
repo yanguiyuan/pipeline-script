@@ -75,12 +75,11 @@ impl Engine{
         let block=parser.parse_stmt_blocks().unwrap();
         let m=self.ctx.get_module();
         if !self.has_run_main_block{
-            // let block=m.read().unwrap().get_block().clone();
-            // drop(m);
-            // for i in &block{
-            //     self.ctx.eval_stmt(i)?;
-            // }
-            m.read().unwrap().run_block(&mut self.ctx);
+            let block=m.read().unwrap().get_block().clone();
+            drop(m);
+            for i in &block{
+                self.ctx.eval_stmt(i)?;
+            }
             self.has_run_main_block=true;
         }
         let mut r=Value::Immutable(Dynamic::Unit);

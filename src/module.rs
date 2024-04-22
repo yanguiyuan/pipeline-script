@@ -215,6 +215,15 @@ impl Module{
             self.classes.insert(name.clone(),class.clone());
         }
     }
+    pub fn get_submodule(&self,name:&str)->&Module{
+        let m= self.submodules.get(name).unwrap();
+        return m
+    }
+    pub fn merge_into_main(&mut self,name:&str){
+        let m= self.submodules.get(name).unwrap();
+        let m=m.clone();
+        self.merge(&m);
+    }
     pub fn register_native_function<A:'static,F>(&mut self, name:impl Into<String>, f:F )
         where F:NativeFunction<A>
     {

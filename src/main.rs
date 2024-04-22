@@ -14,13 +14,9 @@ use crate::engine::Engine;
 fn main() {
     let mut e=Engine::default();
     e.compile(r#"
-        fun Int.max(o:Int):Int{
-            if this>o{return this.clone()
-            }else{return o.clone()}
-        }
+        import hello
         "#);
     e.run(r#"
-        let a=3.max(2)
-        print(a)
+        hello()
         "#);
 }

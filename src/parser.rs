@@ -232,6 +232,7 @@ impl PipelineParser{
         //     parser.register_predefined_class(class.clone());
         // }
         parser.parse_stmt_blocks()?;
+        let m0=parser.get_module().read().unwrap().clone();
         // let lib=parser.get_fn_lib();
         // let mut m=Module::new(module_name.as_ref());
         // for l in lib{
@@ -240,7 +241,7 @@ impl PipelineParser{
         // for (class_name,class) in parser.get_classes(){
         //     m.register_class(class.clone())
         // }
-        return Ok(None);
+        return Ok(Some(m0));
     }
     pub fn parse_import_stmt(&mut self,)->PipelineResult<Stmt>{
         let (ret,mut pos)=self.token_stream.next();

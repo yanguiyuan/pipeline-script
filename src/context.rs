@@ -114,8 +114,9 @@ impl Context{
                 return self.eval_expr(e);
             }
             Stmt::Import(s,_)=>{
-                // self.merge_into_main_module(s)?;
-                todo!()
+                let m=self.get_module();
+                let mut m=m.write().unwrap();
+                m.merge_into_main(s);
             }
             Stmt::Let(l,_)=>{
                 let mut d =self.eval_expr( &l.1)?;
