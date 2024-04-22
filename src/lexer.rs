@@ -192,6 +192,12 @@ impl Lexer{
                             self.next_char();
                             return r
                         }
+                        ('-','>')=>{
+                            let r= Some((Token::Arrow,self.with_pos(2)));
+                            self.next_char();
+                            self.next_char();
+                            return r
+                        }
                         ('=',_)=>{
                             let r= Some((Token::Assign,self.with_pos(1)));
                             self.next_char();
@@ -300,10 +306,13 @@ impl Lexer{
         let mut is_decimal=false;
         while let  Some(c ) =self.current_char(){
             if c=='.'&&!is_decimal{
-                v.push(c.clone());
-                self.increase_index();
-                is_decimal=true;
-                continue
+                let next=self.peek_char().unwrap();
+                if !next.is_alphabetic(){
+                    v.push(c.clone());
+                    self.increase_index();
+                    is_decimal=true;
+                    continue
+                }
             }
             if !c.is_numeric(){
                 break

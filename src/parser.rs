@@ -145,7 +145,7 @@ impl PipelineParser{
             }
         }
         self.parse_special_token(Token::ParenthesisRight)?;
-        let class_declaration=Class::new(class_name.clone(),attributions);
+        let class_declaration=Class::new(class_name.as_str(), attributions);
         self.module.write().unwrap().register_class(class_declaration);
         Ok(())
     }
@@ -534,18 +534,23 @@ impl PipelineParser{
                 _=>return Err(PipelineError::UnexpectedToken(token,pos))
             }
         }
-        if let (peek,mut pos1)=self.token_stream.peek(){
-            if Token::ParenthesisLeft==peek{
-                self.parse_special_token(Token::ParenthesisLeft).unwrap();
-                let blocks=self.parse_stmt_blocks()?;
-                for stmt in &blocks{
-                    pos1.add_span(stmt.position().span)
+        if let (peek0,mut pos0)=self.token_stream.peek() {
+            if Token::Arrow == peek0 {
+                self.parse_special_token(Token::Arrow).unwrap();
+                if let (peek, mut pos1) = self.token_stream.peek() {
+                    if Token::ParenthesisLeft == peek {
+                        self.parse_special_token(Token::ParenthesisLeft).unwrap();
+                        let blocks = self.parse_stmt_blocks()?;
+                        for stmt in &blocks {
+                            pos1.add_span(stmt.position().span)
+                        }
+                        let fn_def = FnDef::new("".to_string(), vec![], blocks, "Any".into());
+                        pos1.add_span(1);
+                        p.add_span(pos1.span);
+                        v.push(Expr::FnClosure(FnClosureExpr { def: fn_def }, pos1));
+                        self.parse_special_token(Token::ParenthesisRight).unwrap();
+                    }
                 }
-                let fn_def=FnDef::new("".to_string(),vec![],blocks,"Any".into());
-                pos1.add_span(1);
-                p.add_span(pos1.span);
-                v.push(Expr::FnClosure(FnClosureExpr { def: fn_def },pos1));
-                self.parse_special_token(Token::ParenthesisRight).unwrap();
             }
         }
         return Ok((v,p))
@@ -584,35 +589,35 @@ impl PipelineParser{
                         pos1.add_span(1+e.position().span+1);
                         return Ok(Expr::Index(Box::new(Expr::Variable(ident,pos)),Box::new(e),pos1))
                     }
-                    Token::ParenthesisLeft=>{
-                        let mut props=HashMap::new();
-                        self.token_stream.next();
-                        loop{
-                            let (peek,pos2)=self.token_stream.peek();
-                            match peek {
-                                Token::Comma=>{
-                                    pos.add_span(1);
-                                    self.token_stream.next();
-                                    continue
-                                }
-                                Token::ParenthesisRight=>{
-                                    pos.add_span(1);
-                                    self.token_stream.next();
-                                    break;
-                                }
-                                Token::Identifier(s)=>{
-                                    self.token_stream.next();
-                                    self.parse_special_token(Token::Colon)?;
-                                    let expr=self.parse_expr();
-                                    let expr=expr.unwrap();
-                                    pos.add_span(pos2.span+1+expr.position().span);
-                                    props.insert(s,expr);
-                                }
-                                t=>return Err(PipelineError::UnexpectedToken(t,pos2))
-                            }
-                        }
-                        return Ok(Expr::Struct(StructExpr::new(ident,props),pos))
-                    }
+                    // Token::ParenthesisLeft=>{
+                    //     let mut props=HashMap::new();
+                    //     self.token_stream.next();
+                    //     loop{
+                    //         let (peek,pos2)=self.token_stream.peek();
+                    //         match peek {
+                    //             Token::Comma=>{
+                    //                 pos.add_span(1);
+                    //                 self.token_stream.next();
+                    //                 continue
+                    //             }
+                    //             Token::ParenthesisRight=>{
+                    //                 pos.add_span(1);
+                    //                 self.token_stream.next();
+                    //                 break;
+                    //             }
+                    //             Token::Identifier(s)=>{
+                    //                 self.token_stream.next();
+                    //                 self.parse_special_token(Token::Colon)?;
+                    //                 let expr=self.parse_expr();
+                    //                 let expr=expr.unwrap();
+                    //                 pos.add_span(pos2.span+1+expr.position().span);
+                    //                 props.insert(s,expr);
+                    //             }
+                    //             t=>return Err(PipelineError::UnexpectedToken(t,pos2))
+                    //         }
+                    //     }
+                    //     return Ok(Expr::Struct(StructExpr::new(ident,props),pos))
+                    // }
                     _=> Ok(Expr::Variable(ident,pos))
                 }
             }
@@ -716,7 +721,7 @@ impl PipelineParser{
                     let e=self.parse_math_expr()?;
                     self.parse_special_token(Token::SquareBracketRight)?;
                     pos1.add_span(1+e.position().span+1);
-                    return Ok(Expr::Index(Box::new(lhs),Box::new(e),pos1))
+                   lhs=Expr::Index(Box::new(lhs),Box::new(e),pos1)
                 }
                 _=>{
                     return Ok(lhs)

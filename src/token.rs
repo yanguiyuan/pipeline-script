@@ -47,6 +47,8 @@ pub enum  Token{
     Equal,
     /// !=
     NotEqual,
+    ///->
+    Arrow,
     EOF
 }
 
@@ -79,7 +81,8 @@ impl Token {
             Token::Div=>22,
             Token::Mod=>23,
             Token::ScopeSymbol=>24,
-            Token::NotEqual=>25
+            Token::NotEqual=>25,
+            Token::Arrow=>26
         }
     }
     pub fn get_identifier_value(&self)->&str{

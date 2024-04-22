@@ -88,9 +88,9 @@ pub struct Class{
 }
 
 impl Class {
-    pub fn new(name:String,attributions:Vec<VariableDeclaration>)->Self{
+    pub fn new(name:&str,attributions:Vec<VariableDeclaration>)->Self{
         Self{
-            name,attributions,methods:HashMap::new()
+            name:name.to_string(),attributions,methods:HashMap::new()
         }
     }
     pub fn get_name(&self)->String{
@@ -118,6 +118,7 @@ impl Function {
                     scope.set(i.name.as_str(),args[index].clone());
                     index+=1;
                 }
+                drop(scope);
                 for i in &s.body{
                     let r=ctx.eval_stmt(i)?;
                     if  let Value::Signal(SignalType::Return(return_value))=r{
@@ -127,25 +128,22 @@ impl Function {
                 return Ok(().into())
             }
             Function::Method(s) => {
-                // let mut e=PipelineEngine::default_with_pipeline();
-                // let share_module=PipelineEngine::context_with_shared_module(&ctx);
-                // let modules=PipelineEngine::context_with_modules(&ctx);
-                // let modules=modules.write().unwrap();
-                // let mut i=Interpreter::with_shared_module(share_module);
-                // for m in modules.iter(){
-                //     i.register_module(m.0.clone(),m.1.clone());
-                // }
-                // e.set_interpreter(&i);
-                // let scope=PipelineEngine::context_with_scope(&ctx);
-                // let mut scope=scope.write().unwrap();
-                // let mut i=0;
-                // for a in s.args.iter(){
-                //     scope.set(a.name.as_str(),args.get(i+1).unwrap().clone());
-                //     i+=1;
-                // }
-                // drop(scope);
-                // e.eval_stmt_blocks_from_ast_with_context(ctx,s.body.clone())
-                todo!()
+                let scope=ctx.get_scope();
+                let mut scope=scope.write().unwrap();
+                let mut index =0;
+                scope.set("this",args[0].clone());
+                for i in &s.args{
+                    scope.set(i.name.as_str(),args[index+1].clone());
+                    index+=1;
+                }
+                drop(scope);
+                for i in &s.body{
+                    let r=ctx.eval_stmt(i)?;
+                    if  let Value::Signal(SignalType::Return(return_value))=r{
+                        return Ok(*return_value)
+                    }
+                }
+                return Ok(().into())
             }
         }
     }
@@ -173,8 +171,11 @@ impl Module{
     }
     pub fn run_block(&self,ctx:&mut Context){
         for i in &self.block{
-            ctx.eval_stmt(i).unwrap();
+            ctx.eval_stmt(i);
         }
+    }
+    pub fn get_block(&self)->&Vec<Stmt>{
+       &self.block
     }
     pub fn get_classes(&self)->&HashMap<String,Class>{
         &self.classes
@@ -229,11 +230,15 @@ impl Module{
     pub fn register_submodule(&mut self,name:impl Into<String>,module:Module){
         self.submodules.insert(name.into(),Box::new(module));
     }
-    pub fn call(&mut self,ctx:&mut Context,function_name:impl Into<String>,args: Vec<Value>)->PipelineResult<Value>{
+    pub fn call(&self,ctx:&mut Context,function_name:impl Into<String>,args: Vec<Value>)->PipelineResult<Value>{
         let name=function_name.into();
         let f=self.functions.get(name.clone().as_str());
         match f {
-            None => {Err(PipelineError::FunctionUndefined(name))}
+            None => {
+                let type_name=args[0].as_dynamic().type_name();
+                let fun=self.get_class_function(type_name.as_str(),name.as_str()).unwrap();
+                return fun.call(ctx,args);
+            }
             Some(f) => {
                 let r=f.call(ctx,args);
                 return r

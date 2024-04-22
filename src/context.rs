@@ -9,6 +9,7 @@ use crate::module::Module;
 use crate::position::Position;
 use crate::stmt::Stmt;
 use crate::types::{Dynamic, FnPtr, SignalType, Struct, Value};
+use crate::types::Value::Mutable;
 
 #[derive(Clone,Debug)]
 pub struct Context{
@@ -20,7 +21,8 @@ pub struct Context{
 pub enum  ContextKey{
     MainModule,
     SourceCode(String),
-    Scope
+    Scope,
+    NativeObject(String)
 }
 
 impl PartialEq for ContextKey {
@@ -43,6 +45,14 @@ impl PartialEq for ContextKey {
             ContextKey::Scope=>{
                 if let ContextKey::Scope= other {
                     return true
+                }
+                false
+            }
+            ContextKey::NativeObject(s)=>{
+                if let ContextKey::NativeObject(other) = other {
+                    if s == other {
+                        return true
+                    }
                 }
                 false
             }
@@ -271,7 +281,9 @@ impl Context{
                     let r=self.eval_expr(&i)?;
                     v.push(r);
                 }
-                self.get_module().write().unwrap().call(self,&fn_call.name,v)
+                let module=self.get_module();
+                let module=module.read().unwrap();
+                module.call(self,&fn_call.name,v)
             }
             Expr::Variable(i,_)=>{
                 let d=self.get_value(&i);
@@ -292,7 +304,10 @@ impl Context{
                 let mut dv=HashMap::new();
                 for e in v{
                     let key=self.eval_expr( &e.0)?;
-                    let value=self.eval_expr( &e.1)?;
+                    let mut value =self.eval_expr( &e.1)?;
+                    if value.is_immutable(){
+                        value=Mutable(Arc::new(RwLock::new(value.as_dynamic())));
+                    }
                     dv.insert(key.as_dynamic().clone(),value);
                 }
                 Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Map(dv)))))
@@ -422,10 +437,19 @@ impl Context{
             }
             Expr::MemberAccess(father,prop,_)=>{
                 let obj=self.eval_expr(father)?;
-                // println!("{:?}",obj);
-                let obj=obj.as_dynamic().as_struct().unwrap();
-                let r=obj.get_prop(&prop).unwrap();
-                return Ok(r)
+                let obj=obj.as_dynamic();
+                match obj {
+                    Dynamic::Struct(s)=>{
+                        let r=s.get_prop(&prop).unwrap();
+                        return Ok(r)
+                    }
+                    Dynamic::Map(m)=>{
+                        let r=m.get(&Dynamic::String(prop.into())).unwrap();
+                        return Ok(r.clone())
+                    }
+                    _=>panic!("can not support access member")
+                }
+
             }
             Expr::StringConstant(s,_)=>Ok(s.to_string().into()),
             Expr::IntConstant(i, _) => Ok((*i).into()),
@@ -461,6 +485,12 @@ impl ContextValue {
     pub fn as_module(&self)->Option<Arc<RwLock<Module>>>{
         match self {
             ContextValue::Module(m)=>Some(m.clone()),
+            _=>None
+        }
+    }
+    pub fn as_native(&self)->Option<Arc<RwLock<dyn Any+Send+Sync>>>{
+        match self {
+            ContextValue::Native(m)=>Some(m.clone()),
             _=>None
         }
     }

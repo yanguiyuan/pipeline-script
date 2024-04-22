@@ -61,10 +61,19 @@ fun add(a:Int,b:Int){
         let mut e=Engine::default();
         e.compile(r#"
         fun range(n:Int):Array{
-            return [1,2,3]
+            let i=0
+            let a=[]
+            while i<n{
+                a.append(i.clone())
+                i=i+1
+            }
+            return a
         }
         "#);
-        e.run("println(range(3))");
+        e.run(r#"
+        let a=readInt()
+        print(a)
+        "#);
     }
 
     #[test]

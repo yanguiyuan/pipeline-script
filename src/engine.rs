@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use crate::context::{Context, Scope};
+use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::error::PipelineResult;
 use crate::expr::Expr;
 use crate::lexer::{Lexer, TokenStream};
@@ -32,11 +32,18 @@ impl Engine{
     pub fn register_module(&mut self,module:Module){
 
     }
+    pub fn register_context_value(&mut self,key:ContextKey,value:ContextValue){
+        let ctx=Context::with_value(&self.ctx,key,value);
+        self.ctx=ctx;
+    }
     pub fn register_into_main_module(&mut self,module: Module){
         let binding = self.ctx.get_module();
         let mut main_module=binding.write().unwrap();
         for (function_name,function) in module.get_functions(){
             main_module.register_function(function_name,function);
+        }
+        for (_,class) in module.get_classes(){
+            main_module.register_class(class.clone())
         }
     }
     pub fn get_context(&self)->Context{
@@ -68,6 +75,11 @@ impl Engine{
         let block=parser.parse_stmt_blocks().unwrap();
         let m=self.ctx.get_module();
         if !self.has_run_main_block{
+            // let block=m.read().unwrap().get_block().clone();
+            // drop(m);
+            // for i in &block{
+            //     self.ctx.eval_stmt(i)?;
+            // }
             m.read().unwrap().run_block(&mut self.ctx);
             self.has_run_main_block=true;
         }
