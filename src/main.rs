@@ -29,7 +29,7 @@ fn main() {
                 return "Person("+this.name+")"
             }
         }
-        val p = Person("张三",18)
+        val p = Person1("你好",18)
         print(p)
     "#;
     e.run(script)

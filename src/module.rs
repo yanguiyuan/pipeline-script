@@ -94,6 +94,9 @@ impl Class {
             name:name.to_string(),attributions,methods:HashMap::new()
         }
     }
+    pub fn get_attributions(&self)->&Vec<VariableDeclaration>{
+        return &self.attributions
+    }
     pub fn get_name(&self)->String{
         self.name.clone()
     }
@@ -159,21 +162,27 @@ impl Module{
             submodules:HashMap::new()
         }
     }
-    pub fn try_get_class_instance(&self,class_name:&str,params:Vec<Value>)->Option<Value>{
-        let class=self.classes.get(class_name)?;
-        let mut props=HashMap::new();
-        for (i,v) in class.attributions.iter().enumerate(){
-            if params[i].is_immutable(){
-                let d = params[i].as_dynamic();
-                props.insert(v.name.clone(),Value::with_mutable(d));
-                continue
-            }
-            props.insert(v.name.clone(),params[i].clone());
-        }
-        let obj=Struct::new(class_name.into(),props);
-        let obj=Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(Box::new(obj)))));
-        return Some(obj);
+    pub fn get_class(&self,class_name:&str)->Option<&Class>{
+        return self.classes.get(class_name)
     }
+    // pub fn try_get_class_instance(&self,class_name:&str,params:Vec<Value>)->PipelineResult<Option<Value>>{
+    //     let class=self.classes.get(class_name)?;
+    //     let mut props=HashMap::new();
+    //     for (i,v) in class.attributions.iter().enumerate(){
+    //         if params[i].is_immutable(){
+    //             let d = params[i].as_dynamic();
+    //             if v.declaration_type!=d.type_name(){
+    //                return  Err(PipelineError::MismatchedType)
+    //             }
+    //             props.insert(v.name.clone(),Value::with_mutable(d));
+    //             continue
+    //         }
+    //         props.insert(v.name.clone(),params[i].clone());
+    //     }
+    //     let obj=Struct::new(class_name.into(),props);
+    //     let obj=Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(Box::new(obj)))));
+    //     return Ok(Some(obj));
+    // }
     pub fn get_functions(&self)->&HashMap<String,Function>{
         return &self.functions
     }

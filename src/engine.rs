@@ -113,24 +113,26 @@ impl Engine{
                     let source = self.ctx.get(ContextKey::SourceCode(pos.module_name));
                     let source = source.unwrap().as_source().unwrap();
                     let line = source.get_line(pos.row);
-                    println!("{}|{}",pos.row,line);
+                    println!("{:4}|{}",pos.row,line);
                     let mut p=String::from(' ');
                     let mut p=p.repeat(pos.col-1);
                     let arrow = String::from('↑');
                     let arrow = arrow.repeat(pos.span);
                     p.push_str(&arrow);
-                    println!(" |{}\x1b[0m",p);
+                    println!("    |{}\x1b[0m",p);
                 }
                 PipelineError::VariableUndefined(i, pos) => {
                     println!("\x1b[31m[错误] 变量'{i}'未定义");
                     let source = self.ctx.get(ContextKey::SourceCode(pos.module_name));
                     let source = source.unwrap().as_source().unwrap();
                     let line = source.get_line(pos.row);
-                    println!("{}|{}",pos.row,line);
+                    println!("{:4}|{}",pos.row,line);
                     let mut p=String::from(' ');
                     let mut p=p.repeat(pos.col-1);
-                    p.push('↑');
-                    println!(" |{}\x1b[0m",p);
+                    let arrow = String::from('↑');
+                    let arrow = arrow.repeat(pos.span);
+                    p.push_str(&arrow);
+                    println!("    |{}\x1b[0m",p);
                 }
                 PipelineError::ExpectedType(_) => {}
                 PipelineError::UnexpectedType(_) => {}
@@ -138,6 +140,19 @@ impl Engine{
                 PipelineError::UnusedKeyword(_) => {}
                 PipelineError::UnknownModule(_) => {}
                 PipelineError::UndefinedOperation(_) => {}
+                PipelineError::MismatchedType(need,actual,pos)=>{
+                    println!("\x1b[31m[错误] 不匹配的类型,期望'{need}',实际'{actual}'");
+                    let source = self.ctx.get(ContextKey::SourceCode(pos.module_name));
+                    let source = source.unwrap().as_source().unwrap();
+                    let line = source.get_line(pos.row);
+                    println!("{:4}|{}",pos.row,line);
+                    let mut p=String::from(' ');
+                    let mut p=p.repeat(pos.col-1);
+                    let arrow = String::from('↑');
+                    let arrow = arrow.repeat(pos.span);
+                    p.push_str(&arrow);
+                    println!("    |{}\x1b[0m",p);
+                }
             }
         }
     }

@@ -11,5 +11,6 @@ pub enum PipelineError{
     UnexpectedToken(crate::token::Token,Position),
     UnusedKeyword(String),
     UnknownModule(String),
-    UndefinedOperation(String)
+    UndefinedOperation(String),
+    MismatchedType(String,String,Position)
 }

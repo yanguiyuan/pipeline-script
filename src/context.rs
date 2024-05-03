@@ -289,9 +289,29 @@ impl Context{
                 }
                 let module=self.get_module();
                 let module=module.read().unwrap();
-                let obj=module.try_get_class_instance(fn_call.name.as_str(),v.clone());
-                if let Some(obj)=obj{
-                    return Ok(obj);
+                let class = module.get_class(fn_call.name.as_str());
+                if let Some(c)=class{
+                    let mut props=HashMap::new();
+                    for (i,vd) in c.get_attributions().iter().enumerate(){
+                        if v[i].is_immutable(){
+                            let d = v[i].as_dynamic();
+                            if vd.declaration_type!=d.type_name(){
+                                dbg!(pos);
+                                return  Err(
+                                    PipelineError::MismatchedType(
+                                        vd.declaration_type.clone(),
+                                        d.type_name(),
+                                        pos.clone()
+                                    )
+                                )
+                            }
+                            props.insert(vd.name.clone(),Value::with_mutable(d));
+                            continue
+                        }
+                        props.insert(vd.name.clone(),v[i].clone());
+                    }
+                    let obj=Struct::new(fn_call.name.clone(),props);
+                    return Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(Box::new(obj))))));
                 }
                 let mut ctx=Context::with_value(&self,ContextKey::Position,ContextValue::Position(pos.clone()));
                 return module.call(&mut ctx,&fn_call.name,v);

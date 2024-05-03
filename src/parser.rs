@@ -66,11 +66,6 @@ impl PipelineParser{
                         "let"|"var"|"val"=>{
                             return self.parse_let_stmt()
                         }
-                        // "fn"=>{
-                        //     let (fn_def,pos)=self.parse_fn_def()?;
-                        //     self.fn_lib.push(fn_def);
-                        //     continue
-                        // }
                         "fun"=>{
                             self.parse_function()?;
                             continue
@@ -110,9 +105,6 @@ impl PipelineParser{
                 },
                 Token::ParenthesisRight=>Ok(Stmt::Noop),
                 _=>{
-                    // let expr=self.parse_expr()?;
-                    // let pos=expr.position();
-                    // return Ok(Stmt::EvalExpr(Box::new(expr),pos));
                     self.parse_expr_stmt()
                 }
             }
@@ -528,10 +520,8 @@ impl PipelineParser{
         })
     }
     pub fn parse_fn_call_args(&mut self)->PipelineResult<(Vec<Expr>,Position)>{
-        self.parse_special_token(Token::BraceLeft)?;
+        let (_,mut p)=self.parse_special_token(Token::BraceLeft)?;
         let mut v =vec![];
-        let mut p=Position::none();
-        p.add_span(1);
         loop {
             let (peek,_)=self.token_stream.peek();
             if peek==Token::BraceRight{
@@ -541,13 +531,8 @@ impl PipelineParser{
             let expr=self.parse_expr()?;
             v.push(expr.clone());
             let expr_pos=expr.position();
-            if p.is_none(){
-                p.set_pos(expr_pos.pos);
-            }
-            p.add_span(expr_pos.span);
-
+            p=p+expr_pos;
             let (token,pos)=self.token_stream.peek();
-
             match token {
                 Token::BraceRight => {
                     p.add_span(1);
