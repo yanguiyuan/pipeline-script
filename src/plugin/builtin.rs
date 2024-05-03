@@ -79,6 +79,42 @@ impl Plugin for BuiltinPlugin{
             }
             Ok(().into())
         });
+        m.register_pipe_function("range",|_,args|{
+            let n=args.get(0).unwrap();
+            let o=args.get(1);
+            let mut v=vec![];
+            match o {
+                None => {
+                    let n=n.as_dynamic();
+                    let n=n.as_integer().unwrap();
+                    for i in 0..n{
+                        v.push(i.into())
+                    }
+                }
+                Some(end) => {
+                    let n=n.as_dynamic();
+                    let n=n.as_integer().unwrap();
+                    let end=end.as_dynamic().as_integer().unwrap();
+                    let step=args.get(2);
+                    match step {
+                        None => {
+                            for i in n..end{
+                                v.push(i.into())
+                            }
+                        }
+                        Some(step) => {
+                            let mut i=n;
+                            let step=step.as_integer().unwrap();
+                            while i<end{
+                                v.push(i.into());
+                                i+=step;
+                            }
+                        }
+                    }
+                }
+            }
+            return Ok(Dynamic::Array(v).into())
+        });
         m.register_pipe_function("clone",|_,args|{
             let c=args.get(0).unwrap();
             Ok(match c {
