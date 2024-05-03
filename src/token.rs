@@ -85,6 +85,29 @@ impl Token {
             Token::Arrow=>26
         }
     }
+    pub fn is_colon(&self)->bool{
+        match self {
+            Token::Colon=>true,
+            _=>false
+        }
+    }
+    pub fn is_parenthesis_left(&self)->bool{
+        match self {
+            Token::ParenthesisLeft=>true,
+            _=>false
+        }
+    }
+    pub fn is_keyword(&self,keyword:&str)->bool{
+        match self {
+            Token::Keyword(k)=>{
+                if k==keyword{
+                    return true
+                }
+                return false
+            },
+            _=>false
+        }
+    }
     pub fn get_identifier_value(&self)->&str{
         return match self {
             Token::Identifier(s) => {

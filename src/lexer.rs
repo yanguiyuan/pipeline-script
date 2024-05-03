@@ -95,9 +95,13 @@ impl Lexer{
         for i in &self.chars{
             if i==&'\n'{
                current_line+=1;
+                continue;
             }
             if current_line==line{
                 s.push(*i);
+            }
+            if current_line>line{
+                break
             }
         }
         return s
@@ -252,7 +256,7 @@ impl Lexer{
                             self.next_char();
                         }
                         ('/','/')=>{
-                            while self.peek_char()!=Some('\n') {
+                            while self.current_char()!=Some('\n') {
                                 self.next_char();
                             }
                         }
@@ -332,7 +336,7 @@ impl Lexer{
         let mut v=String::new();
         let mut pos=self.with_pos(0);
         while let  Some(c ) =self.current_char(){
-            if !c.is_alphabetic(){
+            if !c.is_alphabetic()&&!c.is_numeric(){
                 break
             }
             v.push(c.clone());

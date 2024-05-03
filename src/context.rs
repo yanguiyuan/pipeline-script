@@ -5,6 +5,8 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 use crate::error::{PipelineError, PipelineResult};
 use crate::expr::{Expr, Op};
+use crate::lexer;
+use crate::lexer::Lexer;
 use crate::module::Module;
 use crate::position::Position;
 use crate::stmt::Stmt;
@@ -22,6 +24,7 @@ pub enum  ContextKey{
     MainModule,
     SourceCode(String),
     Scope,
+    Position,
     NativeObject(String)
 }
 
@@ -56,6 +59,12 @@ impl PartialEq for ContextKey {
                 }
                 false
             }
+            ContextKey::Position =>{
+                if let ContextKey::Position= other {
+                    return true
+                }
+                false
+            }
         }
     }
 }
@@ -87,10 +96,10 @@ impl Context{
         let r=self.get(ContextKey::Scope).unwrap();
         return r.as_scope().unwrap()
     }
-    pub fn get_value(&self,key:impl AsRef<str>)->Value{
+    pub fn get_value(&self,key:impl AsRef<str>)->Option<Value>{
         let s=self.get_scope();
         let s=s.read().unwrap();
-        return s.get(key.as_ref()).unwrap()
+        return s.get(key.as_ref())
     }
 
     pub fn get(&self,key:ContextKey)->Option<ContextValue>{
@@ -106,10 +115,6 @@ impl Context{
     }
     pub fn eval_stmt(&mut self, stmt:&Stmt)->PipelineResult<Value>{
         match stmt {
-            // Stmt::FnCall(fc, pos) => {
-            //     todo!()
-            //     // self.eval_fn_call_expr_with_context(*fc)?;
-            // }
             Stmt::EvalExpr(e,_)=>{
                 return self.eval_expr(e);
             }
@@ -276,7 +281,7 @@ impl Context{
     }
     pub fn eval_expr(&mut self,expr:&Expr)->PipelineResult<Value>{
         match expr {
-            Expr::FnCall(fn_call, _)=>{
+            Expr::FnCall(fn_call, pos)=>{
                 let mut v=vec![];
                 for i in &fn_call.args{
                     let r=self.eval_expr(&i)?;
@@ -284,11 +289,19 @@ impl Context{
                 }
                 let module=self.get_module();
                 let module=module.read().unwrap();
-                module.call(self,&fn_call.name,v)
+                let obj=module.try_get_class_instance(fn_call.name.as_str(),v.clone());
+                if let Some(obj)=obj{
+                    return Ok(obj);
+                }
+                let mut ctx=Context::with_value(&self,ContextKey::Position,ContextValue::Position(pos.clone()));
+                return module.call(&mut ctx,&fn_call.name,v);
             }
-            Expr::Variable(i,_)=>{
+            Expr::Variable(i,pos)=>{
                 let d=self.get_value(&i);
-                Ok(d)
+                match d {
+                    None => Err(PipelineError::VariableUndefined(i.clone(),pos.clone())),
+                    Some(v) => Ok(v)
+                }
             }
             Expr::Array(v,_)=>{
                 let mut dv=vec![];
@@ -469,6 +482,18 @@ pub enum SourceCode{
     Path(String),
     Source(String)
 }
+
+impl SourceCode {
+    pub fn get_line(&self,line:usize)->String{
+        return match self {
+            SourceCode::Path(_) => todo!(),
+            SourceCode::Source(s) => {
+                let lexer=Lexer::from_script("",s);
+                lexer.line(line)
+            }
+        }
+    }
+}
 #[derive(Debug,Clone)]
 pub enum ContextValue{
     // GlobalState(Arc<RwLock<AppContext<String>>>),
@@ -492,6 +517,18 @@ impl ContextValue {
     pub fn as_native(&self)->Option<Arc<RwLock<dyn Any+Send+Sync>>>{
         match self {
             ContextValue::Native(m)=>Some(m.clone()),
+            _=>None
+        }
+    }
+    pub fn as_position(&self)->Option<Position>{
+        match self {
+            ContextValue::Position(m)=>Some(m.clone()),
+            _=>None
+        }
+    }
+    pub fn as_source(&self)->Option<SourceCode>{
+        match self {
+            ContextValue::Source(m)=>Some(m.clone()),
             _=>None
         }
     }

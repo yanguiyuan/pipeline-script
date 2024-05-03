@@ -123,12 +123,12 @@ impl PipelineParser{
         self.parse_keyword("class")?;
         let (class_name,class_name_pos)=self.parse_identifier()?;
         let mut pos=class_name_pos.clone();
-        self.parse_special_token(Token::ParenthesisLeft)?;
+        self.parse_special_token(Token::BraceLeft)?;
         let mut attributions=vec![];
         loop{
             let (peek_token,peek_pos)=self.token_stream.peek();
             match peek_token {
-                Token::ParenthesisRight=>{
+                Token::BraceRight=>{
                     break
                 }
                 Token::Comma=>{
@@ -144,8 +144,18 @@ impl PipelineParser{
                 }
             }
         }
-        self.parse_special_token(Token::ParenthesisRight)?;
-        let class_declaration=Class::new(class_name.as_str(), attributions);
+        self.parse_special_token(Token::BraceRight)?;
+        let mut class_declaration=Class::new(class_name.as_str(), attributions);
+        if self.token_stream.peek().0.is_parenthesis_left(){
+            self.parse_special_token(Token::ParenthesisLeft)?;
+            while self.token_stream.peek().0.is_keyword("fun"){
+                self.parse_keyword("fun")?;
+                let fn_def=self.parse_fn_def()?;
+                let method=Function::Method(Box::new(fn_def.clone()));
+                class_declaration.register_method(fn_def.name.clone(),method);
+            }
+            self.parse_special_token(Token::ParenthesisRight)?;
+        }
         self.module.write().unwrap().register_class(class_declaration);
         Ok(())
     }
@@ -360,55 +370,67 @@ impl PipelineParser{
         }
         return Err(PipelineError::UnexpectedToken(token,pos))
     }
-    pub fn parse_fn_def(&mut self)->PipelineResult<(FnDef,Position)>{
-        let (next,mut pos)=self.token_stream.next();
-        match next {
-            Token::Keyword(s) if s.as_str()=="fn"||s.as_str()=="fun"=>{
-                pos.add_span(2);
-                let (next1,pos1)=self.token_stream.next();
-                if let Token::Identifier(ident)=next1{
-                    pos.add_span(pos1.span);
-                    let (dec_args,pos2)=self.parse_fn_def_args()?;
-                    pos.add_span(pos2.span);
-                    self.parse_special_token(Token::ParenthesisLeft)?;
-                    pos.add_span(1);
-                    let stmts=self.parse_stmt_blocks()?;
-                    for s in &stmts{
-                        let pos_t=s.position();
-                        pos.add_span(pos_t.span);
-                    }
-                    self.parse_special_token(Token::ParenthesisRight)?;
-                    pos.add_span(1);
-                    return Ok((FnDef::new(ident,dec_args,stmts,"Any".into()),pos))
-                }
-                return Err(PipelineError::UnexpectedToken(next1,pos1))
-            },
-            _=>{
-                Err(PipelineError::UnexpectedToken(next,pos))
-            }
+    // pub fn parse_fn_def(&mut self)->PipelineResult<(FnDef,Position)>{
+    //     let (next,mut pos)=self.token_stream.next();
+    //     match next {
+    //         Token::Keyword(s) if s.as_str()=="fn"||s.as_str()=="fun"=>{
+    //             pos.add_span(2);
+    //             let (next1,pos1)=self.token_stream.next();
+    //             if let Token::Identifier(ident)=next1{
+    //                 pos.add_span(pos1.span);
+    //                 let (dec_args,pos2)=self.parse_fn_def_args()?;
+    //                 pos.add_span(pos2.span);
+    //                 self.parse_special_token(Token::ParenthesisLeft)?;
+    //                 pos.add_span(1);
+    //                 let stmts=self.parse_stmt_blocks()?;
+    //                 for s in &stmts{
+    //                     let pos_t=s.position();
+    //                     pos.add_span(pos_t.span);
+    //                 }
+    //                 self.parse_special_token(Token::ParenthesisRight)?;
+    //                 pos.add_span(1);
+    //                 return Ok((FnDef::new(ident,dec_args,stmts,"Any".into()),pos))
+    //             }
+    //             return Err(PipelineError::UnexpectedToken(next1,pos1))
+    //         },
+    //         _=>{
+    //             Err(PipelineError::UnexpectedToken(next,pos))
+    //         }
+    //     }
+    // }
+    fn parse_fn_def(&mut self)->PipelineResult<FnDef>{
+        let (function_name,function_name_pos)=self.parse_identifier()?;
+        let (function_params,function_params_pos)=self.parse_fn_def_args()?;
+        let mut return_type=String::from("Unit");
+        let mut return_type_pos=Position::none();
+        if self.token_stream.peek().0.is_colon(){
+            self.parse_special_token(Token::Colon)?;
+            (return_type,return_type_pos)=self.parse_identifier()?;
         }
+        self.parse_special_token(Token::ParenthesisLeft)?;
+        let stmts=self.parse_stmt_blocks()?;
+        self.parse_special_token(Token::ParenthesisRight)?;
+        Ok(FnDef::new(function_name.clone(),function_params,stmts,return_type))
     }
     pub fn parse_function(&mut self)->PipelineResult<()>{
         self.parse_keyword("fun")?;
         let (one_name,one_name_pos)=self.parse_identifier()?;
         let b=self.try_parse_special_token(Token::Dot);
         if b{
-            let (two_name,two_name_pos)=self.parse_identifier()?;
-            let (function_params,function_params_pos)=self.parse_fn_def_args()?;
-            self.parse_special_token(Token::Colon)?;
-            let (return_type,return_type_pos)=self.parse_identifier()?;
-            self.parse_special_token(Token::ParenthesisLeft)?;
-            let stmts=self.parse_stmt_blocks()?;
-            self.parse_special_token(Token::ParenthesisRight)?;
-            let function=Function::Method(Box::new(FnDef::new(two_name.clone(),function_params,stmts,return_type)));
-            // let class=self.module.get_classes().get_mut(&one_name).unwrap();
-            self.module.write().unwrap().register_class_method(one_name,two_name,function);
-            // class.register_method(two_name,function);
+            let fn_def=self.parse_fn_def()?;
+            let function=Function::Method(
+                Box::new(fn_def.clone())
+            );
+            self.module.write().unwrap().register_class_method(one_name,fn_def.name,function);
             return Ok(())
         }
         let (function_params,function_params_pos)=self.parse_fn_def_args()?;
-        self.parse_special_token(Token::Colon)?;
-        let (return_type,return_type_pos)=self.parse_identifier()?;
+        let mut return_type=String::from("Unit");
+        let mut return_type_pos=Position::none();
+        if self.token_stream.peek().0.is_colon(){
+            self.parse_special_token(Token::Colon)?;
+            (return_type,return_type_pos)=self.parse_identifier()?;
+        }
         self.parse_special_token(Token::ParenthesisLeft)?;
         let stmts=self.parse_stmt_blocks()?;
         self.parse_special_token(Token::ParenthesisRight)?;
@@ -416,6 +438,9 @@ impl PipelineParser{
         self.module.write().unwrap().register_script_function(function_def.name.clone(),function_def);
         return Ok(())
     }
+    // fn parse_fn_def(&mut self)->PipelineResult<FnDef>{
+    //
+    // }
     pub fn try_parse_special_token(&mut self,target:Token)->bool{
         let (token,pos)=self.token_stream.peek();
         match token {

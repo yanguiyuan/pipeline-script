@@ -14,8 +14,9 @@ use scanner_rust::Scanner;
 use ssh::LocalSession;
 use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::error::{PipelineError, PipelineResult};
+use crate::position::Position;
 use crate::stmt::Stmt;
-use crate::types::{SignalType, Value};
+use crate::types::{Dynamic, SignalType, Struct, Value};
 
 trait NativeFunction<Marker>{
     fn into_pipe_function(self) ->Arc<PipeFn>;
@@ -158,6 +159,21 @@ impl Module{
             submodules:HashMap::new()
         }
     }
+    pub fn try_get_class_instance(&self,class_name:&str,params:Vec<Value>)->Option<Value>{
+        let class=self.classes.get(class_name)?;
+        let mut props=HashMap::new();
+        for (i,v) in class.attributions.iter().enumerate(){
+            if params[i].is_immutable(){
+                let d = params[i].as_dynamic();
+                props.insert(v.name.clone(),Value::with_mutable(d));
+                continue
+            }
+            props.insert(v.name.clone(),params[i].clone());
+        }
+        let obj=Struct::new(class_name.into(),props);
+        let obj=Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(Box::new(obj)))));
+        return Some(obj);
+    }
     pub fn get_functions(&self)->&HashMap<String,Function>{
         return &self.functions
     }
@@ -244,9 +260,16 @@ impl Module{
         let f=self.functions.get(name.clone().as_str());
         match f {
             None => {
+                let pos = ctx.get(ContextKey::Position).unwrap().as_position().unwrap();
+                if args.len()==0{
+                    return Err(PipelineError::FunctionUndefined(name,pos))
+                }
                 let type_name=args[0].as_dynamic().type_name();
-                let fun=self.get_class_function(type_name.as_str(),name.as_str()).unwrap();
-                return fun.call(ctx,args);
+                let fun=self.get_class_function(type_name.as_str(),name.as_str());
+                return match fun {
+                    None => Err(PipelineError::FunctionUndefined(name,pos)),
+                    Some(fun) => fun.call(ctx,args)
+                }
             }
             Some(f) => {
                 let r=f.call(ctx,args);

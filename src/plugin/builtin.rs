@@ -17,16 +17,32 @@ impl Plugin for BuiltinPlugin{
         m.register_class(Class::new("Int",vec![]));
         m.register_pipe_function("println",|ctx:&mut Context,args:Vec<Value>|{
             for v in args{
-                let v=v.as_dynamic();
-                print!("{}",v);
+                let vd=v.as_dynamic();
+                let module=ctx.get_module();
+                let module=module.read().unwrap();
+                let method=module.get_class_function(vd.type_name().as_str(),"toString");
+                if let Some(f)=method{
+                    let r=f.call(ctx,vec![v])?;
+                    print!("{}",r.as_dynamic());
+                    continue
+                }
+                print!("{}",vd);
             }
             println!();
             return Ok(().into())
         });
         m.register_pipe_function("print",|ctx:&mut Context,args:Vec<Value>|{
             for v in args{
-                let v=v.as_dynamic();
-                print!("{}",v);
+                let vd=v.as_dynamic();
+                let module=ctx.get_module();
+                let module=module.read().unwrap();
+                let method=module.get_class_function(vd.type_name().as_str(),"toString");
+                if let Some(f)=method{
+                    let r=f.call(ctx,vec![v])?;
+                    print!("{}",r.as_dynamic());
+                    continue
+                }
+                print!("{}",vd);
             }
             return Ok(().into())
         });
