@@ -336,10 +336,10 @@ impl PipelineParser {
         if let Token::Keyword(_) = token {
             let (token1, pos0) = self.token_stream.next();
             if let Token::Identifier(ident) = token1 {
-                pos+=pos0;
+                pos += pos0;
                 if let Token::Colon = self.token_stream.peek().0 {
                     self.parse_special_token(Token::Colon)?;
-                    self.parse_identifier()?;
+                    self.parse_type_comment()?;
                 }
                 self.parse_special_token(Token::Assign)?;
                 pos.add_span(1);
@@ -351,6 +351,19 @@ impl PipelineParser {
         }
         Err(PipelineError::UnexpectedToken(token, pos))
     }
+    fn parse_type_comment(&mut self) -> PipelineResult<()> {
+        self.parse_identifier()?;
+        if let Token::Less = self.token_stream.peek().0 {
+            self.parse_special_token(Token::Less)?;
+            self.parse_type_comment()?;
+            self.parse_special_token(Token::Greater)?;
+        }
+        if let Token::BitOr = self.token_stream.peek().0 {
+            self.parse_special_token(Token::BitOr)?;
+            self.parse_type_comment()?;
+        }
+        Ok(())
+    }
     fn parse_val_stmt(&mut self) -> PipelineResult<Stmt> {
         let (token, mut pos) = self.token_stream.next();
         if let Token::Keyword(_) = token {
@@ -359,7 +372,7 @@ impl PipelineParser {
                 pos += pos0;
                 if let Token::Colon = self.token_stream.peek().0 {
                     self.parse_special_token(Token::Colon)?;
-                    self.parse_identifier()?;
+                    self.parse_type_comment()?;
                 }
                 self.parse_special_token(Token::Assign)?;
                 pos.add_span(1);

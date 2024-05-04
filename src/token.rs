@@ -49,6 +49,8 @@ pub enum Token {
     NotEqual,
     ///->
     Arrow,
+    /// |
+    BitOr,
     Eof,
 }
 
@@ -83,6 +85,7 @@ impl Token {
             Token::ScopeSymbol => 24,
             Token::NotEqual => 25,
             Token::Arrow => 26,
+            Token::BitOr => 27,
         }
     }
     pub fn is_colon(&self) -> bool {

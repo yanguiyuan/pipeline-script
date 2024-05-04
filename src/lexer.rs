@@ -182,6 +182,11 @@ impl Lexer {
                             self.next_char();
                             return r;
                         }
+                        ('|', _) => {
+                            let r = Some((Token::BitOr, self.with_pos(1)));
+                            self.next_char();
+                            return r;
+                        }
                         ('!', '=') => {
                             let r = Some((Token::NotEqual, self.with_pos(2)));
                             self.next_char();

@@ -5,7 +5,7 @@ class Person(name:String,age:Int){
         }
     }
 }
-var a:Int=[
+var a:Array<Array<Int|Float>>|Int=[
     [1,2,3],
     [4,5,6],
     [7,8,9]
