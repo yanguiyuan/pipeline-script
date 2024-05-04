@@ -14,11 +14,5 @@ use crate::engine::Engine;
 
 fn main() {
     let mut e = Engine::default();
-    // e.enable_ast_debug();
-    let script = "
-        fun main(){
-            println(\"Hello,World\"+1+2)
-        }
-    ";
-    e.run(script.to_owned() + "main()")
+    e.run_file("main.ppl")
 }

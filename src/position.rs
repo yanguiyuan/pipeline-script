@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 use std::string::ToString;
 
 #[derive(Debug, Clone)]
@@ -18,6 +18,11 @@ impl Add for Position {
         let mut pos = self.clone();
         pos.span = rhs.pos.abs_diff(self.pos) + rhs.span;
         pos
+    }
+}
+impl AddAssign for Position {
+    fn add_assign(&mut self, rhs: Self) {
+        self.span = rhs.pos.abs_diff(self.pos) + rhs.span;
     }
 }
 impl Position {

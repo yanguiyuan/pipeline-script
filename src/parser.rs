@@ -498,19 +498,20 @@ impl PipelineParser {
         let (_, mut p) = self.parse_special_token(Token::BraceLeft)?;
         let mut v = vec![];
         loop {
-            let (peek, _) = self.token_stream.peek();
+            let (peek, p0) = self.token_stream.peek();
             if peek == Token::BraceRight {
+                p += p0;
                 self.token_stream.next();
                 break;
             }
             let expr = self.parse_expr()?;
             v.push(expr.clone());
             let expr_pos = expr.position();
-            p = p + expr_pos;
+            p += expr_pos;
             let (token, pos) = self.token_stream.peek();
             match token {
                 Token::BraceRight => {
-                    p.add_span(1);
+                    p += pos;
                     self.token_stream.next();
                     break;
                 }
@@ -658,9 +659,6 @@ impl PipelineParser {
                     let (peek1, _) = self.token_stream.peek();
                     if let Token::BraceLeft = peek1 {
                         let (args, pos1) = self.parse_fn_call_args()?;
-                        // let (mut fn_call,mut pos)=self.parse_fn_call_expr(name,pos0)?;
-                        // pos.add_span(lhs.position().span+1);
-                        // fn_call.args.insert(0,lhs.clone());
                         let mut fn_call = FnCallExpr {
                             name: name.into(),
                             args,
@@ -695,7 +693,7 @@ impl PipelineParser {
                         _ => panic!("only variable and member_access expected"),
                     }
                     fn_call_expr.args = args;
-                    lhs = Expr::FnCall(fn_call_expr, pos)
+                    lhs = Expr::FnCall(fn_call_expr, lhs.position() + pos)
                 }
                 Token::SquareBracketLeft => {
                     let mut pos1 = lhs.position();

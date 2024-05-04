@@ -2,11 +2,14 @@ use crate::context::{Context, ContextKey, ContextValue, SourceCode};
 use crate::error::{PipelineError, PipelineResult};
 use crate::expr::Expr;
 use crate::lexer::Lexer;
+use std::fs;
+use std::path::Path;
 
 use crate::module::Module;
 use crate::parser::PipelineParser;
 use crate::plugin::builtin::BuiltinPlugin;
 use crate::plugin::Plugin;
+use crate::position::Position;
 use crate::stmt::Stmt;
 use crate::types::{Dynamic, Value};
 
@@ -96,58 +99,53 @@ impl Engine {
         }
         Ok(r)
     }
+    fn display_source_line(&self, pos: &Position) {
+        let source = self
+            .ctx
+            .get(ContextKey::SourceCode(pos.module_name.clone()));
+        let source = source.unwrap().as_source().unwrap();
+        let line = source.get_line(pos.row);
+        println!("{:4}|{}", pos.row, line);
+        let p = String::from(' ');
+        let mut p = p.repeat(pos.col - 1);
+        let arrow = String::from('↑');
+        let arrow = arrow.repeat(pos.span);
+        p.push_str(&arrow);
+        println!("    |{}\x1b[0m", p);
+    }
+    fn handle_err(&self, e: PipelineError) {
+        match e {
+            PipelineError::FunctionUndefined(i, pos) => {
+                println!("\x1b[31m[错误] 函数'{i}'未定义");
+                self.display_source_line(&pos)
+            }
+            PipelineError::VariableUndefined(i, pos) => {
+                println!("\x1b[31m[错误] 变量'{i}'未定义");
+                self.display_source_line(&pos)
+            }
+            PipelineError::ExpectedType(_) => {}
+            PipelineError::UnexpectedType(_) => {}
+            PipelineError::UnexpectedToken(_, _) => {}
+            PipelineError::UnusedKeyword(_) => {}
+            PipelineError::UnknownModule(_) => {}
+            PipelineError::UndefinedOperation(_) => {}
+            PipelineError::MismatchedType(need, actual, pos) => {
+                println!("\x1b[31m[错误] 不匹配的类型,期望'{need}',实际'{actual}'");
+                self.display_source_line(&pos)
+            }
+        }
+    }
     #[allow(unused)]
     pub fn run(&mut self, script: impl AsRef<str>) {
         let result = self.eval(script);
         if let Err(e) = result {
-            match e {
-                PipelineError::FunctionUndefined(i, pos) => {
-                    println!("\x1b[31m[错误] 函数'{i}'未定义");
-                    let source = self.ctx.get(ContextKey::SourceCode(pos.module_name));
-                    let source = source.unwrap().as_source().unwrap();
-                    let line = source.get_line(pos.row);
-                    println!("{:4}|{}", pos.row, line);
-                    let mut p = String::from(' ');
-                    let mut p = p.repeat(pos.col - 1);
-                    let arrow = String::from('↑');
-                    let arrow = arrow.repeat(pos.span);
-                    p.push_str(&arrow);
-                    println!("    |{}\x1b[0m", p);
-                }
-                PipelineError::VariableUndefined(i, pos) => {
-                    println!("\x1b[31m[错误] 变量'{i}'未定义");
-                    let source = self.ctx.get(ContextKey::SourceCode(pos.module_name));
-                    let source = source.unwrap().as_source().unwrap();
-                    let line = source.get_line(pos.row);
-                    println!("{:4}|{}", pos.row, line);
-                    let mut p = String::from(' ');
-                    let mut p = p.repeat(pos.col - 1);
-                    let arrow = String::from('↑');
-                    let arrow = arrow.repeat(pos.span);
-                    p.push_str(&arrow);
-                    println!("    |{}\x1b[0m", p);
-                }
-                PipelineError::ExpectedType(_) => {}
-                PipelineError::UnexpectedType(_) => {}
-                PipelineError::UnexpectedToken(_, _) => {}
-                PipelineError::UnusedKeyword(_) => {}
-                PipelineError::UnknownModule(_) => {}
-                PipelineError::UndefinedOperation(_) => {}
-                PipelineError::MismatchedType(need, actual, pos) => {
-                    println!("\x1b[31m[错误] 不匹配的类型,期望'{need}',实际'{actual}'");
-                    let source = self.ctx.get(ContextKey::SourceCode(pos.module_name));
-                    let source = source.unwrap().as_source().unwrap();
-                    let line = source.get_line(pos.row);
-                    println!("{:4}|{}", pos.row, line);
-                    let mut p = String::from(' ');
-                    let mut p = p.repeat(pos.col - 1);
-                    let arrow = String::from('↑');
-                    let arrow = arrow.repeat(pos.span);
-                    p.push_str(&arrow);
-                    println!("    |{}\x1b[0m", p);
-                }
-            }
+            self.handle_err(e)
         }
+    }
+    #[allow(unused)]
+    pub fn run_file(&mut self, path: impl AsRef<Path>) {
+        let r = fs::read_to_string(path.as_ref()).unwrap();
+        self.run(r);
     }
     #[allow(unused)]
     pub fn compile_module(
