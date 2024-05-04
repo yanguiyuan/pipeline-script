@@ -78,7 +78,7 @@ impl Lexer {
             module_name: module_name.into(),
             keywords: vec![
                 "let", "fn", "fun", "return", "if", "while", "import", "else", "val", "var",
-                "break", "continue", "for", "in", "class",
+                "break", "continue", "for", "in", "class", "static",
             ],
         }
     }

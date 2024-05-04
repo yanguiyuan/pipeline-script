@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
-// use std::io::{ Write};
 use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::error::{PipelineError, PipelineResult};
 use crate::stmt::Stmt;
 use crate::types::{SignalType, Value};
+use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, RwLock};
 
 pub trait NativeFunction<Marker> {
@@ -87,6 +86,7 @@ pub struct Class {
     name: String,
     attributions: Vec<VariableDeclaration>,
     methods: HashMap<String, Function>,
+    static_methods: HashMap<String, Function>,
 }
 
 impl Class {
@@ -95,6 +95,7 @@ impl Class {
             name: name.to_string(),
             attributions,
             methods: HashMap::new(),
+            static_methods: HashMap::new(),
         }
     }
     pub fn get_attributions(&self) -> &Vec<VariableDeclaration> {
@@ -103,8 +104,14 @@ impl Class {
     pub fn get_name(&self) -> String {
         self.name.clone()
     }
+    pub fn get_static_function(&self, name: &str) -> Option<Function> {
+        self.static_methods.get(name).cloned()
+    }
     pub fn register_method(&mut self, name: String, method: Function) {
         self.methods.insert(name, method);
+    }
+    pub fn register_static_method(&mut self, name: String, method: Function) {
+        self.static_methods.insert(name, method);
     }
 }
 impl Function {
@@ -278,6 +285,12 @@ impl Module {
     ) -> PipelineResult<Value> {
         let name = function_name.into();
         let f = self.functions.get(name.clone().as_str());
+        if name.contains("::") {
+            let split = name.split("::").collect::<Vec<_>>();
+            let class = self.get_class(split.first().unwrap()).unwrap();
+            let function = class.get_static_function(split[1]).unwrap();
+            return function.call(ctx, args);
+        }
         match f {
             None => {
                 let pos = ctx

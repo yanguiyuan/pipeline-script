@@ -112,11 +112,28 @@ impl PipelineParser {
         let mut class_declaration = Class::new(class_name.as_str(), attributions);
         if self.token_stream.peek().0.is_parenthesis_left() {
             self.parse_special_token(Token::ParenthesisLeft)?;
-            while self.token_stream.peek().0.is_keyword("fun") {
-                self.parse_keyword("fun")?;
-                let fn_def = self.parse_fn_def()?;
-                let method = Function::Method(Box::new(fn_def.clone()));
-                class_declaration.register_method(fn_def.name.clone(), method);
+            while self.token_stream.peek().0.is_keyword("fun")
+                || self.token_stream.peek().0.is_keyword("static")
+            {
+                let peek = self.token_stream.peek().0;
+                if peek.is_keyword("fun") {
+                    self.parse_keyword("fun")?;
+                    let fn_def = self.parse_fn_def()?;
+                    let method = Function::Method(Box::new(fn_def.clone()));
+                    class_declaration.register_method(fn_def.name.clone(), method);
+                } else {
+                    self.parse_keyword("static")?;
+                    if let Token::ParenthesisLeft = self.token_stream.peek().0 {
+                        self.parse_special_token(Token::ParenthesisLeft)?;
+                        while self.token_stream.peek().0.is_keyword("fun") {
+                            self.parse_keyword("fun")?;
+                            let fn_def = self.parse_fn_def()?;
+                            let method = Function::Script(Box::new(fn_def.clone()));
+                            class_declaration.register_static_method(fn_def.name.clone(), method);
+                        }
+                        self.parse_special_token(Token::ParenthesisRight)?;
+                    }
+                }
             }
             self.parse_special_token(Token::ParenthesisRight)?;
         }

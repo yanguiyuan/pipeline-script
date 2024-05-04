@@ -1,7 +1,9 @@
-val api={
-    "mysql":{
-        "dsn":"mysql"
+class Person(name:String,age:Int){
+    static{
+        fun default():Person{
+            return Person("张三",18)
+        }
     }
 }
-api.mysql.dsn="root@yanguiyuan?lxy"
-println(api)
+val p = Person::default()
+println(p)
