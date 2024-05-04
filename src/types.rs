@@ -5,7 +5,7 @@ use crate::module::FnDef;
 use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Div, Mul, Rem, Sub};
 use std::sync::{Arc, RwLock, Weak};
@@ -37,7 +37,8 @@ pub enum SignalType {
 }
 #[derive(Debug, Clone)]
 pub enum Value {
-    Immutable(Dynamic),
+    Constant(Dynamic),
+    Immutable(Arc<RwLock<Dynamic>>),
     Mutable(Arc<RwLock<Dynamic>>),
     Refer(Weak<RwLock<Dynamic>>),
     Signal(SignalType),
@@ -48,7 +49,7 @@ impl Value {
         Value::Mutable(Arc::new(RwLock::new(v)))
     }
     pub fn with_immutable(v: Dynamic) -> Self {
-        Value::Immutable(v)
+        Value::Immutable(Arc::new(RwLock::new(v)))
     }
     pub fn as_string(&self) -> Option<String> {
         self.as_dynamic().as_string()
@@ -63,7 +64,7 @@ impl Value {
         self.as_dynamic().as_integer()
     }
     pub fn is_immutable(&self) -> bool {
-        matches!(self, Value::Immutable(_))
+        matches!(self, Value::Immutable(_) | Value::Constant(_))
     }
     pub fn is_mutable(&self) -> bool {
         matches!(self, Value::Mutable(_))
@@ -74,11 +75,15 @@ impl Value {
 
     pub fn as_dynamic(&self) -> Dynamic {
         match self {
-            Value::Immutable(d) => d.clone(),
+            Value::Immutable(d) => {
+                let r = d.read().unwrap();
+                r.clone()
+            }
             Value::Mutable(d) => {
                 let r = d.read().unwrap();
                 r.clone()
             }
+            Value::Constant(d) => d.clone(),
             Value::Refer(r) => r.upgrade().unwrap().read().unwrap().clone(),
             _ => panic!("signal cannot as dynamic"),
         }
@@ -95,7 +100,7 @@ impl Value {
     }
     pub fn as_arc(&self) -> Arc<RwLock<Dynamic>> {
         match self {
-            Value::Immutable(d) => Arc::new(RwLock::new(d.clone())),
+            Value::Immutable(d) => d.clone(),
             Value::Mutable(d) => d.clone(),
             Value::Refer(r) => r.upgrade().unwrap(),
             _ => panic!("signal cannot as arc"),
@@ -121,34 +126,34 @@ impl From<Weak<RwLock<Dynamic>>> for Value {
 
 impl From<Dynamic> for Value {
     fn from(value: Dynamic) -> Self {
-        Value::Immutable(value)
+        Value::Constant(value)
     }
 }
 
 impl From<()> for Value {
     fn from(_: ()) -> Self {
-        Value::Immutable(Dynamic::Unit)
+        Value::Constant(Dynamic::Unit)
     }
 }
 
 impl From<i64> for Value {
     fn from(value: i64) -> Self {
-        Value::Immutable(Dynamic::Integer(value))
+        Value::Constant(Dynamic::Integer(value))
     }
 }
 impl From<f64> for Value {
     fn from(value: f64) -> Self {
-        Value::Immutable(Dynamic::Float(value))
+        Value::Constant(Dynamic::Float(value))
     }
 }
 impl From<String> for Value {
     fn from(value: String) -> Self {
-        Value::Immutable(Dynamic::String(value))
+        Value::Constant(Dynamic::String(value))
     }
 }
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
-        Value::Immutable(Dynamic::Boolean(value))
+        Value::Constant(Dynamic::Boolean(value))
     }
 }
 
@@ -270,6 +275,7 @@ impl From<bool> for Dynamic {
         Dynamic::Boolean(value)
     }
 }
+
 impl Display for Dynamic {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -332,10 +338,11 @@ impl Display for Dynamic {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Immutable(i) => write!(f, "{}", i),
-            Value::Mutable(m) => m.read().unwrap().fmt(f),
-            Value::Refer(r) => r.upgrade().unwrap().read().unwrap().fmt(f),
+            Value::Immutable(i) => std::fmt::Display::fmt(&i.read().unwrap(), f),
+            Value::Mutable(m) => std::fmt::Display::fmt(&m.read().unwrap(), f),
+            Value::Refer(r) => std::fmt::Display::fmt(&r.upgrade().unwrap().read().unwrap(), f),
             Value::Signal(s) => write!(f, "{:?}", s),
+            Value::Constant(c) => write!(f, "{}", c),
         }
     }
 }

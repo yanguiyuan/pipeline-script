@@ -4,7 +4,8 @@ use crate::position::Position;
 #[derive(Debug, Clone)]
 pub enum Stmt {
     EvalExpr(Box<Expr>, Position),
-    Let(Box<(String, Expr)>, Position),
+    Val(Box<(String, Expr)>, Position),
+    Var(Box<(String, Expr)>, Position),
     Assign(Box<(Expr, Expr)>, Position),
     Return(Box<Expr>, Position),
     If(Box<IfStmt>, Position),
@@ -63,10 +64,10 @@ impl Stmt {
     pub fn position(&self) -> Position {
         match self {
             Stmt::Continue(pos) => pos.clone(),
-            //
             Stmt::EvalExpr(_, pos) => pos.clone(),
             Stmt::ForIn(_, _, _, _, pos) => pos.clone(),
-            Stmt::Let(_, pos) => pos.clone(),
+            Stmt::Val(_, pos) => pos.clone(),
+            Stmt::Var(_, pos) => pos.clone(),
             Stmt::Assign(_, pos) => pos.clone(),
             Stmt::Return(_, pos) => pos.clone(),
             Stmt::If(_, pos) => pos.clone(),

@@ -90,7 +90,7 @@ impl Engine {
             }
             self.has_run_main_block = true;
         }
-        let mut r = Value::Immutable(Dynamic::Unit);
+        let mut r = Value::with_immutable(Dynamic::Unit);
         if self.enable_ast_debug {
             dbg!(block.clone());
         }
@@ -117,6 +117,14 @@ impl Engine {
         match e {
             PipelineError::FunctionUndefined(i, pos) => {
                 println!("\x1b[31m[错误] 函数'{i}'未定义");
+                self.display_source_line(&pos)
+            }
+            PipelineError::AssignToImmutableVariable(variable, pos) => {
+                println!("\x1b[31m[错误] 无法对不可变变量'{variable}'赋值");
+                self.display_source_line(&pos)
+            }
+            PipelineError::MapKeyNotExist(m, prop, pos) => {
+                println!("\x1b[31m[错误] Map容器'{m}'不存在键'{prop}'");
                 self.display_source_line(&pos)
             }
             PipelineError::VariableUndefined(i, pos) => {

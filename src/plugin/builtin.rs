@@ -18,6 +18,7 @@ impl Plugin for BuiltinPlugin {
         );
         let mut m = Module::new("std");
         m.register_class(Class::new("Int", vec![]));
+        m.register_class(Class::new("Array", vec![]));
         m.register_pipe_function("println", |ctx: &mut Context, args: Vec<Value>| {
             for v in args {
                 let vd = v.as_dynamic();
@@ -121,7 +122,10 @@ impl Plugin for BuiltinPlugin {
         m.register_pipe_function("clone", |_, args| {
             let c = args.first().unwrap();
             Ok(match c {
-                Value::Immutable(i) => i.clone().into(),
+                Value::Immutable(i) => {
+                    let a = i.read().unwrap().clone();
+                    Value::Immutable(Arc::new(RwLock::new(a)))
+                }
                 Value::Mutable(m) => {
                     let a = m.read().unwrap().clone();
                     Value::Mutable(Arc::new(RwLock::new(a)))

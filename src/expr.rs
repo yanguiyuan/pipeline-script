@@ -66,6 +66,7 @@ impl Expr {
     pub fn try_get_variable_name(&self) -> Option<String> {
         match self {
             Expr::Variable(s, _) => Some(s.clone()),
+            Expr::MemberAccess(_, name, _) => Some(name.clone()),
             _ => None,
         }
     }

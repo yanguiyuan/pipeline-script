@@ -122,7 +122,7 @@ impl Context {
                 let mut m = m.write().unwrap();
                 m.merge_into_main(s);
             }
-            Stmt::Let(l, _) => {
+            Stmt::Var(l, _) => {
                 let mut d = self.eval_expr(&l.1)?;
                 if !d.is_mutable() {
                     d = Value::Mutable(d.as_arc());
@@ -132,13 +132,26 @@ impl Context {
                 scope.set(l.0.as_str(), d);
                 return Ok(().into());
             }
+            Stmt::Val(l, _) => {
+                let mut d = self.eval_expr(&l.1)?;
+                if d.is_mutable() {
+                    d = Value::with_immutable(d.as_dynamic());
+                }
+                let scope = self.get_scope();
+                let mut scope = scope.write().unwrap();
+                scope.set(l.0.as_str(), d);
+                return Ok(().into());
+            }
             Stmt::Break(_) => return Ok(Value::Signal(SignalType::Break)),
             Stmt::Continue(_) => return Ok(Value::Signal(SignalType::Continue)),
-            Stmt::Assign(e, _) => {
+            Stmt::Assign(e, pos) => {
                 let target = self.eval_expr(&e.0)?;
                 let value = self.eval_expr(&e.1)?;
                 if !target.can_mutable() {
-                    panic!("it must be mutable")
+                    return Err(PipelineError::AssignToImmutableVariable(
+                        e.0.try_get_variable_name().unwrap(),
+                        pos.clone(),
+                    ));
                 }
                 let target = target.get_mut_arc();
                 let mut target = target.write().unwrap();
@@ -181,12 +194,14 @@ impl Context {
                 let i = self.eval_expr(i)?;
                 let v = self.eval_expr(v)?;
                 let target = self.eval_expr(target)?;
-                let target = target.get_mut_arc();
+                let target = target.as_arc();
                 let mut target = target.write().unwrap();
                 if target.is_array() {
                     let a = target.as_mut_array().unwrap();
                     let index = i.as_dynamic().as_integer().unwrap();
-                    a[index as usize] = v;
+                    let e = a[index as usize].get_mut_arc();
+                    let mut e = e.write().unwrap();
+                    *e = v.as_dynamic();
                 } else if target.is_map() {
                     let m = target.as_mut_map().unwrap();
                     let key = i.as_dynamic();
@@ -312,10 +327,10 @@ impl Context {
             Expr::Array(v, _) => {
                 let mut dv = vec![];
                 for e in v {
-                    let d = self.eval_expr(e)?;
-                    // if d.is_mutable(){
-                    //     panic!("不能持有所有权")
-                    // }
+                    let mut d = self.eval_expr(e)?;
+                    if d.is_immutable() {
+                        d = Value::Mutable(Arc::new(RwLock::new(d.as_dynamic())))
+                    }
                     dv.push(d)
                 }
                 Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Array(dv)))))
@@ -442,7 +457,7 @@ impl Context {
                     Box::new(Struct::new(e.get_name().into(), props)),
                 )))))
             }
-            Expr::MemberAccess(father, prop, _) => {
+            Expr::MemberAccess(father, prop, pos) => {
                 let obj = self.eval_expr(father)?;
                 let obj = obj.as_dynamic();
                 match obj {
@@ -451,8 +466,18 @@ impl Context {
                         Ok(r)
                     }
                     Dynamic::Map(m) => {
-                        let r = m.get(&Dynamic::String(prop.into())).unwrap();
-                        Ok(r.clone())
+                        let r = m.get(&Dynamic::String(prop.into()));
+                        match r {
+                            None => {
+                                let name = father.try_get_variable_name().unwrap();
+                                Err(PipelineError::MapKeyNotExist(
+                                    name,
+                                    prop.clone(),
+                                    pos.clone(),
+                                ))
+                            }
+                            Some(r) => Ok(r.clone()),
+                        }
                     }
                     _ => panic!("can not support access member"),
                 }
@@ -463,7 +488,7 @@ impl Context {
             Expr::FnClosure(f, _) => {
                 let mut ptr = FnPtr::new("");
                 ptr.set_fn_def(&(f.def));
-                Ok(Value::Immutable(Dynamic::FnPtr(Box::new(ptr))))
+                Ok(Value::with_immutable(Dynamic::FnPtr(Box::new(ptr))))
             }
             Expr::None(_) => Ok(().into()),
         }

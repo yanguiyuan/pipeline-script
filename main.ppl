@@ -1,1 +1,7 @@
-println1(  123          )
+val api={
+    "mysql":{
+        "dsn":"mysql"
+    }
+}
+api.mysql.dsn="root@yanguiyuan?lxy"
+println(api)

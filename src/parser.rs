@@ -54,7 +54,8 @@ impl PipelineParser {
             let (token, pos) = self.token_stream.peek();
             return match token {
                 Token::Keyword(k) => match k.as_str() {
-                    "let" | "var" | "val" => return self.parse_let_stmt(),
+                    "var" => return self.parse_var_stmt(),
+                    "val" => return self.parse_val_stmt(),
                     "fun" => {
                         self.parse_function()?;
                         continue;
@@ -313,7 +314,7 @@ impl PipelineParser {
         }
         Err(PipelineError::UnexpectedToken(ret, pos))
     }
-    fn parse_let_stmt(&mut self) -> PipelineResult<Stmt> {
+    fn parse_var_stmt(&mut self) -> PipelineResult<Stmt> {
         let (token, mut pos) = self.token_stream.next();
         if let Token::Keyword(_) = token {
             let (token1, pos0) = self.token_stream.next();
@@ -323,7 +324,23 @@ impl PipelineParser {
                 pos.add_span(1);
                 let expr = self.parse_expr()?;
                 pos.add_span(expr.position().span);
-                return Ok(Stmt::Let(Box::new((ident, expr)), pos));
+                return Ok(Stmt::Var(Box::new((ident, expr)), pos));
+            }
+            return Err(PipelineError::UnexpectedToken(token1, pos0));
+        }
+        Err(PipelineError::UnexpectedToken(token, pos))
+    }
+    fn parse_val_stmt(&mut self) -> PipelineResult<Stmt> {
+        let (token, mut pos) = self.token_stream.next();
+        if let Token::Keyword(_) = token {
+            let (token1, pos0) = self.token_stream.next();
+            if let Token::Identifier(ident) = token1 {
+                pos.add_span(pos0.span);
+                self.parse_special_token(Token::Assign)?;
+                pos.add_span(1);
+                let expr = self.parse_expr()?;
+                pos.add_span(expr.position().span);
+                return Ok(Stmt::Val(Box::new((ident, expr)), pos));
             }
             return Err(PipelineError::UnexpectedToken(token1, pos0));
         }

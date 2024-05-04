@@ -5,11 +5,13 @@ pub type PipelineResult<T> = Result<T, PipelineError>;
 pub enum PipelineError {
     FunctionUndefined(String, Position),
     VariableUndefined(String, Position),
+    MismatchedType(String, String, Position),
+    AssignToImmutableVariable(String, Position),
+    MapKeyNotExist(String, String, Position),
     ExpectedType(String),
     UnexpectedType(String),
     UnexpectedToken(crate::token::Token, Position),
     UnusedKeyword(String),
     UnknownModule(String),
     UndefinedOperation(String),
-    MismatchedType(String, String, Position),
 }
