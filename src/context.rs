@@ -1,67 +1,66 @@
+use crate::error::{PipelineError, PipelineResult};
+use crate::expr::{Expr, Op};
+use crate::lexer::Lexer;
+use crate::module::Module;
+use crate::position::Position;
+use crate::stmt::Stmt;
+use crate::types::Value::Mutable;
+use crate::types::{Dynamic, FnPtr, SignalType, Struct, Value};
 use std::any::Any;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
-use crate::error::{PipelineError, PipelineResult};
-use crate::expr::{Expr, Op};
-use crate::lexer;
-use crate::lexer::Lexer;
-use crate::module::Module;
-use crate::position::Position;
-use crate::stmt::Stmt;
-use crate::types::{Dynamic, FnPtr, SignalType, Struct, Value};
-use crate::types::Value::Mutable;
 
-#[derive(Clone,Debug)]
-pub struct Context{
-    parent:Option<Box<Context>>,
-    key:ContextKey,
-    value:ContextValue
+#[derive(Clone, Debug)]
+pub struct Context {
+    parent: Option<Box<Context>>,
+    key: ContextKey,
+    value: ContextValue,
 }
 #[derive(Clone, Debug)]
-pub enum  ContextKey{
+pub enum ContextKey {
     MainModule,
     SourceCode(String),
     Scope,
     Position,
-    NativeObject(String)
+    NativeObject(String),
 }
 
 impl PartialEq for ContextKey {
     fn eq(&self, other: &Self) -> bool {
-        return match self {
+        match self {
             ContextKey::MainModule => {
                 if let ContextKey::MainModule = other {
-                    return true
+                    return true;
                 }
                 false
             }
             ContextKey::SourceCode(s) => {
                 if let ContextKey::SourceCode(other) = other {
                     if s == other {
-                        return true
+                        return true;
                     }
                 }
                 false
             }
-            ContextKey::Scope=>{
-                if let ContextKey::Scope= other {
-                    return true
+            ContextKey::Scope => {
+                if let ContextKey::Scope = other {
+                    return true;
                 }
                 false
             }
-            ContextKey::NativeObject(s)=>{
+            ContextKey::NativeObject(s) => {
                 if let ContextKey::NativeObject(other) = other {
                     if s == other {
-                        return true
+                        return true;
                     }
                 }
                 false
             }
-            ContextKey::Position =>{
-                if let ContextKey::Position= other {
-                    return true
+            ContextKey::Position => {
+                if let ContextKey::Position = other {
+                    return true;
                 }
                 false
             }
@@ -69,204 +68,187 @@ impl PartialEq for ContextKey {
     }
 }
 
-impl Context{
-    pub fn background()->Self{
-        let ctx=Self{
-            parent:None,
-            key:ContextKey::MainModule,
-            value:ContextValue::Module(Arc::new(RwLock::new(Module::new("main"))))
+impl Context {
+    pub fn background() -> Self {
+        let ctx = Self {
+            parent: None,
+            key: ContextKey::MainModule,
+            value: ContextValue::Module(Arc::new(RwLock::new(Module::new("main")))),
         };
 
-        Self{
-            parent:Some(Box::new(ctx)),
-            key:ContextKey::Scope,
-            value:ContextValue::Scope(Arc::new(RwLock::new(Scope::new())))
+        Self {
+            parent: Some(Box::new(ctx)),
+            key: ContextKey::Scope,
+            value: ContextValue::Scope(Arc::new(RwLock::new(Scope::new()))),
         }
     }
-    pub fn with_value(parent:&Context,key:ContextKey,value:ContextValue)->Self{
-        Self{
-            parent:Some(Box::new(parent.clone())),key,value
+    pub fn with_value(parent: &Context, key: ContextKey, value: ContextValue) -> Self {
+        Self {
+            parent: Some(Box::new(parent.clone())),
+            key,
+            value,
         }
     }
-    pub fn get_module(&self)->Arc<RwLock<Module>>{
-       let r=self.get(ContextKey::MainModule).unwrap();
-        return r.as_module().unwrap()
+    pub fn get_module(&self) -> Arc<RwLock<Module>> {
+        let r = self.get(ContextKey::MainModule).unwrap();
+        r.as_module().unwrap()
     }
-    pub fn get_scope(&self)->Arc<RwLock<Scope>>{
-        let r=self.get(ContextKey::Scope).unwrap();
-        return r.as_scope().unwrap()
+    pub fn get_scope(&self) -> Arc<RwLock<Scope>> {
+        let r = self.get(ContextKey::Scope).unwrap();
+        r.as_scope().unwrap()
     }
-    pub fn get_value(&self,key:impl AsRef<str>)->Option<Value>{
-        let s=self.get_scope();
-        let s=s.read().unwrap();
-        return s.get(key.as_ref())
+    pub fn get_value(&self, key: impl AsRef<str>) -> Option<Value> {
+        let s = self.get_scope();
+        let s = s.read().unwrap();
+        return s.get(key.as_ref());
     }
 
-    pub fn get(&self,key:ContextKey)->Option<ContextValue>{
-        if self.key==key{
-            return Some(self.value.clone())
+    pub fn get(&self, key: ContextKey) -> Option<ContextValue> {
+        if self.key == key {
+            return Some(self.value.clone());
         }
-        return match &self.parent {
+        match &self.parent {
             None => None,
-            Some(parent) => {
-                parent.get(key)
-            }
+            Some(parent) => parent.get(key),
         }
     }
-    pub fn eval_stmt(&mut self, stmt:&Stmt)->PipelineResult<Value>{
+    pub fn eval_stmt(&mut self, stmt: &Stmt) -> PipelineResult<Value> {
         match stmt {
-            Stmt::EvalExpr(e,_)=>{
+            Stmt::EvalExpr(e, _) => {
                 return self.eval_expr(e);
             }
-            Stmt::Import(s,_)=>{
-                let m=self.get_module();
-                let mut m=m.write().unwrap();
+            Stmt::Import(s, _) => {
+                let m = self.get_module();
+                let mut m = m.write().unwrap();
                 m.merge_into_main(s);
             }
-            Stmt::Let(l,_)=>{
-                let mut d =self.eval_expr( &l.1)?;
-                if !d.is_mutable(){
-                    d=Value::Mutable(d.as_arc());
+            Stmt::Let(l, _) => {
+                let mut d = self.eval_expr(&l.1)?;
+                if !d.is_mutable() {
+                    d = Value::Mutable(d.as_arc());
                 }
-                let scope=self.get_scope();
-                let mut scope=scope.write().unwrap();
-                scope.set(l.0.as_str(),d);
-                return Ok(().into())
+                let scope = self.get_scope();
+                let mut scope = scope.write().unwrap();
+                scope.set(l.0.as_str(), d);
+                return Ok(().into());
             }
-            Stmt::Break(_)=>{
-                return Ok(Value::Signal(SignalType::Break))
-            }
-            Stmt::Continue(_)=>{
-                return Ok(Value::Signal(SignalType::Continue))
-            }
-            Stmt::Assign(e,_)=>{
-                let target=self.eval_expr(&e.0)?;
-                let value=self.eval_expr(&e.1)?;
-                if !target.can_mutable(){
+            Stmt::Break(_) => return Ok(Value::Signal(SignalType::Break)),
+            Stmt::Continue(_) => return Ok(Value::Signal(SignalType::Continue)),
+            Stmt::Assign(e, _) => {
+                let target = self.eval_expr(&e.0)?;
+                let value = self.eval_expr(&e.1)?;
+                if !target.can_mutable() {
                     panic!("it must be mutable")
                 }
-                let target=target.get_mut_arc();
-                let mut target=target.write().unwrap();
-                *target=value.as_dynamic();
+                let target = target.get_mut_arc();
+                let mut target = target.write().unwrap();
+                *target = value.as_dynamic();
             }
-            Stmt::Return(e,_)=>{
-                let r=self.eval_expr( e)?;
-                return Ok(Value::Signal(SignalType::Return(Box::new(r))))
+            Stmt::Return(e, _) => {
+                let r = self.eval_expr(e)?;
+                return Ok(Value::Signal(SignalType::Return(Box::new(r))));
             }
-            Stmt::If(b,_)=>{
-                for if_branch in b.get_branches(){
-                    let d=self.eval_expr(if_branch.get_condition())?;
-                    let d=d.as_dynamic().as_bool();
+            Stmt::If(b, _) => {
+                for if_branch in b.get_branches() {
+                    let d = self.eval_expr(if_branch.get_condition())?;
+                    let d = d.as_dynamic().as_bool();
                     match d {
-                        None => {
-                            return Err(PipelineError::ExpectedType("bool".into()))
-                        }
+                        None => return Err(PipelineError::ExpectedType("bool".into())),
                         Some(d) => {
-                            let mut l=None;
+                            let mut l = None;
                             if d {
                                 for i in if_branch.get_body() {
-                                    let t=self.eval_stmt( i)?;
-                                    l=Some(t)
+                                    let t = self.eval_stmt(i)?;
+                                    l = Some(t)
                                 }
-                                if let None=l{
-                                    return Ok(().into())
+                                if l.is_none() {
+                                    return Ok(().into());
                                 }
-                                return Ok(l.unwrap())
+                                return Ok(l.unwrap());
                             }
                         }
                     }
                 }
-                if let Some(else_body)=b.get_else_body(){
-                    let mut l=None;
+                if let Some(else_body) = b.get_else_body() {
+                    let mut l = None;
                     for i in &else_body {
-                        l=Some(self.eval_stmt( i)?);
+                        l = Some(self.eval_stmt(i)?);
                     }
-                    return Ok(l.unwrap())
-                }
-
-            }
-            Stmt::IndexAssign(target,i,v,_)=>{
-                let i=self.eval_expr(i)?;
-                let v=self.eval_expr(v)?;
-                let target=self.eval_expr(target)?;
-                let target=target.get_mut_arc();
-                let mut target=target.write().unwrap();
-                if target.is_array(){
-                    let a=target.as_mut_array().unwrap();
-                    let index=i.as_dynamic().as_integer().unwrap();
-                    a[index as usize]=v;
-                }else if target.is_map(){
-                    let m=target.as_mut_map().unwrap();
-                    let key=i.as_dynamic();
-                    m.insert(key,v);
-                }else{
-                    panic!("{} cannot support index assign",target.type_name())
+                    return Ok(l.unwrap());
                 }
             }
-            Stmt::While(b,blocks,_)=>{
-                let d=self.eval_expr(b)?;
-                let d=d.as_dynamic().as_bool();
+            Stmt::IndexAssign(target, i, v, _) => {
+                let i = self.eval_expr(i)?;
+                let v = self.eval_expr(v)?;
+                let target = self.eval_expr(target)?;
+                let target = target.get_mut_arc();
+                let mut target = target.write().unwrap();
+                if target.is_array() {
+                    let a = target.as_mut_array().unwrap();
+                    let index = i.as_dynamic().as_integer().unwrap();
+                    a[index as usize] = v;
+                } else if target.is_map() {
+                    let m = target.as_mut_map().unwrap();
+                    let key = i.as_dynamic();
+                    m.insert(key, v);
+                } else {
+                    panic!("{} cannot support index assign", target.type_name())
+                }
+            }
+            Stmt::While(b, blocks, _) => {
+                let d = self.eval_expr(b)?;
+                let d = d.as_dynamic().as_bool();
                 return match d {
-                    None => {
-                        Err(PipelineError::ExpectedType("bool".into()))
-                    }
+                    None => Err(PipelineError::ExpectedType("bool".into())),
                     Some(d) => {
-
-                        let mut condition=d;
-                        'outer:while condition {
-                            'inner:for i in blocks.iter() {
-                                let r=self.eval_stmt( i)?;
-                                if let Value::Signal(s)=r{
+                        let mut condition = d;
+                        'outer: while condition {
+                            'inner: for i in blocks.iter() {
+                                let r = self.eval_stmt(i)?;
+                                if let Value::Signal(s) = r {
                                     match s {
-                                        SignalType::Break => {
-                                            break 'outer
-                                        }
-                                        SignalType::Continue => {
-                                            break 'inner
-                                        }
+                                        SignalType::Break => break 'outer,
+                                        SignalType::Continue => break 'inner,
                                         SignalType::Return(v) => {
                                             return Ok(Value::Signal(SignalType::Return(v)))
                                         }
                                     }
                                 }
                             }
-                            let d0=self.eval_expr(b)?;
-                            condition=d0.as_dynamic().as_bool().unwrap();
+                            let d0 = self.eval_expr(b)?;
+                            condition = d0.as_dynamic().as_bool().unwrap();
                         }
                         Ok(().into())
                     }
-                }
+                };
             }
-            Stmt::ForIn(one,other ,target, blocks, ..)=> {
-                let target = self.eval_expr( target)?;
+            Stmt::ForIn(one, other, target, blocks, ..) => {
+                let target = self.eval_expr(target)?;
                 let target = target.as_dynamic().as_array().unwrap();
-                let mut count=0;
-                'outer:for i in target{
-                    let mut scope=Scope::new();
+                let mut count = 0;
+                'outer: for i in target {
+                    let mut scope = Scope::new();
                     match other.clone() {
                         None => {
-                            scope.set(one.as_str(),i);
+                            scope.set(one.as_str(), i);
                         }
                         Some(s) => {
-                            scope.set(one.as_str(),count.into());
-                            count+=1;
-                            scope.set(s.as_str(),i);
+                            scope.set(one.as_str(), count.into());
+                            count += 1;
+                            scope.set(s.as_str(), i);
                         }
                     }
-                    let parent_scope=self.get_scope();
+                    let parent_scope = self.get_scope();
                     scope.set_parent(parent_scope);
-                    let mut scope=Arc::new(RwLock::new(scope));
-                    let mut ctx =Context::with_value(&self, ContextKey::Scope, ContextValue::Scope(scope));
+                    let scope = Arc::new(RwLock::new(scope));
+                    let mut ctx =
+                        Context::with_value(self, ContextKey::Scope, ContextValue::Scope(scope));
                     'inner: for i in blocks.iter() {
                         let r = ctx.eval_stmt(i)?;
                         if let Value::Signal(s) = r {
                             match s {
-                                SignalType::Break => {
-                                    break 'outer
-                                }
-                                SignalType::Continue => {
-                                    break 'inner
-                                }
+                                SignalType::Break => break 'outer,
+                                SignalType::Continue => break 'inner,
                                 SignalType::Return(v) => {
                                     return Ok(Value::Signal(SignalType::Return(v)))
                                 }
@@ -279,54 +261,58 @@ impl Context{
         }
         Ok(().into())
     }
-    pub fn eval_expr(&mut self,expr:&Expr)->PipelineResult<Value>{
+    pub fn eval_expr(&mut self, expr: &Expr) -> PipelineResult<Value> {
         match expr {
-            Expr::FnCall(fn_call, pos)=>{
-                let mut v=vec![];
-                for i in &fn_call.args{
-                    let r=self.eval_expr(&i)?;
+            Expr::FnCall(fn_call, pos) => {
+                let mut v = vec![];
+                for i in &fn_call.args {
+                    let r = self.eval_expr(i)?;
                     v.push(r);
                 }
-                let module=self.get_module();
-                let module=module.read().unwrap();
+                let module = self.get_module();
+                let module = module.read().unwrap();
                 let class = module.get_class(fn_call.name.as_str());
-                if let Some(c)=class{
-                    let mut props=HashMap::new();
-                    for (i,vd) in c.get_attributions().iter().enumerate(){
-                        if v[i].is_immutable(){
+                if let Some(c) = class {
+                    let mut props = HashMap::new();
+                    for (i, vd) in c.get_attributions().iter().enumerate() {
+                        if v[i].is_immutable() {
                             let d = v[i].as_dynamic();
-                            if vd.declaration_type!=d.type_name(){
+                            if vd.declaration_type != d.type_name() {
                                 dbg!(pos);
-                                return  Err(
-                                    PipelineError::MismatchedType(
-                                        vd.declaration_type.clone(),
-                                        d.type_name(),
-                                        pos.clone()
-                                    )
-                                )
+                                return Err(PipelineError::MismatchedType(
+                                    vd.declaration_type.clone(),
+                                    d.type_name(),
+                                    pos.clone(),
+                                ));
                             }
-                            props.insert(vd.name.clone(),Value::with_mutable(d));
-                            continue
+                            props.insert(vd.name.clone(), Value::with_mutable(d));
+                            continue;
                         }
-                        props.insert(vd.name.clone(),v[i].clone());
+                        props.insert(vd.name.clone(), v[i].clone());
                     }
-                    let obj=Struct::new(fn_call.name.clone(),props);
-                    return Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(Box::new(obj))))));
+                    let obj = Struct::new(fn_call.name.clone(), props);
+                    return Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(
+                        Box::new(obj),
+                    )))));
                 }
-                let mut ctx=Context::with_value(&self,ContextKey::Position,ContextValue::Position(pos.clone()));
-                return module.call(&mut ctx,&fn_call.name,v);
+                let mut ctx = Context::with_value(
+                    self,
+                    ContextKey::Position,
+                    ContextValue::Position(pos.clone()),
+                );
+                module.call(&mut ctx, &fn_call.name, v)
             }
-            Expr::Variable(i,pos)=>{
-                let d=self.get_value(&i);
+            Expr::Variable(i, pos) => {
+                let d = self.get_value(i);
                 match d {
-                    None => Err(PipelineError::VariableUndefined(i.clone(),pos.clone())),
-                    Some(v) => Ok(v)
+                    None => Err(PipelineError::VariableUndefined(i.clone(), pos.clone())),
+                    Some(v) => Ok(v),
                 }
             }
-            Expr::Array(v,_)=>{
-                let mut dv=vec![];
-                for e in v{
-                    let d=self.eval_expr(e)?;
+            Expr::Array(v, _) => {
+                let mut dv = vec![];
+                for e in v {
+                    let d = self.eval_expr(e)?;
                     // if d.is_mutable(){
                     //     panic!("不能持有所有权")
                     // }
@@ -334,257 +320,254 @@ impl Context{
                 }
                 Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Array(dv)))))
             }
-            Expr::Map(v,_)=>{
-                let mut dv=HashMap::new();
-                for e in v{
-                    let key=self.eval_expr( &e.0)?;
-                    let mut value =self.eval_expr( &e.1)?;
-                    if value.is_immutable(){
-                        value=Mutable(Arc::new(RwLock::new(value.as_dynamic())));
+            Expr::Map(v, _) => {
+                let mut dv = HashMap::new();
+                for e in v {
+                    let key = self.eval_expr(&e.0)?;
+                    let mut value = self.eval_expr(&e.1)?;
+                    if value.is_immutable() {
+                        value = Mutable(Arc::new(RwLock::new(value.as_dynamic())));
                     }
-                    dv.insert(key.as_dynamic().clone(),value);
+                    dv.insert(key.as_dynamic().clone(), value);
                 }
                 Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Map(dv)))))
             }
-            Expr::Index(s,e,_)=>{
-                let d=self.eval_expr(s)?;
-                let d=d.as_dynamic();
+            Expr::Index(s, e, _) => {
+                let d = self.eval_expr(s)?;
+                let d = d.as_dynamic();
                 match d {
                     Dynamic::Array(a) => {
-                        let index=self.eval_expr(e)?;
-                        let index=index.as_dynamic().as_integer().unwrap();
+                        let index = self.eval_expr(e)?;
+                        let index = index.as_dynamic().as_integer().unwrap();
                         Ok(a[index as usize].clone())
                     }
                     Dynamic::Map(m) => {
-                        let index=self.eval_expr(e)?;
-                        let index=index.as_dynamic();
+                        let index = self.eval_expr(e)?;
+                        let index = index.as_dynamic();
                         Ok(m[&index].clone())
                     }
-                    Dynamic::String(s)=>{
-                        let index=self.eval_expr(e)?;
-                        let index=index.as_dynamic().as_integer().unwrap();
-                        let r=String::from(s.chars().nth(index as usize).unwrap());
+                    Dynamic::String(s) => {
+                        let index = self.eval_expr(e)?;
+                        let index = index.as_dynamic().as_integer().unwrap();
+                        let r = String::from(s.chars().nth(index as usize).unwrap());
                         Ok(r.into())
                     }
-                    t=>{
-                        return Err(PipelineError::UndefinedOperation(format!("index [] to {}",t.type_name())))
-                    }
-                }
-
-            }
-
-
-            Expr::BinaryExpr(op,l,r,_)=>{
-                match op {
-                    Op::Plus => {
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r+r_r).into())
-                    }
-                    Op::Minus => {
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r-r_r).into())
-                    }
-                    Op::Mul=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r*r_r).into())
-                    }
-                    Op::Greater=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r>r_r).into())
-                    }
-                    Op::Less=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r<r_r).into())
-                    }
-                    Op::Equal=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r==r_r).into())
-                    }
-                    Op::NotEqual=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r!=r_r).into())
-                    }
-                    Op::Div=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r/r_r).into())
-                    }
-                    Op::Mod=>{
-                        let l_r=self.eval_expr(l)?;
-                        let l_r=l_r.as_dynamic();
-                        let r_r=self.eval_expr(r)?;
-                        let r_r=r_r.as_dynamic();
-                        return Ok((l_r%r_r).into())
-                    }
+                    t => Err(PipelineError::UndefinedOperation(format!(
+                        "index [] to {}",
+                        t.type_name()
+                    ))),
                 }
             }
-            Expr::Struct(e,_)=>{
-                let mut props=HashMap::new();
-                for (k,i) in e.get_props(){
-                    let mut v=self.eval_expr(i)?;
-                    if v.is_immutable()||v.is_mutable(){
-                        let scope=self.get_scope();
-                        let mut scope=scope.write().unwrap();
-                        let  v0=Value::Mutable(v.as_arc());
-                        v=Value::Refer(v0.as_weak());
-                        let id=scope.data.len()+1;
-                        scope.set(format!("{}.{}.{}",e.get_name(),k,id).as_str(),v0)
-                    }
-                    props.insert(k.clone(),v);
+
+            Expr::Binary(op, l, r, _) => match op {
+                Op::Plus => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r + r_r).into())
                 }
-                Ok(
-                    Value::Mutable(
-                        Arc::new(
-                            RwLock::new(
-                                Dynamic::Struct(
-                                    Box::new(
-                                        Struct::new(e.get_name().into(),props)
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
+                Op::Minus => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r - r_r).into())
+                }
+                Op::Mul => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r * r_r).into())
+                }
+                Op::Greater => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r > r_r).into())
+                }
+                Op::Less => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r < r_r).into())
+                }
+                Op::Equal => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r == r_r).into())
+                }
+                Op::NotEqual => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r != r_r).into())
+                }
+                Op::Div => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r / r_r).into())
+                }
+                Op::Mod => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic();
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic();
+                    Ok((l_r % r_r).into())
+                }
+            },
+            Expr::Struct(e, _) => {
+                let mut props = HashMap::new();
+                for (k, i) in e.get_props() {
+                    let mut v = self.eval_expr(i)?;
+                    if v.is_immutable() || v.is_mutable() {
+                        let scope = self.get_scope();
+                        let mut scope = scope.write().unwrap();
+                        let v0 = Value::Mutable(v.as_arc());
+                        v = Value::Refer(v0.as_weak());
+                        let id = scope.data.len() + 1;
+                        scope.set(format!("{}.{}.{}", e.get_name(), k, id).as_str(), v0)
+                    }
+                    props.insert(k.clone(), v);
+                }
+                Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(
+                    Box::new(Struct::new(e.get_name().into(), props)),
+                )))))
             }
-            Expr::MemberAccess(father,prop,_)=>{
-                let obj=self.eval_expr(father)?;
-                let obj=obj.as_dynamic();
+            Expr::MemberAccess(father, prop, _) => {
+                let obj = self.eval_expr(father)?;
+                let obj = obj.as_dynamic();
                 match obj {
-                    Dynamic::Struct(s)=>{
-                        let r=s.get_prop(&prop).unwrap();
-                        return Ok(r)
+                    Dynamic::Struct(s) => {
+                        let r = s.get_prop(prop).unwrap();
+                        Ok(r)
                     }
-                    Dynamic::Map(m)=>{
-                        let r=m.get(&Dynamic::String(prop.into())).unwrap();
-                        return Ok(r.clone())
+                    Dynamic::Map(m) => {
+                        let r = m.get(&Dynamic::String(prop.into())).unwrap();
+                        Ok(r.clone())
                     }
-                    _=>panic!("can not support access member")
+                    _ => panic!("can not support access member"),
                 }
-
             }
-            Expr::StringConstant(s,_)=>Ok(s.to_string().into()),
+            Expr::StringConstant(s, _) => Ok(s.to_string().into()),
             Expr::IntConstant(i, _) => Ok((*i).into()),
-            Expr::FloatConstant(f, _) =>Ok((*f).into()),
+            Expr::FloatConstant(f, _) => Ok((*f).into()),
             Expr::FnClosure(f, _) => {
-                let mut ptr=FnPtr::new("");
+                let mut ptr = FnPtr::new("");
                 ptr.set_fn_def(&(f.def));
                 Ok(Value::Immutable(Dynamic::FnPtr(Box::new(ptr))))
             }
-            Expr::None(_) => {Ok(().into())}
+            Expr::None(_) => Ok(().into()),
         }
     }
 }
 #[derive(Clone, Debug)]
-pub enum SourceCode{
+pub enum SourceCode {
     Path(String),
-    Source(String)
+    Source(String),
 }
 
 impl SourceCode {
-    pub fn get_line(&self,line:usize)->String{
-        return match self {
+    pub fn get_line(&self, line: usize) -> String {
+        match self {
             SourceCode::Path(_) => todo!(),
             SourceCode::Source(s) => {
-                let lexer=Lexer::from_script("",s);
+                let lexer = Lexer::from_script("", s);
                 lexer.line(line)
             }
         }
     }
 }
-#[derive(Debug,Clone)]
-pub enum ContextValue{
+#[derive(Debug, Clone)]
+pub enum ContextValue {
     // GlobalState(Arc<RwLock<AppContext<String>>>),
     JoinSet(Arc<RwLock<Vec<JoinHandle<PipelineResult<()>>>>>),
     Scope(Arc<RwLock<Scope>>),
-    Env(Arc<RwLock<HashMap<String,String>>>),
+    Env(Arc<RwLock<HashMap<String, String>>>),
     Position(Position),
     Local(String),
     Module(Arc<RwLock<Module>>),
     Source(SourceCode),
-    Native(Arc<RwLock<dyn Any+Send+Sync>>)
+    Native(Arc<RwLock<dyn Any + Send + Sync>>),
 }
 
 impl ContextValue {
-    pub fn as_module(&self)->Option<Arc<RwLock<Module>>>{
+    pub fn as_module(&self) -> Option<Arc<RwLock<Module>>> {
         match self {
-            ContextValue::Module(m)=>Some(m.clone()),
-            _=>None
+            ContextValue::Module(m) => Some(m.clone()),
+            _ => None,
         }
     }
-    pub fn as_native(&self)->Option<Arc<RwLock<dyn Any+Send+Sync>>>{
+    pub fn as_native(&self) -> Option<Arc<RwLock<dyn Any + Send + Sync>>> {
         match self {
-            ContextValue::Native(m)=>Some(m.clone()),
-            _=>None
+            ContextValue::Native(m) => Some(m.clone()),
+            _ => None,
         }
     }
-    pub fn as_position(&self)->Option<Position>{
+    pub fn as_position(&self) -> Option<Position> {
         match self {
-            ContextValue::Position(m)=>Some(m.clone()),
-            _=>None
+            ContextValue::Position(m) => Some(m.clone()),
+            _ => None,
         }
     }
-    pub fn as_source(&self)->Option<SourceCode>{
+    pub fn as_source(&self) -> Option<SourceCode> {
         match self {
-            ContextValue::Source(m)=>Some(m.clone()),
-            _=>None
+            ContextValue::Source(m) => Some(m.clone()),
+            _ => None,
         }
     }
-    pub fn as_scope(&self)->Option<Arc<RwLock<Scope>>>{
+    pub fn as_scope(&self) -> Option<Arc<RwLock<Scope>>> {
         match self {
-            ContextValue::Scope(m)=>Some(m.clone()),
-            _=>None
+            ContextValue::Scope(m) => Some(m.clone()),
+            _ => None,
         }
     }
 }
-#[derive(Debug,Clone)]
-pub struct Scope{
-    parent:Option<Arc<RwLock<Scope>>>,
-    data:HashMap<String,Value>
+#[derive(Debug, Clone)]
+pub struct Scope {
+    parent: Option<Arc<RwLock<Scope>>>,
+    data: HashMap<String, Value>,
+}
+impl Default for Scope {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Scope {
-    pub fn new()->Self{
-        Self{data:HashMap::new(),parent:None}
-    }
-    pub fn set_parent(&mut self,p:Arc<RwLock<Scope>>){self.parent=Some(p)}
-    pub fn get(&self, key:&str) ->Option<Value>{
-        let r=self.data.get(key);
-        match r {
-            None => {
-                if self.parent.is_some(){
-                   let rr=self.parent.clone().unwrap();
-                    let rr=rr.read().unwrap();
-                    return rr.get(key)
-                }
-                return None
-            }
-            Some(s) => {Some(s.clone())}
+    pub fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+            parent: None,
         }
     }
-    pub fn set(&mut self,key:&str,value:Value){
-        self.data.insert(key.into(),value);
+
+    pub fn set_parent(&mut self, p: Arc<RwLock<Scope>>) {
+        self.parent = Some(p)
+    }
+    pub fn get(&self, key: &str) -> Option<Value> {
+        let r = self.data.get(key);
+        match r {
+            None => {
+                if self.parent.is_some() {
+                    let rr = self.parent.clone().unwrap();
+                    let rr = rr.read().unwrap();
+                    return rr.get(key);
+                }
+                None
+            }
+            Some(s) => Some(s.clone()),
+        }
+    }
+    pub fn set(&mut self, key: &str, value: Value) {
+        self.data.insert(key.into(), value);
     }
 }

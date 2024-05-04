@@ -1,6 +1,6 @@
 #[allow(unused)]
-#[derive(Debug, Clone,PartialEq)]
-pub enum  Token{
+#[derive(Debug, Clone, PartialEq)]
+pub enum Token {
     String(String),
     Int(i64),
     Float(f64),
@@ -49,12 +49,12 @@ pub enum  Token{
     NotEqual,
     ///->
     Arrow,
-    EOF
+    Eof,
 }
 
 impl Token {
     #[allow(unused)]
-    pub fn token_id(&self)->i8{
+    pub fn token_id(&self) -> i8 {
         match self {
             Token::String(_) => 0,
             Token::Int(_) => 1,
@@ -69,53 +69,43 @@ impl Token {
             Token::ParenthesisRight => 10,
             Token::Dot => 11,
             Token::Comma => 12,
-            Token::EOF => 13,
-            Token::Colon=>14,
-            Token::Assign=>15,
-            Token::Plus=>16,
-            Token::Mul=>17,
-            Token::Greater=>18,
-            Token::Less=>19,
-            Token::Equal=>20,
-            Token::Minus=>21,
-            Token::Div=>22,
-            Token::Mod=>23,
-            Token::ScopeSymbol=>24,
-            Token::NotEqual=>25,
-            Token::Arrow=>26
+            Token::Eof => 13,
+            Token::Colon => 14,
+            Token::Assign => 15,
+            Token::Plus => 16,
+            Token::Mul => 17,
+            Token::Greater => 18,
+            Token::Less => 19,
+            Token::Equal => 20,
+            Token::Minus => 21,
+            Token::Div => 22,
+            Token::Mod => 23,
+            Token::ScopeSymbol => 24,
+            Token::NotEqual => 25,
+            Token::Arrow => 26,
         }
     }
-    pub fn is_colon(&self)->bool{
-        match self {
-            Token::Colon=>true,
-            _=>false
-        }
+    pub fn is_colon(&self) -> bool {
+        matches!(self, Token::Colon)
     }
-    pub fn is_parenthesis_left(&self)->bool{
-        match self {
-            Token::ParenthesisLeft=>true,
-            _=>false
-        }
+    pub fn is_parenthesis_left(&self) -> bool {
+        matches!(self, Token::ParenthesisLeft)
     }
-    pub fn is_keyword(&self,keyword:&str)->bool{
+    pub fn is_keyword(&self, keyword: &str) -> bool {
         match self {
-            Token::Keyword(k)=>{
-                if k==keyword{
-                    return true
+            Token::Keyword(k) => {
+                if k == keyword {
+                    return true;
                 }
-                return false
-            },
-            _=>false
+                false
+            }
+            _ => false,
         }
     }
-    pub fn get_identifier_value(&self)->&str{
+    pub fn get_identifier_value(&self) -> &str {
         return match self {
-            Token::Identifier(s) => {
-                s.as_str()
-            }
-            _ => {
-                ""
-            }
-        }
+            Token::Identifier(s) => s.as_str(),
+            _ => "",
+        };
     }
 }

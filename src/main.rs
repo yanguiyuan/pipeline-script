@@ -1,31 +1,24 @@
-mod token;
-mod lexer;
-mod position;
-mod plugin;
-mod engine;
-mod module;
-mod error;
-mod stmt;
-mod expr;
 mod context;
-mod types;
+mod engine;
+mod error;
+mod expr;
+mod lexer;
+mod module;
 mod parser;
+mod plugin;
+mod position;
+mod stmt;
+mod token;
+mod types;
 use crate::engine::Engine;
-use crate::lexer::Lexer;
 
 fn main() {
-    let mut e=Engine::default();
+    let mut e = Engine::default();
     // e.enable_ast_debug();
-    let script="
-        class Solution(){
-            fun display(){
-                for i in range(0,10,2){
-                   println(i)
-                }
-            }
+    let script = "
+        fun main(){
+            println(\"Hello,World\"+1+2)
         }
-        val p=Solution()
-        p.display()
     ";
-    e.run(script)
+    e.run(script.to_owned() + "main()")
 }

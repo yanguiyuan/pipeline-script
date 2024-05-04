@@ -1,62 +1,73 @@
 use std::ops::Add;
 use std::string::ToString;
 
-#[derive(Debug,Clone)]
-pub struct Position{
-    pub(crate) pos:usize,
+#[derive(Debug, Clone)]
+pub struct Position {
+    pub(crate) pos: usize,
     #[allow(unused)]
-    pub(crate) row:usize,
+    pub(crate) row: usize,
     #[allow(unused)]
-    pub(crate) col:usize,
-    pub(crate) span:usize,
-    pub module_name:String,
+    pub(crate) col: usize,
+    pub(crate) span: usize,
+    pub module_name: String,
 }
-impl Add for Position{
+impl Add for Position {
     type Output = Position;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let mut pos =self.clone();
-        pos.span=rhs.pos.abs_diff(self.pos)+rhs.span;
-        return pos
+        let mut pos = self.clone();
+        pos.span = rhs.pos.abs_diff(self.pos) + rhs.span;
+        pos
     }
 }
 impl Position {
-    pub fn none()->Self{
-        Self{
-            pos:0,span:0,row:0,col:0,module_name:"None".to_string()
+    pub fn none() -> Self {
+        Self {
+            pos: 0,
+            span: 0,
+            row: 0,
+            col: 0,
+            module_name: "None".to_string(),
         }
     }
-    pub fn new(pos:usize,span:usize,row:usize,col:usize,module_name:&str)->Self{
-        Self{pos,span,row,col,module_name:module_name.into()}
-    }
-    #[allow(unused)]
-    pub fn set_span(&mut self,span:usize){
-        self.span=span;
-    }
-    #[allow(unused)]
-    pub fn set_pos(&mut self,pos:usize){
-        self.pos=pos;
-    }
-    #[allow(unused)]
-    pub fn add_span(&mut self,add:usize){
-        self.span+=add
-    }
-    #[allow(unused)]
-    pub fn is_none(&self)->bool{
-        if self.pos==0&&self.span==0{
-            return true
+    pub fn new(pos: usize, span: usize, row: usize, col: usize, module_name: &str) -> Self {
+        Self {
+            pos,
+            span,
+            row,
+            col,
+            module_name: module_name.into(),
         }
-        return false
     }
     #[allow(unused)]
-    pub fn get_raw_string(&self,source:&Vec<char>)->String{
-        let utf8_bytes=source[self.pos..self.pos+self.span].iter()
+    pub fn set_span(&mut self, span: usize) {
+        self.span = span;
+    }
+    #[allow(unused)]
+    pub fn set_pos(&mut self, pos: usize) {
+        self.pos = pos;
+    }
+    #[allow(unused)]
+    pub fn add_span(&mut self, add: usize) {
+        self.span += add
+    }
+    #[allow(unused)]
+    pub fn is_none(&self) -> bool {
+        if self.pos == 0 && self.span == 0 {
+            return true;
+        }
+        false
+    }
+    #[allow(unused)]
+    pub fn get_raw_string(&self, source: &[char]) -> String {
+        let utf8_bytes = source[self.pos..self.pos + self.span]
+            .iter()
             .flat_map(|&c| c.encode_utf8(&mut [0; 4]).bytes().collect::<Vec<_>>())
             .collect::<Vec<_>>();
-        return String::from_utf8(utf8_bytes).unwrap()
+        String::from_utf8(utf8_bytes).unwrap()
     }
     #[allow(unused)]
-    pub fn get_row_col(&self,source:&Vec<char>)->(usize,usize){
+    pub fn get_row_col(&self, source: &[char]) -> (usize, usize) {
         let mut row = 0;
         let mut col = 0;
         for (i, &ch) in source.iter().enumerate() {
