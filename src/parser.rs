@@ -336,7 +336,11 @@ impl PipelineParser {
         if let Token::Keyword(_) = token {
             let (token1, pos0) = self.token_stream.next();
             if let Token::Identifier(ident) = token1 {
-                pos.add_span(pos0.span);
+                pos+=pos0;
+                if let Token::Colon = self.token_stream.peek().0 {
+                    self.parse_special_token(Token::Colon)?;
+                    self.parse_identifier()?;
+                }
                 self.parse_special_token(Token::Assign)?;
                 pos.add_span(1);
                 let expr = self.parse_expr()?;
@@ -352,7 +356,11 @@ impl PipelineParser {
         if let Token::Keyword(_) = token {
             let (token1, pos0) = self.token_stream.next();
             if let Token::Identifier(ident) = token1 {
-                pos.add_span(pos0.span);
+                pos += pos0;
+                if let Token::Colon = self.token_stream.peek().0 {
+                    self.parse_special_token(Token::Colon)?;
+                    self.parse_identifier()?;
+                }
                 self.parse_special_token(Token::Assign)?;
                 pos.add_span(1);
                 let expr = self.parse_expr()?;
