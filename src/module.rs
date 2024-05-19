@@ -1,6 +1,7 @@
 use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::error::PipelineError::StaticFunctionUndefined;
 use crate::error::{PipelineError, PipelineResult};
+use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::types::{FnPtr, SignalType, Value, WrapValue};
 use std::collections::HashMap;
@@ -25,6 +26,7 @@ pub enum Function {
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration {
     pub name: String,
+    default: Option<Expr>,
     pub declaration_type: String,
 }
 
@@ -32,7 +34,27 @@ impl VariableDeclaration {
     pub fn new(name: String, dec: String) -> Self {
         Self {
             name,
+            default: None,
             declaration_type: dec,
+        }
+    }
+    pub fn has_default(&self) -> bool {
+        self.default.is_some()
+    }
+    pub fn get_default(&self) -> Option<&Expr> {
+        match &self.default {
+            None => None,
+            Some(s) => Some(s),
+        }
+    }
+    pub fn set_default(&mut self, expr: Expr) {
+        self.default = Some(expr)
+    }
+    pub fn with_default(name: String, dec: String, default: Expr) -> Self {
+        Self {
+            name,
+            declaration_type: dec,
+            default: Some(default),
         }
     }
 }
@@ -149,7 +171,17 @@ impl Function {
                 let scope = ctx.get_scope();
                 let mut scope = scope.write().unwrap();
                 let mut has_name = false;
+                // 先对参数赋默认值
+                for i in s.args.iter() {
+                    if i.has_default() {
+                        let result = ctx.eval_expr(i.get_default().unwrap())?;
+                        scope.set(i.name.as_str(), result);
+                    }
+                }
                 for (index, i) in s.args.iter().enumerate() {
+                    if index >= args.len() {
+                        continue;
+                    }
                     if !has_name && args[index].has_name() {
                         has_name = true;
                     }

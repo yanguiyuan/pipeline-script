@@ -1,4 +1,4 @@
-fun bar(a:Int,x:Int){
-    print(x,a)
+fun bar(a:Int,x:Int=4,b:String="default"){
+    print(x," ",a," ",b)
 }
-bar(34,1)
+bar(34)

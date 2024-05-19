@@ -500,18 +500,32 @@ impl PipelineParser {
         let mut v = vec![];
         let mut p = start.1;
         loop {
-            let (token, _) = self.token_stream.peek();
-            if Token::BraceRight == token {
-                break;
+            let (token, pos) = self.token_stream.peek();
+            match token {
+                Token::BraceRight => break,
+                Token::Comma => {
+                    self.token_stream.next();
+                    p.add_span(1);
+                    continue;
+                }
+                Token::Identifier(_) => {
+                    let (dec, pos) = self.parse_variable_declaration()?;
+                    v.push(dec);
+                    p.add_span(pos.span)
+                }
+                Token::Assign => {
+                    self.token_stream.next();
+                    let e = self.parse_expr()?;
+                    v.last_mut().unwrap().set_default(e);
+                }
+                t => {
+                    return Err(PipelineError::UnexpectedToken(
+                        t.to_string(),
+                        "Symbol())|Symbol(,)".into(),
+                        pos,
+                    ))
+                }
             }
-            if Token::Comma == token {
-                self.parse_special_token(Token::Comma)?;
-                p.add_span(1);
-                continue;
-            }
-            let (dec, pos) = self.parse_variable_declaration()?;
-            v.push(dec);
-            p.add_span(pos.span)
         }
         self.parse_special_token(Token::BraceRight)?;
         p.add_span(1);
