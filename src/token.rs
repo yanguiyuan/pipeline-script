@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 #[allow(unused)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -53,7 +55,40 @@ pub enum Token {
     BitOr,
     Eof,
 }
-
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::String(s) => write!(f, "String({s})"),
+            Token::Int(i) => write!(f, "Int({i})"),
+            Token::Float(f0) => write!(f, "Float({f0})"),
+            Token::Identifier(i) => write!(f, "Identifier({i})"),
+            Token::Keyword(kw) => write!(f, "Keyword({kw})"),
+            Token::BraceLeft => write!(f, "Symbol(()"),
+            Token::BraceRight => write!(f, "Symbol())"),
+            Token::SquareBracketLeft => write!(f, "Symbol([)"),
+            Token::SquareBracketRight => write!(f, "Symbol(])"),
+            Token::ParenthesisLeft => write!(f, "Symbol({{)"),
+            Token::ParenthesisRight => write!(f, "Symbol(}})"),
+            Token::Dot => write!(f, "Symbol(.)"),
+            Token::Colon => write!(f, "Symbol(:)"),
+            Token::ScopeSymbol => write!(f, "Symbol(::)"),
+            Token::Assign => write!(f, "Symbol(=)"),
+            Token::Comma => write!(f, "Symbol(,)"),
+            Token::Plus => write!(f, "Symbol(+)"),
+            Token::Minus => write!(f, "Symbol(-)"),
+            Token::Mul => write!(f, "Symbol(*)"),
+            Token::Div => write!(f, "Symbol(/)"),
+            Token::Mod => write!(f, "Symbol(%)"),
+            Token::Greater => write!(f, "Symbol(>)"),
+            Token::Less => write!(f, "Symbol(<)"),
+            Token::Equal => write!(f, "Symbol(==)"),
+            Token::NotEqual => write!(f, "Symbol(!=)"),
+            Token::Arrow => write!(f, "Symbol(->)"),
+            Token::BitOr => write!(f, "Symbol(|)"),
+            Token::Eof => write!(f, "EOF"),
+        }
+    }
+}
 impl Token {
     #[allow(unused)]
     pub fn token_id(&self) -> i8 {
@@ -104,6 +139,9 @@ impl Token {
             }
             _ => false,
         }
+    }
+    pub fn is_assign(&self) -> bool {
+        matches!(self, Token::Assign)
     }
     pub fn get_identifier_value(&self) -> &str {
         return match self {

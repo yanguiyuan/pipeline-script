@@ -52,7 +52,7 @@ impl TokenStream {
             return self.peek.clone().unwrap();
         }
         let o = self.tokenizer.next();
-        self.peek = o.clone();
+        self.peek.clone_from(&o);
         o.unwrap_or((Token::Eof, Position::none()))
     }
 }

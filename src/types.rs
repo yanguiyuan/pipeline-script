@@ -43,7 +43,50 @@ pub enum Value {
     Refer(Weak<RwLock<Dynamic>>),
     Signal(SignalType),
 }
+#[derive(Debug, Clone)]
+pub struct WrapValue {
+    name: Option<String>,
+    value: Value,
+}
 
+impl WrapValue {
+    pub fn new(value: Value) -> Self {
+        Self { name: None, value }
+    }
+    pub fn into_value(self) -> Value {
+        self.value
+    }
+    pub fn is_immutable(&self) -> bool {
+        self.value.is_immutable()
+    }
+    pub fn as_dynamic(&self) -> Dynamic {
+        self.value.as_dynamic()
+    }
+    pub fn clone_value(&self) -> Value {
+        self.value.clone()
+    }
+    pub fn has_name(&self) -> bool {
+        self.name.is_some()
+    }
+    pub fn get_name(&self) -> Option<&str> {
+        match &self.name {
+            None => None,
+            Some(s) => Some(s),
+        }
+    }
+    pub fn with_name(name: impl Into<String>, value: Value) -> Self {
+        Self {
+            name: Some(name.into()),
+            value,
+        }
+    }
+}
+
+impl From<Value> for WrapValue {
+    fn from(value: Value) -> Self {
+        WrapValue::new(value)
+    }
+}
 impl Value {
     pub fn with_mutable(v: Dynamic) -> Self {
         Value::Mutable(Arc::new(RwLock::new(v)))
@@ -212,12 +255,12 @@ impl FnPtr {
         self.is_defer = defer
     }
     pub fn set_params(&mut self, params: &[Expr]) {
-        self.params = params.to_owned();
+        params.clone_into(&mut self.params);
     }
     pub fn set_fn_def(&mut self, fn_def: &FnDef) {
         self.fn_def = Some(fn_def.clone())
     }
-    pub fn call(&mut self, _: Context) -> PipelineResult<Value> {
+    pub fn call(&mut self, ctx: &mut Context) -> PipelineResult<Value> {
         let fn_def = self.fn_def.clone();
         match fn_def {
             None => {
@@ -225,10 +268,13 @@ impl FnPtr {
                 // engine.eval_fn_call_expr_from_ast(ctx,expr)
                 todo!()
             }
-            Some(_) => {
-                // let blocks=f.body;
-                // engine.eval_stmt_blocks_from_ast_with_context(ctx,blocks)
-                todo!()
+            Some(f) => {
+                let blocks = f.body;
+                let mut r = Value::with_immutable(Dynamic::Unit);
+                for i in blocks {
+                    r = ctx.eval_stmt(&i)?;
+                }
+                Ok(r)
             }
         }
     }

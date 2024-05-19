@@ -5,7 +5,7 @@ use crate::module::Module;
 use crate::position::Position;
 use crate::stmt::Stmt;
 use crate::types::Value::Mutable;
-use crate::types::{Dynamic, FnPtr, SignalType, Struct, Value};
+use crate::types::{Dynamic, FnPtr, SignalType, Struct, Value, WrapValue};
 use std::any::Any;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
@@ -100,7 +100,21 @@ impl Context {
     pub fn get_value(&self, key: impl AsRef<str>) -> Option<Value> {
         let s = self.get_scope();
         let s = s.read().unwrap();
-        return s.get(key.as_ref());
+        let v = s.get(key.as_ref());
+        match v {
+            None => {
+                let module = self.get_module();
+                let module = module.read().unwrap();
+                let f = module.get_function(key.as_ref());
+                if let Some(f) = f {
+                    let ptr = f.get_ptr();
+                    let d = Dynamic::FnPtr(Box::new(ptr));
+                    return Some(d.into());
+                }
+                None
+            }
+            Some(v) => Some(v),
+        }
     }
 
     pub fn get(&self, key: ContextKey) -> Option<ContextValue> {
@@ -281,9 +295,14 @@ impl Context {
             Expr::FnCall(fn_call, pos) => {
                 let mut v = vec![];
                 for i in &fn_call.args {
-                    let r = self.eval_expr(i)?;
-                    v.push(r);
+                    let r = self.eval_expr(&i.value)?;
+                    if i.has_name() {
+                        v.push(WrapValue::with_name(i.get_name().unwrap(), r));
+                    } else {
+                        v.push(WrapValue::new(r));
+                    }
                 }
+                // 判断是否是构造函数调用
                 let module = self.get_module();
                 let module = module.read().unwrap();
                 let class = module.get_class(fn_call.name.as_str());
@@ -303,13 +322,14 @@ impl Context {
                             props.insert(vd.name.clone(), Value::with_mutable(d));
                             continue;
                         }
-                        props.insert(vd.name.clone(), v[i].clone());
+                        props.insert(vd.name.clone(), v[i].clone_value());
                     }
                     let obj = Struct::new(fn_call.name.clone(), props);
                     return Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(
                         Box::new(obj),
                     )))));
                 }
+                // 正常函数调用
                 let mut ctx = Context::with_value(
                     self,
                     ContextKey::Position,

@@ -1,10 +1,12 @@
-use crate::context::{Context, ContextKey, ContextValue};
+use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::engine::Engine;
 use crate::error::PipelineError;
 use crate::module::{Class, Module};
 use crate::plugin::Plugin;
 use crate::types::{Dynamic, Value};
+
 use scanner_rust::Scanner;
+
 use std::io;
 use std::io::{stdin, Stdin, Write};
 use std::sync::{Arc, RwLock};
@@ -26,7 +28,7 @@ impl Plugin for BuiltinPlugin {
                 let module = module.read().unwrap();
                 let method = module.get_class_function(vd.type_name().as_str(), "toString");
                 if let Some(f) = method {
-                    let r = f.call(ctx, vec![v])?;
+                    let r = f.call(ctx, vec![v.into()])?;
                     print!("{}", r.as_dynamic());
                     continue;
                 }
@@ -42,7 +44,7 @@ impl Plugin for BuiltinPlugin {
                 let module = module.read().unwrap();
                 let method = module.get_class_function(vd.type_name().as_str(), "toString");
                 if let Some(f) = method {
-                    let r = f.call(ctx, vec![v])?;
+                    let r = f.call(ctx, vec![v.into()])?;
                     print!("{}", r.as_dynamic());
                     continue;
                 }
@@ -58,6 +60,33 @@ impl Plugin for BuiltinPlugin {
                 array.push(v.clone());
             }
             Ok(Value::Mutable(raw_array.clone()))
+        });
+        m.register_pipe_function("call", |ctx: &mut Context, args: Vec<Value>| {
+            let function_ptr = args.first().unwrap();
+            let mut ptr = function_ptr.as_dynamic().as_fn_ptr().unwrap();
+            let args_dec = ptr.fn_def.clone().unwrap().args;
+            let mut scope = Scope::new();
+            for (i, v) in args_dec.iter().enumerate() {
+                scope.set(v.name.as_str(), args[i + 1].clone());
+            }
+            if args_dec.is_empty() && args.len() == 2 {
+                scope.set("it", args[1].clone());
+            } else if args_dec.is_empty() && args.len() > 2 {
+                scope.set(
+                    "it",
+                    Value::Mutable(Arc::new(RwLock::new(Dynamic::Array(
+                        args[1..args.len()].to_vec(),
+                    )))),
+                )
+            }
+            let parent_scope = ctx.get_scope();
+            scope.set_parent(parent_scope);
+            let mut ctx = Context::with_value(
+                ctx,
+                ContextKey::Scope,
+                ContextValue::Scope(Arc::new(RwLock::new(scope))),
+            );
+            ptr.call(&mut ctx)
         });
         m.register_pipe_function("remove", |_, args| {
             let target = args.first().unwrap().as_dynamic();

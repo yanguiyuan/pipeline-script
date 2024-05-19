@@ -52,9 +52,36 @@ pub enum Op {
 #[derive(Debug, Clone)]
 pub struct FnCallExpr {
     pub name: String,
-    pub args: Vec<Expr>,
+    pub args: Vec<Argument>,
 }
-
+#[derive(Debug, Clone)]
+pub struct Argument {
+    name: Option<String>,
+    pub value: Expr,
+}
+impl Argument {
+    pub fn new(expr: Expr) -> Self {
+        Self {
+            name: None,
+            value: expr,
+        }
+    }
+    pub fn with_name(name: impl Into<String>, expr: Expr) -> Self {
+        Self {
+            name: Some(name.into()),
+            value: expr,
+        }
+    }
+    pub fn has_name(&self) -> bool {
+        self.name.is_some()
+    }
+    pub fn get_name(&self) -> Option<&str> {
+        match &self.name {
+            None => None,
+            Some(s) => Some(s),
+        }
+    }
+}
 #[derive(Debug, Clone)]
 pub struct FnClosureExpr {
     pub(crate) def: FnDef,

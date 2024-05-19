@@ -1,7 +1,8 @@
 use crate::context::{Context, ContextKey, ContextValue, Scope};
+use crate::error::PipelineError::StaticFunctionUndefined;
 use crate::error::{PipelineError, PipelineResult};
 use crate::stmt::Stmt;
-use crate::types::{SignalType, Value};
+use crate::types::{FnPtr, SignalType, Value, WrapValue};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, RwLock};
@@ -115,7 +116,25 @@ impl Class {
     }
 }
 impl Function {
-    pub fn call(&self, ctx: &mut Context, args: Vec<Value>) -> PipelineResult<Value> {
+    pub fn is_script(&self) -> bool {
+        matches!(self, Function::Script(_))
+    }
+    pub fn get_ptr(&self) -> FnPtr {
+        match self {
+            Function::Native(_) => {
+                todo!()
+            }
+            Function::Script(fd) => {
+                let mut ptr = FnPtr::new(fd.name.as_str());
+                ptr.set_fn_def(fd);
+                ptr
+            }
+            Function::Method(_) => {
+                todo!()
+            }
+        }
+    }
+    pub fn call(&self, ctx: &mut Context, args: Vec<WrapValue>) -> PipelineResult<Value> {
         let mut scope = Scope::new();
         let old_scope = ctx.get_scope();
         scope.set_parent(old_scope);
@@ -125,12 +144,21 @@ impl Function {
             ContextValue::Scope(Arc::new(RwLock::new(scope))),
         );
         match self {
-            Function::Native(n) => (*n)(&mut ctx, args),
+            Function::Native(n) => (*n)(&mut ctx, args.iter().map(|e| e.clone_value()).collect()),
             Function::Script(s) => {
                 let scope = ctx.get_scope();
                 let mut scope = scope.write().unwrap();
+                let mut has_name = false;
                 for (index, i) in s.args.iter().enumerate() {
-                    scope.set(i.name.as_str(), args[index].clone());
+                    if !has_name && args[index].has_name() {
+                        has_name = true;
+                    }
+                    if !has_name {
+                        scope.set(i.name.as_str(), args[index].clone_value());
+                    } else {
+                        scope.set(args[index].get_name().unwrap(), args[index].clone_value());
+                        // 对错误进行处理，如果没有名字，返回错误，命名参数一旦使用后端不得出现匿名的下标参数
+                    }
                 }
                 drop(scope);
                 for i in &s.body {
@@ -144,9 +172,21 @@ impl Function {
             Function::Method(s) => {
                 let scope = ctx.get_scope();
                 let mut scope = scope.write().unwrap();
-                scope.set("this", args[0].clone());
+                scope.set("this", args.first().unwrap().clone_value());
+                let mut has_name = false;
                 for (index, i) in s.args.iter().enumerate() {
-                    scope.set(i.name.as_str(), args[index + 1].clone());
+                    if !has_name && args[index + 1].has_name() {
+                        has_name = true;
+                    }
+                    if !has_name {
+                        scope.set(i.name.as_str(), args[index].clone_value());
+                    } else {
+                        scope.set(
+                            args[index + 1].get_name().unwrap(),
+                            args[index].clone_value(),
+                        );
+                        // 对错误进行处理，如果没有名字，返回错误，命名参数一旦使用后端不得出现匿名的下标参数
+                    }
                 }
                 drop(scope);
                 for i in &s.body {
@@ -281,23 +321,31 @@ impl Module {
         &self,
         ctx: &mut Context,
         function_name: impl Into<String>,
-        args: Vec<Value>,
+        args: Vec<WrapValue>,
     ) -> PipelineResult<Value> {
         let name = function_name.into();
+        let pos = ctx
+            .get(ContextKey::Position)
+            .unwrap()
+            .as_position()
+            .unwrap();
         let f = self.functions.get(name.clone().as_str());
+        // 处理类静态方法调用
         if name.contains("::") {
             let split = name.split("::").collect::<Vec<_>>();
             let class = self.get_class(split.first().unwrap()).unwrap();
-            let function = class.get_static_function(split[1]).unwrap();
-            return function.call(ctx, args);
+            let function = class.get_static_function(split[1]);
+            return match function {
+                None => Err(StaticFunctionUndefined(
+                    (*split.first().unwrap()).into(),
+                    split[1].into(),
+                    pos,
+                )),
+                Some(f) => f.call(ctx, args),
+            };
         }
         match f {
             None => {
-                let pos = ctx
-                    .get(ContextKey::Position)
-                    .unwrap()
-                    .as_position()
-                    .unwrap();
                 if args.is_empty() {
                     return Err(PipelineError::FunctionUndefined(name, pos));
                 }

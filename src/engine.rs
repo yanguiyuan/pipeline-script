@@ -80,7 +80,7 @@ impl Engine {
         let lexer = Lexer::from_script("main", script);
         let m = self.ctx.get_module();
         let mut parser = PipelineParser::new(lexer, m.clone());
-        let block = parser.parse_stmt_blocks().unwrap();
+        let block = parser.parse_stmt_blocks()?;
         let m = self.ctx.get_module();
         if !self.has_run_main_block {
             let block = m.read().unwrap().get_block().clone();
@@ -131,14 +131,31 @@ impl Engine {
                 println!("\x1b[31m[错误] 变量'{i}'未定义");
                 self.display_source_line(&pos)
             }
-            PipelineError::ExpectedType(_) => {}
-            PipelineError::UnexpectedType(_) => {}
-            PipelineError::UnexpectedToken(_, _) => {}
-            PipelineError::UnusedKeyword(_) => {}
-            PipelineError::UnknownModule(_) => {}
-            PipelineError::UndefinedOperation(_) => {}
+            PipelineError::StaticFunctionUndefined(class, function, pos) => {
+                println!("\x1b[31m[错误] 类'{class}'静态方法'{function}'未定义");
+                self.display_source_line(&pos)
+            }
+            PipelineError::ExpectedType(_) => {
+                todo!()
+            }
+            PipelineError::UnexpectedType(_) => {
+                todo!()
+            }
+            PipelineError::UnexpectedToken(actual, expect, pos) => {
+                println!("\x1b[31m[错误] 解析错误，不正确的Token '{actual}'，期待Token '{expect}'");
+                self.display_source_line(&pos)
+            }
+            PipelineError::UnusedKeyword(_) => {
+                todo!()
+            }
+            PipelineError::UnknownModule(_) => {
+                todo!()
+            }
+            PipelineError::UndefinedOperation(_) => {
+                todo!()
+            }
             PipelineError::MismatchedType(need, actual, pos) => {
-                println!("\x1b[31m[错误] 不匹配的类型,期望'{need}',实际'{actual}'");
+                println!("\x1b[31m[错误] 不匹配的类型，期望'{need}',实际'{actual}'");
                 self.display_source_line(&pos)
             }
         }

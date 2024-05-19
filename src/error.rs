@@ -1,16 +1,16 @@
 use crate::position::Position;
-
 pub type PipelineResult<T> = Result<T, PipelineError>;
 #[derive(Debug, Clone)]
 pub enum PipelineError {
     FunctionUndefined(String, Position),
+    StaticFunctionUndefined(String, String, Position),
     VariableUndefined(String, Position),
     MismatchedType(String, String, Position),
     AssignToImmutableVariable(String, Position),
     MapKeyNotExist(String, String, Position),
     ExpectedType(String),
     UnexpectedType(String),
-    UnexpectedToken(crate::token::Token, Position),
+    UnexpectedToken(String, String, Position),
     UnusedKeyword(String),
     UnknownModule(String),
     UndefinedOperation(String),
