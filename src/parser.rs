@@ -78,6 +78,7 @@ impl PipelineParser {
         let (class_name, class_name_pos) = self.parse_identifier()?;
         let mut pos = class_name_pos.clone();
         self.parse_special_token(Token::BraceLeft)?;
+        // 解析构造函数参数也即类属性声明
         let mut attributions = vec![];
         loop {
             let (peek_token, _) = self.token_stream.peek();
@@ -92,7 +93,18 @@ impl PipelineParser {
                     self.parse_special_token(Token::Colon)?;
                     let (attribution_type, attribution_type_pos) = self.parse_identifier()?;
                     pos.add_span(attribution_name_pos.span + attribution_type_pos.span + 1);
-                    attributions.push(VariableDeclaration::new(attribution_name, attribution_type));
+                    if let Token::Assign = self.token_stream.peek().0 {
+                        self.token_stream.next();
+                        let e = self.parse_expr()?;
+                        attributions.push(VariableDeclaration::with_default(
+                            attribution_name,
+                            attribution_type,
+                            e,
+                        ));
+                    } else {
+                        attributions
+                            .push(VariableDeclaration::new(attribution_name, attribution_type));
+                    }
                 }
             }
         }
@@ -673,7 +685,7 @@ impl PipelineParser {
     }
     /// 解析基础表达式，不包含运算符，比如"Hello",1,1.5,a
     fn parse_primary(&mut self) -> PipelineResult<Expr> {
-        let (token, pos) = self.token_stream.next();
+        let (token, mut pos) = self.token_stream.next();
         match token {
             Token::String(s) => Ok(Expr::StringConstant(s, pos)),
             Token::Int(i) => Ok(Expr::IntConstant(i, pos)),
@@ -686,16 +698,15 @@ impl PipelineParser {
                     Token::ScopeSymbol => {
                         self.token_stream.next();
                         // 获取::后部分标识符a
-                        todo!()
-                        // let (next, pos2) = self.token_stream.next();
-                        // let fc_name = next.get_identifier_value();
-                        // let (args, pos3) = self.parse_fn_call_args().unwrap();
-                        // let name = ident + "::" + fc_name;
-                        // let mut p = pos.clone();
-                        // p.add_span(pos2.span + 2);
-                        // let fn_expr = FnCallExpr { name, args };
-                        // pos.add_span(pos2.span + pos3.span + 2);
-                        // Ok(Expr::FnCall(fn_expr, pos))
+                        let (next, pos2) = self.token_stream.next();
+                        let fc_name = next.get_identifier_value();
+                        let (args, pos3) = self.parse_fn_call_args().unwrap();
+                        let name = ident + "::" + fc_name;
+                        let mut p = pos.clone();
+                        p.add_span(pos2.span + 2);
+                        let fn_expr = FnCallExpr { name, args };
+                        pos.add_span(pos2.span + pos3.span + 2);
+                        Ok(Expr::FnCall(fn_expr, pos))
                     }
                     // a[index]类型
                     Token::SquareBracketLeft => {

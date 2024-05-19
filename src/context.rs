@@ -306,23 +306,56 @@ impl Context {
                 let module = self.get_module();
                 let module = module.read().unwrap();
                 let class = module.get_class(fn_call.name.as_str());
+                // 找得到说明是构造函数
                 if let Some(c) = class {
                     let mut props = HashMap::new();
+                    // 给类赋默认值
+                    for vd in c.get_attributions().iter() {
+                        if vd.has_default() {
+                            let default = self.eval_expr(vd.get_default().unwrap())?;
+                            if default.is_immutable() {
+                                let d = default.as_dynamic();
+                                if vd.declaration_type != d.type_name() {
+                                    return Err(PipelineError::MismatchedType(
+                                        vd.declaration_type.clone(),
+                                        d.type_name(),
+                                        pos.clone(),
+                                    ));
+                                }
+                                props.insert(vd.name.clone(), Value::with_mutable(d));
+                                continue;
+                            }
+                            props.insert(vd.name.clone(), default);
+                        }
+                    }
                     for (i, vd) in c.get_attributions().iter().enumerate() {
+                        if i >= v.len() {
+                            break;
+                        }
                         if v[i].is_immutable() {
                             let d = v[i].as_dynamic();
                             if vd.declaration_type != d.type_name() {
-                                dbg!(pos);
                                 return Err(PipelineError::MismatchedType(
                                     vd.declaration_type.clone(),
                                     d.type_name(),
                                     pos.clone(),
                                 ));
                             }
-                            props.insert(vd.name.clone(), Value::with_mutable(d));
-                            continue;
+                            if v[i].has_name() {
+                                props.insert(
+                                    v[i].get_name().unwrap().into(),
+                                    Value::with_mutable(d),
+                                );
+                            } else {
+                                props.insert(vd.name.clone(), Value::with_mutable(d));
+                                continue;
+                            }
                         }
-                        props.insert(vd.name.clone(), v[i].clone_value());
+                        if v[i].has_name() {
+                            props.insert(v[i].get_name().unwrap().into(), v[i].clone_value());
+                        } else {
+                            props.insert(vd.name.clone(), v[i].clone_value());
+                        }
                     }
                     let obj = Struct::new(fn_call.name.clone(), props);
                     return Ok(Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(

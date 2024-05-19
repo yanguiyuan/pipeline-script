@@ -180,7 +180,7 @@ impl Function {
                 }
                 for (index, i) in s.args.iter().enumerate() {
                     if index >= args.len() {
-                        continue;
+                        break;
                     }
                     if !has_name && args[index].has_name() {
                         has_name = true;
@@ -205,17 +205,26 @@ impl Function {
                 let scope = ctx.get_scope();
                 let mut scope = scope.write().unwrap();
                 scope.set("this", args.first().unwrap().clone_value());
+                for i in s.args.iter() {
+                    if i.has_default() {
+                        let result = ctx.eval_expr(i.get_default().unwrap())?;
+                        scope.set(i.name.as_str(), result);
+                    }
+                }
                 let mut has_name = false;
                 for (index, i) in s.args.iter().enumerate() {
+                    if index + 1 >= args.len() {
+                        break;
+                    }
                     if !has_name && args[index + 1].has_name() {
                         has_name = true;
                     }
                     if !has_name {
-                        scope.set(i.name.as_str(), args[index].clone_value());
+                        scope.set(i.name.as_str(), args[index + 1].clone_value());
                     } else {
                         scope.set(
                             args[index + 1].get_name().unwrap(),
-                            args[index].clone_value(),
+                            args[index + 1].clone_value(),
                         );
                         // 对错误进行处理，如果没有名字，返回错误，命名参数一旦使用后端不得出现匿名的下标参数
                     }
@@ -245,24 +254,6 @@ impl Module {
     pub fn get_class(&self, class_name: &str) -> Option<&Class> {
         return self.classes.get(class_name);
     }
-    // pub fn try_get_class_instance(&self,class_name:&str,params:Vec<Value>)->PipelineResult<Option<Value>>{
-    //     let class=self.classes.get(class_name)?;
-    //     let mut props=HashMap::new();
-    //     for (i,v) in class.attributions.iter().enumerate(){
-    //         if params[i].is_immutable(){
-    //             let d = params[i].as_dynamic();
-    //             if v.declaration_type!=d.type_name(){
-    //                return  Err(PipelineError::MismatchedType)
-    //             }
-    //             props.insert(v.name.clone(),Value::with_mutable(d));
-    //             continue
-    //         }
-    //         props.insert(v.name.clone(),params[i].clone());
-    //     }
-    //     let obj=Struct::new(class_name.into(),props);
-    //     let obj=Value::Mutable(Arc::new(RwLock::new(Dynamic::Struct(Box::new(obj)))));
-    //     return Ok(Some(obj));
-    // }
     pub fn get_functions(&self) -> &HashMap<String, Function> {
         &self.functions
     }
