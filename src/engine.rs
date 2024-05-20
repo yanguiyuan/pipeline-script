@@ -145,8 +145,8 @@ impl Engine {
                 println!("\x1b[31m[错误] 解析错误，不正确的Token '{actual}'，期待Token '{expect}'");
                 self.display_source_line(&pos)
             }
-            PipelineError::UnusedKeyword(_) => {
-                todo!()
+            PipelineError::UnusedKeyword(i) => {
+                println!("\x1b[31m[错误] 保留的关键字 '{i}'");
             }
             PipelineError::UnknownModule(_) => {
                 todo!()

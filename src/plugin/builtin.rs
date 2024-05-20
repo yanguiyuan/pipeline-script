@@ -3,7 +3,7 @@ use crate::engine::Engine;
 use crate::error::PipelineError;
 use crate::module::{Class, Module};
 use crate::plugin::Plugin;
-use crate::types::{Dynamic, Value};
+use crate::types::{Dynamic, SignalType, Value};
 
 use scanner_rust::Scanner;
 
@@ -86,7 +86,11 @@ impl Plugin for BuiltinPlugin {
                 ContextKey::Scope,
                 ContextValue::Scope(Arc::new(RwLock::new(scope))),
             );
-            ptr.call(&mut ctx)
+            let r = ptr.call(&mut ctx)?;
+            if let Value::Signal(SignalType::Return(v))=r{
+                return Ok(*v);
+            }
+            Ok(r)
         });
         m.register_pipe_function("remove", |_, args| {
             let target = args.first().unwrap().as_dynamic();

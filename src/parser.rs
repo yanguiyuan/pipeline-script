@@ -660,7 +660,7 @@ impl PipelineParser {
                 }
             }
         }
-        let (peek0, _) = self.token_stream.peek();
+        let (peek0, pos) = self.token_stream.peek();
         if Token::Arrow == peek0 {
             self.parse_special_token(Token::Arrow).unwrap();
             let (peek, mut pos1) = self.token_stream.peek();
@@ -679,19 +679,30 @@ impl PipelineParser {
                 )));
                 self.parse_special_token(Token::ParenthesisRight).unwrap();
             }
+        }else if let Token::ParenthesisLeft=peek0{
+            return Err(PipelineError::UnexpectedToken(peek0.to_string(),"Symbol(->)".into(),pos))
         }
 
         Ok((v, p))
     }
     /// 解析基础表达式，不包含运算符，比如"Hello",1,1.5,a
     fn parse_primary(&mut self) -> PipelineResult<Expr> {
-        let (token, mut pos) = self.token_stream.next();
+        let (token, mut pos) = self.token_stream.peek();
         match token {
-            Token::String(s) => Ok(Expr::StringConstant(s, pos)),
-            Token::Int(i) => Ok(Expr::IntConstant(i, pos)),
-            Token::Float(f) => Ok(Expr::FloatConstant(f, pos)),
+            Token::String(s) => {
+                self.token_stream.next();
+                Ok(Expr::StringConstant(s, pos))
+            },
+            Token::Int(i) => {
+                self.token_stream.next();
+                Ok(Expr::IntConstant(i, pos))
+            },
+            Token::Float(f) => {
+                self.token_stream.next();
+                Ok(Expr::FloatConstant(f, pos)) },
             //  解析变量，可以包含 bar::a 类型和a[0]类型
             Token::Identifier(ident) => {
+                self.token_stream.next();
                 let (peek, mut pos1) = self.token_stream.peek();
                 match peek {
                     // bar::a类型
@@ -723,6 +734,36 @@ impl PipelineParser {
                         ))
                     }
                     _ => Ok(Expr::Variable(ident, pos)),
+                }
+            }
+            Token::BraceLeft=>{
+                let (vd,mut vd_pos)=self.parse_fn_def_args()?;
+                let (_,arrow_pos)=self.parse_special_token(Token::Arrow)?;
+                vd_pos+=arrow_pos;
+                if let Token::ParenthesisLeft=self.token_stream.peek().0{
+                    vd_pos+=self.token_stream.peek().1;
+                    self.token_stream.next();
+                    let blocks = self.parse_stmt_blocks()?;
+                    let (_,right_pos)=self.parse_special_token(Token::ParenthesisRight)?;
+                    vd_pos+=right_pos;
+                    let fn_def = FnDef{
+                        name: "".to_string(),
+                        return_type: "Unit".to_string(),
+                        args: vd,
+                        body: blocks,
+                    };
+                    return Ok(Expr::FnClosure(FnClosureExpr{def:fn_def},vd_pos));
+                }else{
+                    let e =self.parse_expr()?;
+                    let pos = e.position();
+                    vd_pos+=pos.clone();
+                    let fn_def = FnDef{
+                        name: "".to_string(),
+                        return_type: "Unit".to_string(),
+                        args: vd,
+                        body: vec![Stmt::EvalExpr(Box::new(e),pos)],
+                    };
+                    return Ok(Expr::FnClosure(FnClosureExpr{def:fn_def},vd_pos));
                 }
             }
             _ => Err(PipelineError::UnexpectedToken(

@@ -545,7 +545,7 @@ impl Add for Dynamic {
                     let r = format!("{}{}", s, f);
                     Dynamic::String(r)
                 }
-                _ => panic!("cannot do str append"),
+                t => panic!("{t} cannot do str append"),
             },
             _ => panic!("不能进行相加操作"),
         }
