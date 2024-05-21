@@ -1,11 +1,9 @@
-trait FunOnce{
-    fun call()
+import hello
+fun task(callback:FunOnce){
+    callback.call()
 }
-fun test(
-    f:FunOnce=()->{
-        print("Hello")
-    }
-){
-    f.call()
+task()->{
+    println("Hello,word")
 }
-test()
+val a = App::new()
+println(a)

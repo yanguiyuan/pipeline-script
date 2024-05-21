@@ -313,10 +313,16 @@ impl Module {
         let m = self.submodules.get(name).unwrap();
         m
     }
-    pub fn merge_into_main(&mut self, name: &str) {
-        let m = self.submodules.get(name).unwrap();
-        let m = m.clone();
-        self.merge(&m);
+    pub fn merge_into_main(&mut self, name: &str) -> bool {
+        let m = self.submodules.get(name);
+        match m {
+            Some(m) => {
+                let m = m.clone();
+                self.merge(&m);
+                true
+            }
+            None => false,
+        }
     }
     pub fn register_native_function<A: 'static, F>(&mut self, name: impl Into<String>, f: F)
     where
@@ -356,16 +362,23 @@ impl Module {
         // 处理类静态方法调用
         if name.contains("::") {
             let split = name.split("::").collect::<Vec<_>>();
-            let class = self.get_class(split.first().unwrap()).unwrap();
-            let function = class.get_static_function(split[1]);
-            return match function {
-                None => Err(StaticFunctionUndefined(
-                    (*split.first().unwrap()).into(),
-                    split[1].into(),
-                    pos,
-                )),
-                Some(f) => f.call(ctx, args),
-            };
+            let class = self.get_class(split.first().unwrap());
+            match class {
+                Some(class) => {
+                    let function = class.get_static_function(split[1]);
+                    return match function {
+                        None => Err(StaticFunctionUndefined(
+                            (*split.first().unwrap()).into(),
+                            split[1].into(),
+                            pos,
+                        )),
+                        Some(f) => f.call(ctx, args),
+                    };
+                }
+                None => {
+                    return Err(PipelineError::ClassUndefined(split[0].into(), pos));
+                }
+            }
         }
         match f {
             None => {

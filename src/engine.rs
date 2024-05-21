@@ -108,7 +108,7 @@ impl Engine {
         println!("{:4}|{}", pos.row, line);
         let p = String::from(' ');
         let mut p = p.repeat(pos.col - 1);
-        let arrow = String::from('↑');
+        let arrow = String::from('~');
         let arrow = arrow.repeat(pos.span);
         p.push_str(&arrow);
         println!("    |{}\x1b[0m", p);
@@ -145,17 +145,23 @@ impl Engine {
                 println!("\x1b[31m[错误] 解析错误，不正确的Token '{actual}'，期待Token '{expect}'");
                 self.display_source_line(&pos)
             }
-            PipelineError::UnusedKeyword(i) => {
+            PipelineError::UnusedKeyword(i, pos) => {
                 println!("\x1b[31m[错误] 保留的关键字 '{i}'");
+                self.display_source_line(&pos);
             }
-            PipelineError::UnknownModule(_) => {
-                todo!()
+            PipelineError::UnknownModule(name, pos) => {
+                println!("\x1b[31m[错误] {}.ppl 未知的模块 '{name}'", pos.module_name);
+                self.display_source_line(&pos);
             }
             PipelineError::UndefinedOperation(_) => {
                 todo!()
             }
             PipelineError::MismatchedType(need, actual, pos) => {
                 println!("\x1b[31m[错误] 不匹配的类型，期望'{need}',实际'{actual}'");
+                self.display_source_line(&pos)
+            }
+            PipelineError::ClassUndefined(name, pos) => {
+                println!("\x1b[31m[错误] 类'{name}'未定义");
                 self.display_source_line(&pos)
             }
         }

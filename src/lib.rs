@@ -24,7 +24,7 @@ mod tests {
 
     #[test]
     fn test_lexer() {
-        let mut lexer = Lexer::from_script(
+        let lexer = Lexer::from_script(
             "main",
             r#"
 fun add(a:Int,b:Int){
@@ -32,11 +32,11 @@ fun add(a:Int,b:Int){
 }
         "#,
         );
-        for (token, pos) in lexer.clone() {
+        for (_, pos) in lexer.clone() {
             println!("{:?}", pos);
             let line1 = lexer.line(pos.row);
             println!("{}", line1);
-            let mut p = String::from(' ');
+            let p = String::from(' ');
             let mut p = p.repeat(pos.col - 1);
             p.push('↑');
             println!("{}", p);
@@ -54,7 +54,7 @@ fun add(a:Int,b:Int){
         }
         "#,
         );
-        let mut m = Module::new("main");
+        let m = Module::new("main");
         let mut parser = PipelineParser::new(lexer, Arc::new(RwLock::new(m)));
         let s = parser.parse_stmt_blocks().unwrap();
         // let f=parser.get_module();

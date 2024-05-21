@@ -65,13 +65,46 @@ impl PipelineParser {
                         self.parse_class()?;
                         continue;
                     }
-                    t => Err(PipelineError::UnusedKeyword(t.into())),
+                    "trait" => {
+                        self.parse_trait()?;
+                        continue;
+                    }
+                    t => Err(PipelineError::UnusedKeyword(t.into(), pos)),
                 },
                 Token::Eof => Ok(Stmt::Noop),
                 Token::ParenthesisRight => Ok(Stmt::Noop),
                 _ => self.parse_expr_stmt(),
             };
         }
+    }
+    pub fn parse_trait(&mut self) -> PipelineResult<()> {
+        self.parse_keyword("trait")?;
+        self.parse_identifier()?;
+        self.parse_special_token(Token::ParenthesisLeft)?;
+        loop {
+            let (peek, pos) = self.token_stream.peek();
+            match peek {
+                Token::Keyword(keyword) => {
+                    if keyword.eq("fun") {
+                        self.token_stream.next();
+                        self.parse_identifier()?;
+                        self.parse_fn_def_args()?;
+                    } else {
+                        return Err(PipelineError::UnusedKeyword(keyword, pos));
+                    }
+                }
+                Token::ParenthesisRight => break,
+                t => {
+                    return Err(PipelineError::UnexpectedToken(
+                        t.to_string(),
+                        "Keyword(fun)".into(),
+                        pos,
+                    ))
+                }
+            }
+        }
+        self.parse_special_token(Token::ParenthesisRight)?;
+        Ok(())
     }
     pub fn parse_class(&mut self) -> PipelineResult<()> {
         self.parse_keyword("class")?;
@@ -170,7 +203,7 @@ impl PipelineParser {
         let (ret, mut pos) = self.token_stream.next();
         if let Token::Keyword(s) = ret.clone() {
             if s != "for" {
-                return Err(PipelineError::UnusedKeyword(s));
+                return Err(PipelineError::UnusedKeyword(s, pos));
             }
             let (one, pos1) = self.token_stream.next();
             let (peek, _) = self.token_stream.peek();
@@ -183,7 +216,7 @@ impl PipelineParser {
             let (in_token, pos2) = self.token_stream.next();
             if let Token::Keyword(s0) = in_token {
                 if s0 != "in" {
-                    return Err(PipelineError::UnusedKeyword(s));
+                    return Err(PipelineError::UnusedKeyword(s, pos));
                 }
                 let expr = self.parse_expr_call_chain_exclude_map()?;
                 self.parse_special_token(Token::ParenthesisLeft)?;
@@ -217,7 +250,7 @@ impl PipelineParser {
         };
         #[allow(unused_assignments)]
         let mut script = String::new();
-        current_dir.push(format!("{}.kts", module_name.as_ref()));
+        current_dir.push(format!("{}.ppl", module_name.as_ref()));
         if current_dir.exists() {
             script = fs::read_to_string(current_dir).unwrap();
         } else {
@@ -247,12 +280,12 @@ impl PipelineParser {
         let (ret, mut pos) = self.token_stream.next();
         if let Token::Keyword(s) = ret.clone() {
             if s != "import" {
-                return Err(PipelineError::UnusedKeyword(s));
+                return Err(PipelineError::UnusedKeyword(s, pos));
             }
             let (next, pos1) = self.token_stream.next();
             return match next {
                 Token::Identifier(id) => {
-                    pos.add_span(pos1.span);
+                    pos += pos1;
                     let m = self.parse_module(id.clone())?;
                     if let Some(m) = m {
                         self.module
@@ -279,7 +312,7 @@ impl PipelineParser {
         let (ret, mut pos) = self.token_stream.next();
         if let Token::Keyword(s) = ret.clone() {
             if s != "if" {
-                return Err(PipelineError::UnusedKeyword(s));
+                return Err(PipelineError::UnusedKeyword(s, pos));
             }
             let expr = self.parse_expr()?;
             pos.add_span(expr.position().span);
@@ -329,7 +362,7 @@ impl PipelineParser {
         let (ret, mut pos) = self.token_stream.next();
         if let Token::Keyword(s) = ret.clone() {
             if s != "while" {
-                return Err(PipelineError::UnusedKeyword(s));
+                return Err(PipelineError::UnusedKeyword(s, pos));
             }
             let expr = self.parse_expr()?;
             pos.add_span(expr.position().span);
@@ -351,7 +384,7 @@ impl PipelineParser {
         let (ret, mut pos) = self.token_stream.next();
         if let Token::Keyword(s) = ret.clone() {
             if s != "return" {
-                return Err(PipelineError::UnusedKeyword(s));
+                return Err(PipelineError::UnusedKeyword(s, pos));
             }
             let expr = self.parse_expr()?;
             pos.add_span(expr.position().span);
@@ -679,8 +712,12 @@ impl PipelineParser {
                 )));
                 self.parse_special_token(Token::ParenthesisRight).unwrap();
             }
-        }else if let Token::ParenthesisLeft=peek0{
-            return Err(PipelineError::UnexpectedToken(peek0.to_string(),"Symbol(->)".into(),pos))
+        } else if let Token::ParenthesisLeft = peek0 {
+            return Err(PipelineError::UnexpectedToken(
+                peek0.to_string(),
+                "Symbol(->)".into(),
+                pos,
+            ));
         }
 
         Ok((v, p))
@@ -692,14 +729,15 @@ impl PipelineParser {
             Token::String(s) => {
                 self.token_stream.next();
                 Ok(Expr::StringConstant(s, pos))
-            },
+            }
             Token::Int(i) => {
                 self.token_stream.next();
                 Ok(Expr::IntConstant(i, pos))
-            },
+            }
             Token::Float(f) => {
                 self.token_stream.next();
-                Ok(Expr::FloatConstant(f, pos)) },
+                Ok(Expr::FloatConstant(f, pos))
+            }
             //  解析变量，可以包含 bar::a 类型和a[0]类型
             Token::Identifier(ident) => {
                 self.token_stream.next();
@@ -736,34 +774,34 @@ impl PipelineParser {
                     _ => Ok(Expr::Variable(ident, pos)),
                 }
             }
-            Token::BraceLeft=>{
-                let (vd,mut vd_pos)=self.parse_fn_def_args()?;
-                let (_,arrow_pos)=self.parse_special_token(Token::Arrow)?;
-                vd_pos+=arrow_pos;
-                if let Token::ParenthesisLeft=self.token_stream.peek().0{
-                    vd_pos+=self.token_stream.peek().1;
+            Token::BraceLeft => {
+                let (vd, mut vd_pos) = self.parse_fn_def_args()?;
+                let (_, arrow_pos) = self.parse_special_token(Token::Arrow)?;
+                vd_pos += arrow_pos;
+                if let Token::ParenthesisLeft = self.token_stream.peek().0 {
+                    vd_pos += self.token_stream.peek().1;
                     self.token_stream.next();
                     let blocks = self.parse_stmt_blocks()?;
-                    let (_,right_pos)=self.parse_special_token(Token::ParenthesisRight)?;
-                    vd_pos+=right_pos;
-                    let fn_def = FnDef{
+                    let (_, right_pos) = self.parse_special_token(Token::ParenthesisRight)?;
+                    vd_pos += right_pos;
+                    let fn_def = FnDef {
                         name: "".to_string(),
                         return_type: "Unit".to_string(),
                         args: vd,
                         body: blocks,
                     };
-                    return Ok(Expr::FnClosure(FnClosureExpr{def:fn_def},vd_pos));
-                }else{
-                    let e =self.parse_expr()?;
+                    Ok(Expr::FnClosure(FnClosureExpr { def: fn_def }, vd_pos))
+                } else {
+                    let e = self.parse_expr()?;
                     let pos = e.position();
-                    vd_pos+=pos.clone();
-                    let fn_def = FnDef{
+                    vd_pos += pos.clone();
+                    let fn_def = FnDef {
                         name: "".to_string(),
                         return_type: "Unit".to_string(),
                         args: vd,
-                        body: vec![Stmt::EvalExpr(Box::new(e),pos)],
+                        body: vec![Stmt::EvalExpr(Box::new(e), pos)],
                     };
-                    return Ok(Expr::FnClosure(FnClosureExpr{def:fn_def},vd_pos));
+                    Ok(Expr::FnClosure(FnClosureExpr { def: fn_def }, vd_pos))
                 }
             }
             _ => Err(PipelineError::UnexpectedToken(

@@ -131,10 +131,13 @@ impl Context {
             Stmt::EvalExpr(e, _) => {
                 return self.eval_expr(e);
             }
-            Stmt::Import(s, _) => {
+            Stmt::Import(s, pos) => {
                 let m = self.get_module();
                 let mut m = m.write().unwrap();
-                m.merge_into_main(s);
+                let b = m.merge_into_main(s);
+                if !b {
+                    return Err(PipelineError::UnknownModule(s.into(), pos.clone()));
+                }
             }
             Stmt::Var(l, _) => {
                 let mut d = self.eval_expr(&l.1)?;

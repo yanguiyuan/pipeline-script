@@ -87,7 +87,7 @@ impl Plugin for BuiltinPlugin {
                 ContextValue::Scope(Arc::new(RwLock::new(scope))),
             );
             let r = ptr.call(&mut ctx)?;
-            if let Value::Signal(SignalType::Return(v))=r{
+            if let Value::Signal(SignalType::Return(v)) = r {
                 return Ok(*v);
             }
             Ok(r)
