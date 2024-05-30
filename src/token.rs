@@ -53,6 +53,14 @@ pub enum Token {
     Arrow,
     /// |
     BitOr,
+    /// !
+    Negate,
+    /// &&
+    And,
+    /// ||
+    Or,
+    /// @
+    Annotation,
     Eof,
 }
 impl Display for Token {
@@ -86,6 +94,10 @@ impl Display for Token {
             Token::Arrow => write!(f, "Symbol(->)"),
             Token::BitOr => write!(f, "Symbol(|)"),
             Token::Eof => write!(f, "EOF"),
+            Token::Negate => write!(f, "Symbol(!)"),
+            Token::And => write!(f, "Symbol(&&)"),
+            Token::Or => write!(f, "Symbol(||)"),
+            Token::Annotation => write!(f, "Symbol(@)"),
         }
     }
 }
@@ -121,6 +133,10 @@ impl Token {
             Token::NotEqual => 25,
             Token::Arrow => 26,
             Token::BitOr => 27,
+            Token::Negate => 28,
+            Token::And => 29,
+            Token::Or => 30,
+            Token::Annotation => 31,
         }
     }
     pub fn is_colon(&self) -> bool {

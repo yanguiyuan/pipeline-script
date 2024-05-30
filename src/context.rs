@@ -429,7 +429,16 @@ impl Context {
                     ))),
                 }
             }
-
+            Expr::Unary(op, expr, _) => match op {
+                Op::Negate => {
+                    let e = self.eval_expr(expr)?;
+                    let r = e.as_bool().unwrap();
+                    return Ok((!r).into());
+                }
+                _ => {
+                    panic!("不支持一元操作")
+                }
+            },
             Expr::Binary(op, l, r, _) => match op {
                 Op::Plus => {
                     let l_r = self.eval_expr(l)?;
@@ -494,6 +503,27 @@ impl Context {
                     let r_r = r_r.as_dynamic();
                     Ok((l_r % r_r).into())
                 }
+                Op::And => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic().as_bool().unwrap();
+                    if !l_r {
+                        return Ok(l_r.into());
+                    }
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic().as_bool().unwrap();
+                    Ok((l_r && r_r).into())
+                }
+                Op::Or => {
+                    let l_r = self.eval_expr(l)?;
+                    let l_r = l_r.as_dynamic().as_bool().unwrap();
+                    if l_r {
+                        return Ok(l_r.into());
+                    }
+                    let r_r = self.eval_expr(r)?;
+                    let r_r = r_r.as_dynamic().as_bool().unwrap();
+                    Ok((l_r || r_r).into())
+                }
+                _ => panic!("不支持二元操作"),
             },
             Expr::Struct(e, _) => {
                 let mut props = HashMap::new();

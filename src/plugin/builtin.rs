@@ -18,7 +18,7 @@ impl Plugin for BuiltinPlugin {
             ContextKey::NativeObject("$Scanner".into()),
             ContextValue::Native(Arc::new(RwLock::new(Scanner::new(stdin())))),
         );
-        let mut m = Module::new("std");
+        let mut m = Module::new("buildin");
         m.register_class(Class::new("Int", vec![]));
         m.register_class(Class::new("Array", vec![]));
         m.register_pipe_function("println", |ctx: &mut Context, args: Vec<Value>| {
@@ -60,6 +60,28 @@ impl Plugin for BuiltinPlugin {
                 array.push(v.clone());
             }
             Ok(Value::Mutable(raw_array.clone()))
+        });
+        m.register_pipe_function("max", |_: &mut Context, args: Vec<Value>| {
+            let mut max_value = args.first().unwrap().as_dynamic().convert_float().unwrap();
+            for v in args {
+                let vd = v.as_dynamic();
+                let n = vd.convert_float().unwrap();
+                if n > max_value {
+                    max_value = n;
+                }
+            }
+            Ok(max_value.into())
+        });
+        m.register_pipe_function("min", |_: &mut Context, args: Vec<Value>| {
+            let mut min_value = args.first().unwrap().as_dynamic().convert_float().unwrap();
+            for v in args {
+                let vd = v.as_dynamic();
+                let n = vd.convert_float().unwrap();
+                if n < min_value {
+                    min_value = n;
+                }
+            }
+            Ok(min_value.into())
         });
         m.register_pipe_function("call", |ctx: &mut Context, args: Vec<Value>| {
             let function_ptr = args.first().unwrap();
@@ -196,6 +218,51 @@ impl Plugin for BuiltinPlugin {
             let mut sc = sc.write().unwrap();
             let sc = sc.downcast_mut::<Scanner<Stdin>>().unwrap();
             let i = sc.next_i64().unwrap().unwrap();
+            Ok(i.into())
+        });
+        m.register_pipe_function("readFloat", |ctx, args| {
+            if !args.is_empty() {
+                let c = args.first().unwrap().as_dynamic().as_string().unwrap();
+                print!("{c}");
+                io::stdout().flush().unwrap();
+            }
+            let sc = ctx
+                .get(ContextKey::NativeObject("$Scanner".into()))
+                .unwrap();
+            let sc = sc.as_native().unwrap();
+            let mut sc = sc.write().unwrap();
+            let sc = sc.downcast_mut::<Scanner<Stdin>>().unwrap();
+            let i = sc.next_f64().unwrap().unwrap();
+            Ok(i.into())
+        });
+        m.register_pipe_function("readString", |ctx, args| {
+            if !args.is_empty() {
+                let c = args.first().unwrap().as_dynamic().as_string().unwrap();
+                print!("{c}");
+                io::stdout().flush().unwrap();
+            }
+            let sc = ctx
+                .get(ContextKey::NativeObject("$Scanner".into()))
+                .unwrap();
+            let sc = sc.as_native().unwrap();
+            let mut sc = sc.write().unwrap();
+            let sc = sc.downcast_mut::<Scanner<Stdin>>().unwrap();
+            let i = sc.next().unwrap().unwrap();
+            Ok(i.into())
+        });
+        m.register_pipe_function("readLine", |ctx, args| {
+            if !args.is_empty() {
+                let c = args.first().unwrap().as_dynamic().as_string().unwrap();
+                print!("{c}");
+                io::stdout().flush().unwrap();
+            }
+            let sc = ctx
+                .get(ContextKey::NativeObject("$Scanner".into()))
+                .unwrap();
+            let sc = sc.as_native().unwrap();
+            let mut sc = sc.write().unwrap();
+            let sc = sc.downcast_mut::<Scanner<Stdin>>().unwrap();
+            let i = sc.next_line().unwrap().unwrap();
             Ok(i.into())
         });
         e.register_into_main_module(m);

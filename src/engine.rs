@@ -196,8 +196,13 @@ impl Engine {
 }
 impl Default for Engine {
     fn default() -> Self {
+        let ctx = Context::background();
+        let scope = ctx.get_scope();
+        let mut scope = scope.write().unwrap();
+        scope.set("false", false.into());
+        scope.set("true", true.into());
         let mut e = Self {
-            ctx: Context::background(),
+            ctx,
             has_run_main_block: false,
             enable_ast_debug: false,
         };

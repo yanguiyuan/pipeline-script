@@ -182,6 +182,12 @@ impl Lexer {
                             self.next_char();
                             return r;
                         }
+                        ('|', '|') => {
+                            let r = Some((Token::Or, self.with_pos(2)));
+                            self.next_char();
+                            self.next_char();
+                            return r;
+                        }
                         ('|', _) => {
                             let r = Some((Token::BitOr, self.with_pos(1)));
                             self.next_char();
@@ -193,8 +199,24 @@ impl Lexer {
                             self.next_char();
                             return r;
                         }
+                        ('!', _) => {
+                            let r = Some((Token::Negate, self.with_pos(1)));
+                            self.next_char();
+                            return r;
+                        }
+                        ('@', _) => {
+                            let r = Some((Token::Annotation, self.with_pos(1)));
+                            self.next_char();
+                            return r;
+                        }
                         ('=', '=') => {
                             let r = Some((Token::Equal, self.with_pos(2)));
+                            self.next_char();
+                            self.next_char();
+                            return r;
+                        }
+                        ('&', '&') => {
+                            let r = Some((Token::And, self.with_pos(2)));
                             self.next_char();
                             self.next_char();
                             return r;

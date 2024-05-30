@@ -71,6 +71,12 @@ impl PipelineParser {
                     }
                     t => Err(PipelineError::UnusedKeyword(t.into(), pos)),
                 },
+                Token::Annotation => {
+                    self.token_stream.next();
+                    let ident = self.parse_identifier()?;
+                    self.parse_function();
+                    continue;
+                }
                 Token::Eof => Ok(Stmt::Noop),
                 Token::ParenthesisRight => Ok(Stmt::Noop),
                 _ => self.parse_expr_stmt(),
@@ -89,6 +95,10 @@ impl PipelineParser {
                         self.token_stream.next();
                         self.parse_identifier()?;
                         self.parse_fn_def_args()?;
+                        if let Token::Colon = self.token_stream.peek().0 {
+                            self.token_stream.next();
+                            self.parse_identifier()?;
+                        }
                     } else {
                         return Err(PipelineError::UnusedKeyword(keyword, pos));
                     }
@@ -257,7 +267,7 @@ impl PipelineParser {
             let home_dir = dirs::home_dir().expect("无法获取用户根目录");
             let file_path = home_dir
                 .join(".pipeline/package")
-                .join(format!("{}.kts", module_name.as_ref()));
+                .join(format!("{}.ppl", module_name.as_ref()));
             let read_result = fs::read_to_string(file_path);
             match read_result {
                 Ok(r) => {
@@ -270,7 +280,9 @@ impl PipelineParser {
         let id = module_name.as_ref();
 
         let lexer = Lexer::from_script(id, script);
-        let m = Module::new(id);
+        let mut m = Module::new(id);
+        m.register_class(Class::new("Array", vec![]));
+        m.register_class(Class::new("Int", vec![]));
         let mut parser = PipelineParser::new(lexer, Arc::new(RwLock::new(m)));
         parser.parse_stmt_blocks()?;
         let m0 = parser.get_module().read().unwrap().clone();
@@ -738,6 +750,12 @@ impl PipelineParser {
                 self.token_stream.next();
                 Ok(Expr::FloatConstant(f, pos))
             }
+            Token::Negate => {
+                self.token_stream.next();
+                let expr = self.parse_expr()?;
+                pos += expr.position();
+                Ok(Expr::Unary(Op::Negate, Box::new(expr), pos))
+            }
             //  解析变量，可以包含 bar::a 类型和a[0]类型
             Token::Identifier(ident) => {
                 self.token_stream.next();
@@ -1077,7 +1095,7 @@ impl PipelineParser {
         }
         Ok(Expr::Map(v, pos))
     }
-    pub fn parse_expr(&mut self) -> PipelineResult<Expr> {
+    pub fn parse_logical_expr(&mut self) -> PipelineResult<Expr> {
         let (peek, _) = self.token_stream.peek();
         if peek == Token::SquareBracketLeft {
             return self.parse_array();
@@ -1122,6 +1140,25 @@ impl PipelineParser {
                 ))
             }
             _ => Ok(lhs),
+        }
+    }
+    pub fn parse_expr(&mut self) -> PipelineResult<Expr> {
+        let expr = self.parse_logical_expr()?;
+        let (peek, pos) = self.token_stream.peek();
+        match peek {
+            Token::And => {
+                self.token_stream.next();
+                let rhs = self.parse_logical_expr()?;
+                let pos0 = expr.position() + pos + rhs.position();
+                Ok(Expr::Binary(Op::And, Box::new(expr), Box::new(rhs), pos0))
+            }
+            Token::Or => {
+                self.token_stream.next();
+                let rhs = self.parse_logical_expr()?;
+                let pos0 = expr.position() + pos + rhs.position();
+                Ok(Expr::Binary(Op::Or, Box::new(expr), Box::new(rhs), pos0))
+            }
+            _ => Ok(expr),
         }
     }
     pub fn parse_special_token(&mut self, rhs: Token) -> PipelineResult<(Token, Position)> {

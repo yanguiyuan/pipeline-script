@@ -1,9 +1,23 @@
-import hello
-fun task(callback:FunOnce){
-    callback.call()
+val a = [1, 2, 3, 4, 5]
+a.map() -> {
+    return it * 2
+}.forEach()->{
+    println(it)
 }
-task()->{
-    println("Hello,word")
+class Bool(){}
+fun Bool.isFalse(){
+    if !this {
+        return true
+    }else{
+        return true
+    }
 }
-val a = App::new()
-println(a)
+val b = false
+val c = b.isFalse()
+println(c)
+if false || c{
+    println("OK")
+}
+@CostTime
+fun add(a:Int,b:Int)=a+b
+println(add(1,3))

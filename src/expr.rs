@@ -11,6 +11,7 @@ pub enum Expr {
     FnCall(FnCallExpr, Position),
     Variable(String, Position),
     Binary(Op, Box<Expr>, Box<Expr>, Position),
+    Unary(Op, Box<Expr>, Position),
     Array(Vec<Expr>, Position),
     Map(Vec<(Expr, Expr)>, Position),
     Index(Box<Expr>, Box<Expr>, Position),
@@ -48,6 +49,9 @@ pub enum Op {
     Less,
     Equal,
     NotEqual,
+    Negate,
+    And,
+    Or,
 }
 #[derive(Debug, Clone)]
 pub struct FnCallExpr {
@@ -118,6 +122,7 @@ impl Expr {
             Expr::None(pos) => pos.clone(),
             Expr::Struct(_, pos) => pos.clone(),
             Expr::MemberAccess(_, _, pos) => pos.clone(),
+            Expr::Unary(_, _, pos) => pos.clone(),
         }
     }
 }
