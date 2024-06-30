@@ -1,15 +1,15 @@
-mod context;
-mod engine;
-mod error;
-mod expr;
-mod lexer;
-mod module;
-mod parser;
-mod plugin;
-mod position;
-mod stmt;
-mod token;
-mod types;
+pub mod context;
+pub mod engine;
+pub mod error;
+pub mod expr;
+pub mod lexer;
+pub mod module;
+pub mod parser;
+pub mod plugin;
+pub mod position;
+pub mod stmt;
+pub mod token;
+pub mod types;
 
 #[cfg(test)]
 mod tests {
