@@ -1,6 +1,7 @@
 use crate::module::FnDef;
 use crate::position::Position;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -27,6 +28,54 @@ pub struct StructExpr {
     props: HashMap<String, Expr>,
 }
 
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expr::StringConstant(s, _) => write!(f, "{s:?}"),
+            Expr::IntConstant(i, _) => write!(f, "{i}"),
+            Expr::Variable(v, _) => write!(f, "{v}"),
+            Expr::FnCall(fc, _) => {
+                write!(f, "{}(", fc.name)?;
+                for (i, arg) in fc.args.iter().enumerate() {
+                    write!(f, "{}", arg.value)?;
+                    if i < fc.args.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, ")")
+            }
+            Expr::FnClosure(fc, _) => {
+                write!(f, "(")?;
+                for arg in fc.def.args.iter() {
+                    write!(f, "{}", arg.name)?;
+                }
+                write!(f, ")")?;
+                write!(f, "->{{\n")?;
+                for v in fc.def.body.iter() {
+                    write!(f, "    {}\n", v)?;
+                }
+                write!(f, "}}")
+            }
+            Expr::Array(v, _) => {
+                write!(f, "[")?;
+                for (i, e) in v.iter().enumerate() {
+                    write!(f, "{e}")?;
+                    if i < v.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "]")
+            }
+            Expr::Binary(op, a, b, _) => match op {
+                Op::Plus => write!(f, "{a} + {b}"),
+                Op::Mul => write!(f, "{a} * {b}"),
+                Op::Or => write!(f, "{a} || {b}"),
+                _ => write!(f, "<Op>"),
+            },
+            _ => write!(f, "<Expr>"),
+        }
+    }
+}
 impl StructExpr {
     pub fn new(name: String, props: HashMap<String, Expr>) -> Self {
         Self { name, props }
@@ -89,6 +138,7 @@ impl Argument {
 #[derive(Debug, Clone)]
 pub struct FnClosureExpr {
     pub(crate) def: FnDef,
+    pub(crate) is_outside: bool,
 }
 impl Expr {
     pub fn is_fn_call(&self) -> bool {

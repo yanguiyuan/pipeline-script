@@ -5,7 +5,7 @@ use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::types::{FnPtr, SignalType, Value, WrapValue};
 use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::sync::{Arc, RwLock};
 
 pub trait NativeFunction<Marker> {
@@ -137,6 +137,35 @@ impl Class {
         self.static_methods.insert(name, method);
     }
 }
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Function::Script(s) => {
+                write!(f, "fun {}(", s.name)?;
+                for i in s.args.iter().enumerate() {
+                    write!(f, "{}:{}", i.1.name, i.1.declaration_type)?;
+                    if i.0 < s.args.len() - 1 {
+                        write!(f, ", ")?;
+                    }
+                }
+
+                write!(f, ")")?;
+                if s.body.len() == 1 {
+                    if let Stmt::Return(r, _) = s.body.first().unwrap() {
+                        write!(f, " = {}", r)?;
+                        return Ok(());
+                    }
+                    write!(f, " = {}", s.body.first().unwrap())?;
+                }
+                Ok(())
+            }
+            Function::Method(m) => {
+                write!(f, "fun {}", m.name)
+            }
+            _ => Ok(()),
+        }
+    }
+}
 impl Function {
     pub fn is_script(&self) -> bool {
         matches!(self, Function::Script(_))
@@ -241,6 +270,7 @@ impl Function {
         }
     }
 }
+
 impl Module {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
@@ -249,6 +279,13 @@ impl Module {
             classes: HashMap::new(),
             block: vec![],
             submodules: HashMap::new(),
+        }
+    }
+    pub fn fmt(&self) {
+        for i in &self.functions {
+            if i.1.to_string() != "" {
+                println!("{}", i.1);
+            }
         }
     }
     pub fn get_class(&self, class_name: &str) -> Option<&Class> {
@@ -293,20 +330,39 @@ impl Module {
         let class_result = self.classes.get_mut(class_name.as_ref()).unwrap();
         class_result.register_method(method_name.into(), method)
     }
-    pub fn register_class(&mut self, class: Class) {
+    pub fn register_class(&mut self, mut class: Class) {
+        if self.classes.contains_key(&class.name) {
+            let class_old = self.get_class(&class.name).unwrap();
+            for (name, function) in &class_old.methods {
+                class.register_method(name.to_string(), function.clone())
+            }
+        }
         self.classes.insert(class.name.clone(), class);
     }
     pub fn get_name(&self) -> String {
         self.name.clone()
     }
     pub fn merge(&mut self, module: &Module) {
-        for (k, v) in &module.functions {
-            if !self.functions.contains_key(k) {
-                self.functions.insert(k.clone(), v.clone());
-            }
-        }
-        for (name, class) in &module.classes {
-            self.classes.insert(name.clone(), class.clone());
+        // for (k, v) in &module.functions {
+        //     if !self.functions.contains_key(k) {
+        //         self.functions.insert(k.clone(), v.clone());
+        //     }
+        // }
+        let new_functions: HashMap<_, _> = module
+            .functions
+            .iter()
+            .filter_map(|(k, v)| {
+                if !self.functions.contains_key(k) {
+                    Some((k.clone(), v.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        self.functions.extend(new_functions);
+        for (_, class) in &module.classes {
+            self.register_class(class.clone())
         }
     }
     pub fn get_submodule(&self, name: &str) -> &Module {

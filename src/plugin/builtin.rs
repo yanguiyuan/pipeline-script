@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::context::{Context, ContextKey, ContextValue, Scope};
 use crate::engine::Engine;
 use crate::error::PipelineError;
@@ -8,7 +9,9 @@ use crate::types::{Dynamic, SignalType, Value};
 use scanner_rust::Scanner;
 
 use std::io;
-use std::io::{stdin, Stdin, Write};
+use std::io::{Read, stdin, Stdin, Write};
+use std::path::Path;
+use std::process::{Command, exit, Stdio};
 use std::sync::{Arc, RwLock};
 
 pub struct BuiltinPlugin;
@@ -17,6 +20,14 @@ impl Plugin for BuiltinPlugin {
         e.register_context_value(
             ContextKey::NativeObject("$Scanner".into()),
             ContextValue::Native(Arc::new(RwLock::new(Scanner::new(stdin())))),
+        );
+        e.register_context_value(
+            ContextKey::NativeObject("workspace".into()),
+            ContextValue::Native(Arc::new(RwLock::new(String::from("."))))
+        );
+        e.register_context_value(
+            ContextKey::NativeObject("envs".into()),
+            ContextValue::Native(Arc::new(RwLock::new(HashMap::<String, String>::new())))
         );
         let mut m = Module::new("buildin");
         m.register_class(Class::new("Int", vec![]));
@@ -264,6 +275,66 @@ impl Plugin for BuiltinPlugin {
             let sc = sc.downcast_mut::<Scanner<Stdin>>().unwrap();
             let i = sc.next_line().unwrap().unwrap();
             Ok(i.into())
+        });
+        m.register_pipe_function("nu", |ctx, args| {
+            let cmd = "nu";
+            let command = args.first().unwrap().as_string().unwrap();
+
+            let mut cmd = Command::new(cmd);
+            let workspace = ctx.get(ContextKey::NativeObject("workspace".to_string()));
+            if let Some(workspace) = workspace {
+                let workspace = workspace.as_native().unwrap();
+                let workspace = workspace.read().unwrap();
+                let workspace = workspace.downcast_ref::<String>().unwrap();
+                cmd.current_dir(workspace);
+            }
+            let mode = args.get(1);
+            let mut is_stdout =false;
+            if let Some(mode)=mode{
+                let mode =mode.as_string().unwrap();
+                if mode.as_str()=="stdout"{
+                    cmd.stdout(Stdio::piped());
+                    is_stdout=true;
+                }
+
+            }
+            let envs = ctx.get(ContextKey::NativeObject("envs".to_string()));
+            let envs =envs.unwrap().as_native().unwrap();
+            let envs = envs.read().unwrap();
+            let envs =envs.downcast_ref::<HashMap<String,String>>().unwrap();
+            let mut child = cmd.envs(envs.iter()).args(&["-c", &command]).spawn().expect("执行命令失败");
+            let mut buffer = String::new();
+            let _ = child.wait().expect("Failed to wait for command execution");
+            if is_stdout{
+                child.stdout.unwrap().read_to_string(&mut buffer).expect("读取控制台输出错误");
+                return Ok(buffer.into());
+            }
+            return Ok(().into())
+
+        });
+        m.register_pipe_function("workspace", |ctx, args| {
+            let path = args.first().unwrap().as_string().unwrap();
+            if !Path::new(&path).exists(){
+                println!("\x1b[31m[错误]:路径\"{path}\"不存在\x1b[0m");
+                exit(0);
+            }
+            let workspace = ctx.get(ContextKey::NativeObject("workspace".to_string()));
+            let workspace = workspace.unwrap().as_native().unwrap();
+            let mut workspace = workspace.write().unwrap();
+            let workspace =workspace.downcast_mut::<String>().unwrap();
+            *workspace=path;
+            return Ok(().into());
+        });
+        m.register_pipe_function("env", |ctx, args| {
+
+            let envs = ctx.get(ContextKey::NativeObject("envs".to_string()));
+            let envs =envs.unwrap().as_native().unwrap();
+            let mut envs = envs.write().unwrap();
+            let envs =envs.downcast_mut::<HashMap<String,String>>().unwrap();
+            let key = args.first().unwrap().as_string().unwrap();
+            let value =args[1].as_string().unwrap();
+            envs.insert(key,value);
+            return Ok(().into());
         });
         e.register_into_main_module(m);
     }

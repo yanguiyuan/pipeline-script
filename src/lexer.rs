@@ -126,7 +126,7 @@ impl Lexer {
                             }
                             return self.scan_number();
                         }
-                        ('a'..='z' | 'A'..='Z', _) => {
+                        ('a'..='z' | 'A'..='Z' | '_', _) => {
                             let ident = self.scan_identifier();
                             let clone = ident.clone().unwrap();
                             let ident_str = clone.0.get_identifier_value();
@@ -361,7 +361,7 @@ impl Lexer {
         let mut v = String::new();
         let mut pos = self.with_pos(0);
         while let Some(c) = self.current_char() {
-            if !c.is_alphabetic() && !c.is_numeric() {
+            if !c.is_alphabetic() && !c.is_numeric() && c != '_' {
                 break;
             }
             v.push(c);

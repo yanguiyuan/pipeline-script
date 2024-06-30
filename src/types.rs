@@ -146,7 +146,10 @@ impl Value {
             Value::Immutable(d) => d.clone(),
             Value::Mutable(d) => d.clone(),
             Value::Refer(r) => r.upgrade().unwrap(),
-            _ => panic!("signal cannot as arc"),
+            Value::Constant(d)=>Arc::new(RwLock::new(d.clone())),
+            t => {
+                println!("{t:?}");
+                panic!("signal cannot as arc"); }
         }
     }
     pub fn as_weak(&self) -> Weak<RwLock<Dynamic>> {

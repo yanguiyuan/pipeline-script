@@ -1,5 +1,6 @@
 use crate::expr::Expr;
 use crate::position::Position;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -26,6 +27,51 @@ pub struct IfStmt {
     else_body: Option<Vec<Stmt>>,
 }
 
+impl Display for Stmt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Stmt::Import(name, _) => write!(f, "import {name};"),
+            Stmt::Val(v, _) => {
+                write!(f, "val {} = {};", v.0, v.1)
+            }
+            Stmt::EvalExpr(e, _) => write!(f, "{e};"),
+            Stmt::Return(r, _) => write!(f, "return {};", r),
+            Stmt::Var(v, _) => {
+                write!(f, "var {} = {};", v.0, v.1)
+            }
+            Stmt::If(i, _) => {
+                for i in &i.branches {
+                    write!(f, "if {} {{\n", i.condition)?;
+                    for b in &i.body {
+                        write!(f, "    {b}\n")?;
+                    }
+                    write!(f, "}}")?;
+                }
+                if i.else_body.is_some() {
+                    write!(f, "else {{\n")?;
+                    for b in i.else_body.clone().unwrap().iter() {
+                        write!(f, "    {b}\n")?;
+                    }
+                    write!(f, "}}\n")?;
+                }
+                Ok(())
+            }
+            _ => write!(f, "<Stmt>"),
+        }
+    }
+}
+
+#[test]
+fn test_display() {
+    let s = Stmt::Val(
+        Box::new((
+            "a".to_string(),
+            Expr::StringConstant("Hello,world!".to_string(), Position::none()),
+        )),
+        Position::none(),
+    );
+    println!("{s}")
+}
 impl IfStmt {
     pub fn new(branches: Vec<IfBranchStmt>, else_body: Option<Vec<Stmt>>) -> Self {
         Self {

@@ -10,7 +10,7 @@ use std::any::Any;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::thread::JoinHandle;
+
 
 #[derive(Clone, Debug)]
 pub struct Context {
@@ -600,7 +600,7 @@ impl SourceCode {
 #[derive(Debug, Clone)]
 pub enum ContextValue {
     // GlobalState(Arc<RwLock<AppContext<String>>>),
-    JoinSet(Arc<RwLock<Vec<JoinHandle<PipelineResult<()>>>>>),
+    // JoinSet(Arc<RwLock<Vec<JoinHandle<PipelineResult<()>>>>>),
     Scope(Arc<RwLock<Scope>>),
     Env(Arc<RwLock<HashMap<String, String>>>),
     Position(Position),
@@ -623,6 +623,12 @@ impl ContextValue {
             _ => None,
         }
     }
+    // pub fn as_join_set(&self) -> Option<Arc<RwLock<dyn Any + Send + Sync>>> {
+    //     match self {
+    //         ContextValue::JoinSet(m) => Some(m.clone()),
+    //         _ => None,
+    //     }
+    // }
     pub fn as_position(&self) -> Option<Position> {
         match self {
             ContextValue::Position(m) => Some(m.clone()),

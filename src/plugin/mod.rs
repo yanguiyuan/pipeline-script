@@ -1,4 +1,5 @@
 pub mod builtin;
+pub mod task;
 
 use crate::engine::Engine;
 

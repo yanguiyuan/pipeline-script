@@ -22,10 +22,45 @@ pub struct Engine {
 }
 impl Engine {
     #[allow(unused)]
-    pub fn register_module(&mut self, module: Module) {}
+    pub fn register_module(&mut self, module: Module) {
+        let binding = self.ctx.get_module();
+        let mut main_module = binding.write().unwrap();
+        main_module.register_submodule(module.get_name(), module);
+    }
     #[allow(unused)]
     pub fn enable_ast_debug(&mut self) {
         self.enable_ast_debug = true;
+    }
+    #[allow(unused)]
+    pub fn fmt(&mut self, script: impl AsRef<str>) -> PipelineResult<()> {
+        self.ctx = Context::with_value(
+            &self.ctx,
+            ContextKey::SourceCode("main".into()),
+            ContextValue::Source(SourceCode::Source(script.as_ref().into())),
+        );
+        let lexer = Lexer::from_script("main", script);
+        let m = self.ctx.get_module();
+        let mut parser = PipelineParser::new(lexer, m.clone());
+        let block = parser.parse_stmt_blocks()?;
+        let m = self.ctx.get_module();
+        if !self.has_run_main_block {
+            let block = m.read().unwrap().get_block().clone();
+            drop(m);
+            for i in &block {
+                println!("{i}")
+            }
+            self.has_run_main_block = true;
+        }
+        if self.enable_ast_debug {
+            dbg!(block.clone());
+        }
+        let module = self.get_context().get_module();
+        let module = module.read().unwrap();
+        module.fmt();
+        for i in block {
+            println!("{i}")
+        }
+        Ok(())
     }
     pub fn register_context_value(&mut self, key: ContextKey, value: ContextValue) {
         let ctx = Context::with_value(&self.ctx, key, value);
@@ -177,6 +212,11 @@ impl Engine {
     pub fn run_file(&mut self, path: impl AsRef<Path>) {
         let r = fs::read_to_string(path.as_ref()).unwrap();
         self.run(r);
+    }
+    #[allow(unused)]
+    pub fn fmt_file(&mut self, path: impl AsRef<Path>) {
+        let r = fs::read_to_string(path.as_ref()).unwrap();
+        self.fmt(r).unwrap();
     }
     #[allow(unused)]
     pub fn compile_module(

@@ -1,23 +1,15 @@
-val a = [1, 2, 3, 4, 5]
-a.map() -> {
-    return it * 2
-}.forEach()->{
-    println(it)
-}
-class Bool(){}
-fun Bool.isFalse(){
-    if !this {
-        return true
-    }else{
-        return true
+
+import pipeline
+val PIPELINE_NAME = "demo"
+val ACTIVE_TASK = "*"
+
+
+pipeline("demo"){
+    step("run"){
+        env("app","yann")
+        env("aa","yaiansss")
+        val a = nu("echo $env.app $env.aa|to json")
+        println(a)
     }
 }
-val b = false
-val c = b.isFalse()
-println(c)
-if false || c{
-    println("OK")
-}
-@CostTime
-fun add(a:Int,b:Int)=a+b
-println(add(1,3))
+
