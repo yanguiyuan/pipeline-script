@@ -6,7 +6,7 @@ use crate::plugin::Plugin;
 use crate::types::Value;
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
-use std::thread::{JoinHandle};
+use std::thread::JoinHandle;
 
 
 pub struct TaskPlugin;

@@ -116,6 +116,11 @@ impl Context {
             Some(v) => Some(v),
         }
     }
+    pub fn set_value(&self,key:impl AsRef<str>,value:Value){
+        let scope =self.get_scope();
+        let mut scope = scope.write().unwrap();
+        scope.set(key.as_ref(), value);
+    }
 
     pub fn get(&self, key: ContextKey) -> Option<ContextValue> {
         if self.key == key {
