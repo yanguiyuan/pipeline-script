@@ -31,6 +31,34 @@ impl Engine {
     pub fn enable_ast_debug(&mut self) {
         self.enable_ast_debug = true;
     }
+    // pub fn jit_run(&mut self,script:impl AsRef<str>)->PipelineResult<()>{
+    //     self.ctx = Context::with_value(
+    //         &self.ctx,
+    //         ContextKey::SourceCode("main".into()),
+    //         ContextValue::Source(SourceCode::Source(script.as_ref().into())),
+    //     );
+    //     let lexer = Lexer::from_script("main", script);
+    //     let m = self.ctx.get_module();
+    //     let mut parser = PipelineParser::new(lexer, m.clone());
+    //     let block = parser.parse_stmt_blocks()?;
+    //     let m = self.ctx.get_module();
+    //     if !self.has_run_main_block {
+    //         let block = m.read().unwrap().get_block().clone();
+    //         drop(m);
+    //         for i in &block {
+    //             self.ctx.eval_stmt(i)?;
+    //         }
+    //         self.has_run_main_block = true;
+    //     }
+    //     let mut r = Value::with_immutable(Dynamic::Unit);
+    //     if self.enable_ast_debug {
+    //         dbg!(block.clone());
+    //     }
+    //     for i in &block {
+    //         r = self.ctx.jit_compile_stmt(i).into();
+    //     }
+    //     Ok(())
+    // }
     #[allow(unused)]
     pub fn fmt(&mut self, script: impl AsRef<str>) -> PipelineResult<()> {
         self.ctx = Context::with_value(

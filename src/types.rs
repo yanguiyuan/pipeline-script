@@ -479,6 +479,10 @@ impl PartialEq<Self> for Dynamic {
                 let o = rhs.as_string().unwrap();
                 s.eq(&o)
             }
+            Dynamic::Array(v)=>{
+                let o =rhs.as_array().unwrap();
+                v.eq(&o)
+            }
             _ => panic!("不能进行相等操作"),
         }
     }
@@ -653,7 +657,7 @@ impl Dynamic {
             _ => None,
         }
     }
-    pub fn as_array(&mut self) -> Option<Vec<Value>> {
+    pub fn as_array(&self) -> Option<Vec<Value>> {
         match self {
             Dynamic::Array(i) => Some(i.clone()),
             _ => None,

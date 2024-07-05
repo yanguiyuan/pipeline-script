@@ -1,15 +1,6 @@
-
-import pipeline
-val PIPELINE_NAME = "demo"
-val ACTIVE_TASK = "*"
-
-
-pipeline("demo"){
-    step("run"){
-        env("app","yann")
-        env("aa","yaiansss")
-        val a = nu("echo $env.app $env.aa|to json")
-        println(a)
-    }
+fun add(a:Int,b:Int){
+    return a+b
 }
 
+val a = add(3,4)
+println(a)

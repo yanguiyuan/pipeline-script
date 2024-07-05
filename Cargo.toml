@@ -12,3 +12,4 @@ regex = "1.10.2"
 rand = "0.9.0-alpha.1"
 scanner-rust = "2.0.17"
 ssh-rs = { version = "0.5.0", features = ["scp"] }
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm18-0"] }

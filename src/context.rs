@@ -21,6 +21,7 @@ pub struct Context {
 #[derive(Clone, Debug)]
 pub enum ContextKey {
     MainModule,
+    // LLVMContext,
     SourceCode(String),
     Scope,
     Position,
@@ -64,6 +65,12 @@ impl PartialEq for ContextKey {
                 }
                 false
             }
+            // ContextKey::LLVMContext => {
+            //     if let ContextKey::LLVMContext = other {
+            //         return true;
+            //     }
+            //     false
+            // }
         }
     }
 }
@@ -75,7 +82,11 @@ impl Context {
             key: ContextKey::MainModule,
             value: ContextValue::Module(Arc::new(RwLock::new(Module::new("main")))),
         };
-
+        // let ctx = Self {
+        //     parent: Some(Box::new(ctx)),
+        //     key: ContextKey::LLVMContext,
+        //     value: ContextValue::LLVMContext(Arc::new(inkwell::context::Context::create())),
+        // };
         Self {
             parent: Some(Box::new(ctx)),
             key: ContextKey::Scope,
@@ -93,6 +104,10 @@ impl Context {
         let r = self.get(ContextKey::MainModule).unwrap();
         r.as_module().unwrap()
     }
+    // pub fn get_llvm_context(&self)->Arc<inkwell::context::Context>{
+    //     let r = self.get(ContextKey::LLVMContext).unwrap();
+    //     r.as_llvm_context().unwrap()
+    // }
     pub fn get_scope(&self) -> Arc<RwLock<Scope>> {
         let r = self.get(ContextKey::Scope).unwrap();
         r.as_scope().unwrap()
@@ -611,6 +626,7 @@ pub enum ContextValue {
     Position(Position),
     Local(String),
     Module(Arc<RwLock<Module>>),
+    // LLVMContext(Arc<inkwell::context::Context>),
     Source(SourceCode),
     Native(Arc<RwLock<dyn Any + Send + Sync>>),
 }
@@ -622,18 +638,18 @@ impl ContextValue {
             _ => None,
         }
     }
+    // pub fn as_llvm_context(&self)->Option<Arc<inkwell::context::Context>>{
+    //     match self {
+    //         ContextValue::LLVMContext(m) => Some(m.clone()),
+    //         _ => None,
+    //     }
+    // }
     pub fn as_native(&self) -> Option<Arc<RwLock<dyn Any + Send + Sync>>> {
         match self {
             ContextValue::Native(m) => Some(m.clone()),
             _ => None,
         }
     }
-    // pub fn as_join_set(&self) -> Option<Arc<RwLock<dyn Any + Send + Sync>>> {
-    //     match self {
-    //         ContextValue::JoinSet(m) => Some(m.clone()),
-    //         _ => None,
-    //     }
-    // }
     pub fn as_position(&self) -> Option<Position> {
         match self {
             ContextValue::Position(m) => Some(m.clone()),
