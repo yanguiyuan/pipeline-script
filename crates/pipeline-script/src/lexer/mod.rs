@@ -1,90 +1,55 @@
-use crate::position::Position;
-use crate::token::Token;
+pub mod token;
+pub mod position;
+pub mod iter;
+mod test;
+
 use std::ops::Add;
+use crate::lexer::iter::TokenStream;
+use crate::lexer::position::Position;
+use crate::lexer::token::Token;
 
 #[derive(Debug, Clone)]
 pub struct Lexer {
-    module_name: String,
+    file_name: String,
     chars: Vec<char>,
     index: usize,
     col: usize,
     row: usize,
     keywords: Vec<&'static str>,
 }
-pub struct TokenStream {
-    tokenizer: Lexer,
-    peek: Option<(Token, Position)>,
-}
 
-impl Iterator for TokenStream {
-    type Item = (Token, Position);
 
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.next() {
-            (Token::Eof, _) => None,
-            t => Some(t),
-        }
-    }
-}
-impl TokenStream {
-    #[allow(unused)]
-    pub fn new(lexer: Lexer) -> Self {
-        Self {
-            tokenizer: lexer,
-            peek: None,
-        }
-    }
-    #[allow(unused)]
-    pub fn set_lexer(&mut self, lexer: Lexer) {
-        self.tokenizer = lexer;
-    }
-    pub fn next(&mut self) -> (Token, Position) {
-        if self.peek.is_some() {
-            return self.peek.take().unwrap_or((Token::Eof, Position::none()));
-        }
-        self.tokenizer
-            .next()
-            .unwrap_or((Token::Eof, Position::none()))
-    }
-    #[allow(unused)]
-    pub fn peek(&mut self) -> (Token, Position) {
-        if self.peek.is_some() {
-            return self.peek.clone().unwrap();
-        }
-        let o = self.tokenizer.next();
-        self.peek.clone_from(&o);
-        o.unwrap_or((Token::Eof, Position::none()))
-    }
-}
+
+
 
 impl IntoIterator for Lexer {
     type Item = (Token, Position);
     type IntoIter = TokenStream;
 
     fn into_iter(self) -> Self::IntoIter {
-        TokenStream {
-            tokenizer: self,
-            peek: None,
-        }
+        TokenStream::new(self)
     }
 }
 impl Lexer {
-    pub fn new(module_name: impl Into<String>) -> Self {
+    pub fn is_eof(&self) -> bool {
+        self.index >= self.chars.len()
+    }
+    pub fn new(file_name: impl Into<String>) -> Self {
         Self {
             chars: vec![],
             index: 0,
             col: 1,
             row: 1,
-            module_name: module_name.into(),
+            file_name: file_name.into(),
             keywords: vec![
                 "let", "fn", "fun", "return", "if", "while", "import", "else", "val", "var",
-                "break", "continue", "for", "in", "class", "static", "trait",
+                "break", "continue", "for", "in", "class", "static", "trait","struct","extern"
             ],
         }
     }
     #[allow(unused)]
-    pub fn get_module_name(&self) -> String {
-        self.module_name.clone()
+    pub fn get_file_name(&self) -> String {
+        self.file_name.clone()
     }
     #[allow(unused)]
     pub fn line(&self, line: usize) -> String {
@@ -133,6 +98,12 @@ impl Lexer {
                             if self.keywords.contains(&ident_str) {
                                 return Some((Token::Keyword(String::from(ident_str)), clone.1));
                             }
+                            if ident_str == "true" {
+                                return Some((Token::Boolean(true), clone.1));
+                            }
+                            if ident_str == "false" {
+                                return Some((Token::Boolean(false), clone.1));
+                            }
                             return ident;
                         }
 
@@ -147,22 +118,22 @@ impl Lexer {
                             return r;
                         }
                         ('{', _) => {
-                            let r = Some((Token::ParenthesisLeft, self.with_pos(1)));
+                            let r = Some((Token::ParenLeft, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
                         ('}', _) => {
-                            let r = Some((Token::ParenthesisRight, self.with_pos(1)));
+                            let r = Some((Token::ParenRight, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
                         ('[', _) => {
-                            let r = Some((Token::SquareBracketLeft, self.with_pos(1)));
+                            let r = Some((Token::BracketLeft, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
                         (']', _) => {
-                            let r = Some((Token::SquareBracketRight, self.with_pos(1)));
+                            let r = Some((Token::BracketRight, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
@@ -221,6 +192,11 @@ impl Lexer {
                             self.next_char();
                             return r;
                         }
+                        ('&', _) => {
+                            let r = Some((Token::BitAnd, self.with_pos(1)));
+                            self.next_char();
+                            return r;
+                        }
                         ('-', '>') => {
                             let r = Some((Token::Arrow, self.with_pos(2)));
                             self.next_char();
@@ -253,7 +229,7 @@ impl Lexer {
                             return r;
                         }
                         ('*', _) => {
-                            let r = Some((Token::Mul, self.with_pos(1)));
+                            let r = Some((Token::Star, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
@@ -281,7 +257,7 @@ impl Lexer {
                             self.next_char();
                         }
                         ('/', '/') => {
-                            while self.current_char() != Some('\n') {
+                            while self.current_char().is_some()&&self.current_char() != Some('\n') {
                                 self.next_char();
                             }
                         }
@@ -294,7 +270,7 @@ impl Lexer {
                             self.next_char();
                         }
                         ('/', _) => {
-                            let r = Some((Token::Div, self.with_pos(1)));
+                            let r = Some((Token::Slash, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
@@ -308,7 +284,7 @@ impl Lexer {
         }
     }
     fn with_pos(&self, span: usize) -> Position {
-        Position::new(self.index, span, self.row, self.col, &self.module_name)
+        Position::new(self.index, span, self.row, self.col, &self.file_name)
     }
     fn peek_char(&self) -> Option<char> {
         self.chars.get(self.index + 1).copied()
@@ -383,6 +359,7 @@ impl Lexer {
         }
 
         pos.set_span(v.len() + 2);
+        let v = v.replace("\\n","\n");
         Some((Token::String(v), pos))
     }
     #[allow(unused)]

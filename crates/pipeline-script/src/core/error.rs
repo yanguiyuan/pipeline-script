@@ -1,7 +1,8 @@
-use crate::position::Position;
-pub type PipelineResult<T> = Result<T, PipelineError>;
+use crate::lexer::position::Position;
+
 #[derive(Debug, Clone)]
-pub enum PipelineError {
+pub enum Error {
+    TypeError(String, Position),
     FunctionUndefined(String, Position),
     ClassUndefined(String, Position),
     StaticFunctionUndefined(String, String, Position),

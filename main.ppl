@@ -1,6 +1,9 @@
-fun add(a:Int,b:Int){
-    return a+b
+extern fun println(obj:Any)
+val a = [1,2,3,4]
+val b = a[0]
+for(i in a){
+    println(i)
 }
+println(b)
 
-val a = add(3,4)
-println(a)
+

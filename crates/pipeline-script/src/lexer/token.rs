@@ -7,6 +7,7 @@ pub enum Token {
     Int(i64),
     Float(f64),
     Identifier(String),
+    Boolean(bool),
     /// 关键字
     Keyword(String),
     /// (
@@ -14,13 +15,13 @@ pub enum Token {
     /// )
     BraceRight,
     /// [
-    SquareBracketLeft,
+    BracketLeft,
     /// ]
-    SquareBracketRight,
+    BracketRight,
     /// {
-    ParenthesisLeft,
+    ParenLeft,
     /// }
-    ParenthesisRight,
+    ParenRight,
     /// .
     Dot,
     /// :
@@ -36,9 +37,9 @@ pub enum Token {
     ///-
     Minus,
     /// *
-    Mul,
+    Star,
     /// /
-    Div,
+    Slash,
     /// %
     Mod,
     /// >
@@ -61,6 +62,8 @@ pub enum Token {
     Or,
     /// @
     Annotation,
+    /// &
+    BitAnd,
     Eof,
 }
 impl Display for Token {
@@ -73,10 +76,10 @@ impl Display for Token {
             Token::Keyword(kw) => write!(f, "Keyword({kw})"),
             Token::BraceLeft => write!(f, "Symbol(()"),
             Token::BraceRight => write!(f, "Symbol())"),
-            Token::SquareBracketLeft => write!(f, "Symbol([)"),
-            Token::SquareBracketRight => write!(f, "Symbol(])"),
-            Token::ParenthesisLeft => write!(f, "Symbol({{)"),
-            Token::ParenthesisRight => write!(f, "Symbol(}})"),
+            Token::BracketLeft => write!(f, "Symbol([)"),
+            Token::BracketRight => write!(f, "Symbol(])"),
+            Token::ParenLeft => write!(f, "Symbol({{)"),
+            Token::ParenRight => write!(f, "Symbol(}})"),
             Token::Dot => write!(f, "Symbol(.)"),
             Token::Colon => write!(f, "Symbol(:)"),
             Token::ScopeSymbol => write!(f, "Symbol(::)"),
@@ -84,8 +87,8 @@ impl Display for Token {
             Token::Comma => write!(f, "Symbol(,)"),
             Token::Plus => write!(f, "Symbol(+)"),
             Token::Minus => write!(f, "Symbol(-)"),
-            Token::Mul => write!(f, "Symbol(*)"),
-            Token::Div => write!(f, "Symbol(/)"),
+            Token::Star => write!(f, "Symbol(*)"),
+            Token::Slash => write!(f, "Symbol(/)"),
             Token::Mod => write!(f, "Symbol(%)"),
             Token::Greater => write!(f, "Symbol(>)"),
             Token::Less => write!(f, "Symbol(<)"),
@@ -98,6 +101,8 @@ impl Display for Token {
             Token::And => write!(f, "Symbol(&&)"),
             Token::Or => write!(f, "Symbol(||)"),
             Token::Annotation => write!(f, "Symbol(@)"),
+            Token::BitAnd => write!(f, "Symbol(&)"),
+            _ => todo!()
         }
     }
 }
@@ -112,22 +117,22 @@ impl Token {
             Token::Keyword(_) => 4,
             Token::BraceLeft => 5,
             Token::BraceRight => 6,
-            Token::SquareBracketLeft => 7,
-            Token::SquareBracketRight => 8,
-            Token::ParenthesisLeft => 9,
-            Token::ParenthesisRight => 10,
+            Token::BracketLeft => 7,
+            Token::BracketRight => 8,
+            Token::ParenLeft => 9,
+            Token::ParenRight => 10,
             Token::Dot => 11,
             Token::Comma => 12,
             Token::Eof => 13,
             Token::Colon => 14,
             Token::Assign => 15,
             Token::Plus => 16,
-            Token::Mul => 17,
+            Token::Star => 17,
             Token::Greater => 18,
             Token::Less => 19,
             Token::Equal => 20,
             Token::Minus => 21,
-            Token::Div => 22,
+            Token::Slash => 22,
             Token::Mod => 23,
             Token::ScopeSymbol => 24,
             Token::NotEqual => 25,
@@ -137,13 +142,14 @@ impl Token {
             Token::And => 29,
             Token::Or => 30,
             Token::Annotation => 31,
+            _ => todo!()
         }
     }
     pub fn is_colon(&self) -> bool {
         matches!(self, Token::Colon)
     }
     pub fn is_parenthesis_left(&self) -> bool {
-        matches!(self, Token::ParenthesisLeft)
+        matches!(self, Token::ParenLeft)
     }
     pub fn is_keyword(&self, keyword: &str) -> bool {
         match self {
