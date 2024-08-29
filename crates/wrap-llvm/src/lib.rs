@@ -12,10 +12,14 @@ pub mod global;
 #[cfg(test)]
 mod tests {
     use std::{ffi::{CString, c_char, c_void, CStr}, ptr};
+    use std::task::Context;
+    use std::thread::Scope;
     use llvm_sys::core::LLVMDumpModule;
     use llvm_sys::{target::LLVM_InitializeAllTargets, core::{LLVMContextCreate, LLVMDisposeModule, LLVMContextDispose, LLVMCreateMemoryBufferWithContentsOfFile, LLVMCreateMemoryBufferWithMemoryRangeCopy}, ir_reader::LLVMParseIRInContext, prelude::{LLVMContextRef, LLVMModuleRef}};
 
     use crate::{context::LLVMContext, module};
+    use crate::global::Global;
+
     #[repr(C)]
     struct Any{
         id:i32,
@@ -67,6 +71,18 @@ mod tests {
 
        exec.add_global_mapping(f1,println as *mut c_void);
         exec.run_function("$main.__main__", &mut []);
-
+    }
+    #[test]
+    fn it_works2(){
+        let jit_ctx = LLVMContext::with_jit();
+        let mut module = jit_ctx.create_module("main");
+        let main  = module.register_function("main",Global::function_type(Global::unit_type(), vec![]),
+                                 vec![]);
+        let entry = main.append_basic_block("entry");
+        let builder = Global::create_builder();
+        builder.position_at_end(entry);
+        builder.build_return_void();
+        builder.build_global_string_ptr("a","Hello,world!");
+        module.dump()
     }
 }

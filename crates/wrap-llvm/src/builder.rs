@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::{c_uint,  CString};
 use std::sync::Arc;
-use llvm_sys::core::{LLVMAppendBasicBlock, LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMGetParam, LLVMPositionBuilderAtEnd};
+use llvm_sys::core::{LLVMAppendBasicBlock, LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMGetParam, LLVMPositionBuilderAtEnd};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use crate::function::Function;
@@ -47,6 +47,16 @@ impl Builder{
         let str = CString::new(str).unwrap();
         let r = unsafe {
             LLVMBuildGlobalStringPtr(self.inner, str.as_ptr(), name.as_ptr())
+        };
+        r.into()
+    }
+    pub fn build_global_string(&self,name:impl AsRef<str>,value:impl AsRef<str>)->LLVMValue{
+        let name =name.as_ref();
+        let name =CString::new(name).unwrap();
+        let str =value.as_ref();
+        let str = CString::new(str).unwrap();
+        let r = unsafe {
+            LLVMBuildGlobalString(self.inner, str.as_ptr(), name.as_ptr())
         };
         r.into()
     }

@@ -139,14 +139,16 @@ impl Compiler {
             }
             Stmt::ValDecl(val) => {
                 let t = val.r#type().unwrap();
-                let ctx = Context::with_type(ctx, &t);
+                // let ctx = Context::with_type(ctx, &t);
                 let v = self.compile_expr(val.get_default().unwrap(), &ctx);
                 if t.is_array() {
                     return ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
                 }
                 let ty = t.as_llvm_type();
                 if v.value.is_pointer() {
-                    return ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
+                    let v = Value::new(v.value, t.clone());
+                    ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
+                    return
                 }
                 let ptr = builder.build_alloca(val.name(), &ty);
                 ctx.set_symbol(val.name(), Value::new(ptr, t.clone()));
@@ -315,7 +317,7 @@ impl Compiler {
             }
             Expr::Float(f) => Value::new(Global::const_double(f),ty0),
             Expr::String(s, ..) => {
-                let ptr = builder.build_global_string_ptr("", s);
+                let ptr = builder.build_global_string("", s);
                 Value::new(ptr,ty0)
             }
             Expr::Binary(op, l, r) => {
@@ -358,8 +360,9 @@ impl Compiler {
                     return Value::new(param.unwrap(),ty0);
                 }
                 let ptr = ctx.get_symbol(&name).unwrap();
-                let v = builder.build_load(ty0.as_llvm_type(), ptr.get_value());
-                Value::new(v, ty0)
+                // let v = builder.build_load(ty0.as_llvm_type(), ptr.get_value());
+                // Value::new(v, ty0)
+                ptr
             }
             Expr::Array(v) => {
                 let mut llvm_args = vec![];
