@@ -1,9 +1,5 @@
 extern fun println(obj:Any)
-val a = [1,2,3,4]
-val b = a[0]
-for(i in a){
-    println(i)
-}
+val b = "Hello,World!"
 println(b)
 
 

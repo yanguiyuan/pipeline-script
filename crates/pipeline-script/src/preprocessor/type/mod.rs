@@ -8,7 +8,6 @@ use crate::parser::module::Module;
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
 
-pub mod expr;
 
 pub struct  TypePreprocessor{
 }

@@ -5,7 +5,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::ops::Index;
 use wrap_llvm::builder;
-use wrap_llvm::context::LLVMJITContext;
+use wrap_llvm::context::LLVMContext;
 use wrap_llvm::global::Global;
 use wrap_llvm::module::LLVMModule;
 use wrap_llvm::types::LLVMType;
@@ -19,13 +19,13 @@ use crate::parser::stmt::{Stmt, StmtNode};
 
 pub struct Compiler {
     module: Module,
-    ctx: LLVMJITContext,
+    ctx: LLVMContext,
     llvm_module: LLVMModule,
 }
 
 impl Compiler {
     pub fn new(module: Module) -> Self {
-        let ctx = LLVMJITContext::new();
+        let ctx = LLVMContext::new();
         let llvm_module = ctx.create_module(module.get_name());
         Self {
             ctx,
@@ -247,7 +247,7 @@ impl Compiler {
                 let ty = v.get_type();
                 let (idx,_) = ty.get_struct_field(field_name).unwrap();
                 Value::new(
-                    builder.build_struct_gep(target.get_type().unwrap().as_llvm_type(), ty0.as_llvm_type(), v.get_value(), idx),
+                    builder.build_struct_gep(target.get_type().unwrap().as_llvm_type(),  v.get_value(), idx),
                     ty0,
                 )
             }

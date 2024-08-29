@@ -80,7 +80,7 @@ impl Builder{
             LLVMBuildLoad2(self.inner,element_ty.as_llvm_type_ref(), p.as_llvm_value_ref(), name.as_ptr())
         }.into()
     }
-    pub fn build_struct_gep(&self,ty:LLVMType,element_ty:LLVMType,val:LLVMValue,idx:usize)->LLVMValue{
+    pub fn build_struct_gep(&self,ty:LLVMType,val:LLVMValue,idx:usize)->LLVMValue{
         let name = CString::new("").unwrap();
         unsafe {
             LLVMBuildStructGEP2(self.inner, ty.as_llvm_type_ref(), val.as_llvm_value_ref(), idx as c_uint, name.as_ptr())
