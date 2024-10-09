@@ -11,6 +11,7 @@ pub struct Function {
     args: Vec<VariableDeclaration>,
     body: Vec<StmtNode>,
     is_generic: bool,
+    binding_struct: Option<String>,
     #[allow(unused)]
     pub(crate) is_extern: bool,
 }
@@ -27,6 +28,7 @@ impl Function {
             return_type,
             args,
             body,
+            binding_struct: None,
             is_generic: false,
             is_extern,
         }
@@ -48,6 +50,25 @@ impl Function {
         self
 
     }
+    pub fn args_count(&self) -> usize {
+        self.args.len()
+    }
+    pub fn has_binding(&self)->bool{
+        match self.binding_struct {
+            None => false,
+            Some(_) => true
+        }
+    }
+    pub fn get_binding(&self)->String{
+        self.binding_struct.clone().unwrap()
+    }
+    pub fn insert_arg(&mut self,index:usize,vd:VariableDeclaration){
+        self.args.insert(index,vd)
+    }
+    pub fn set_binding_struct(&mut self, binding_struct: impl Into<String>) {
+        self.binding_struct = Some(binding_struct.into());
+    }
+
     pub fn set_body(&mut self, body: Vec<StmtNode>) {
         self.body = body;
     }
@@ -90,6 +111,7 @@ impl Default for Function {
             return_type: Type::Unit,
             is_generic: false,
             args: vec![],
+            binding_struct: None,
             body: vec![],
             is_extern: false,
         }

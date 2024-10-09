@@ -1,11 +1,12 @@
 use std::ffi::{c_uint, CString};
-use llvm_sys::core::{LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct, LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMStructType, LLVMVoidType};
+use llvm_sys::core::{LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct, LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef, LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMStructType, LLVMVoidType};
 use llvm_sys::prelude::{LLVMBool, LLVMTypeRef, LLVMValueRef};
 use crate::builder::Builder;
 use crate::types::LLVMType;
 use crate::value::LLVMValue;
 
 pub struct Global;
+
 
 impl Global{
     pub  fn const_array(array:&[LLVMValue])->LLVMValue{
@@ -65,8 +66,12 @@ impl Global{
         let t = unsafe { LLVMConstStruct(t.as_mut_ptr(),element_type.len() as c_uint,0) };
         LLVMValue::Struct(t)
     }
+    pub fn undef(ty:LLVMType)->LLVMValue{
+        let t = unsafe { LLVMGetUndef(ty.as_llvm_type_ref()) };
+        LLVMValue::Undef(t)
+    }
     pub fn array_type(element_type:LLVMType)->LLVMType{
-        let t = unsafe { LLVMArrayType2(element_type.as_llvm_type_ref(),0) };
+        let t = unsafe { LLVMArrayType2(element_type.as_llvm_type_ref(),2) };
         LLVMType::Array(Box::new(element_type),t)
     }
     pub fn unit_type()->LLVMType{

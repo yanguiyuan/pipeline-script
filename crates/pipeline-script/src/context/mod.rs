@@ -52,8 +52,8 @@ impl Context {
     pub fn with_scope(parent: &Context,scope:Scope) -> Self {
         Self::with_value(parent, ContextKey::Scope, ContextValue::Scope(scope))
     }
-    pub fn with_type(parent: &Context, t:&Type) -> Self {
-        Self::with_value(parent, ContextKey::Type, ContextValue::Type(t.clone()))
+    pub fn with_type_table(parent: &Context, t:HashMap<Type,LLVMType>) -> Self {
+        Self::with_value(parent, ContextKey::TypeTable, ContextValue::TypeTable(Arc::new(RwLock::new(t))))
     }
     pub fn with_function(parent: &Context, f:Function) -> Self {
         Self::with_value(parent, ContextKey::Function, ContextValue::Function(f))
@@ -113,11 +113,52 @@ impl Context {
         let symbol_table = symbol_table.read().unwrap();
         symbol_table.get(name.as_ref()).cloned()
     }
+    pub fn get_type(&self, t: &Type) -> Option<LLVMType> {
+        match self.get(ContextKey::TypeTable) {
+            Some(ContextValue::TypeTable(tt0)) => {
+                let tt = tt0.read().unwrap();
+                let r = tt.get(t);
+               r.cloned()
+            }
+            _ => panic!("not a type table"),
+        }
+    }
+    pub fn register_type(&self, ty:&Type,llvm_ty: &LLVMType){
+        match self.get(ContextKey::TypeTable) {
+            Some(ContextValue::TypeTable(tt0)) => {
+                let mut tt = tt0.write().unwrap();
+                tt.insert(ty.clone(), llvm_ty.clone());
+            }
+            _ => panic!("not a type table"),
+        }
+    }
+    pub fn get_alias_type(&self, name: impl AsRef<str>) -> Option<Type> {
+        match self.get(ContextKey::AliasType) {
+            Some(ContextValue::AliasType(t)) => {
+                let t = t.read().unwrap();
+                t.get(name.as_ref()).cloned()
+            }
+            _ => panic!("not a symbol type"),
+        }
+    }
+    pub fn set_alias_type(&self, name: String, t0: Type) {
+        match self.get(ContextKey::AliasType) {
+            Some(ContextValue::AliasType(t)) => {
+                let mut t = t.write().unwrap();
+                t.insert(name, t0);
+            }
+            _ => panic!("not a symbol type"),
+        }
+    }
     pub fn get_symbol_type(&self, name: impl AsRef<str>) -> Option<Type> {
         match self.get(ContextKey::SymbolType) {
             Some(ContextValue::SymbolType(t)) => {
                 let t = t.read().unwrap();
-                t.get(name.as_ref()).cloned()
+                let r  = t.get(name.as_ref());
+                match r {
+                    None => self.parent.clone()?.parent?.get_symbol_type(name),
+                    Some(s) => Some(s.clone())
+                }
             }
             _ => panic!("not a symbol type"),
         }

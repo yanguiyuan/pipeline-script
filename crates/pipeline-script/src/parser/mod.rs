@@ -18,13 +18,14 @@ use self::expr::ExprNode;
 use self::stmt::StmtNode;
 
 mod class;
-mod declaration;
+pub mod declaration;
 pub mod expr;
-mod function;
+pub mod function;
 pub mod module;
 pub mod stmt;
-mod r#struct;
+pub mod r#struct;
 pub mod r#type;
+mod peg;
 
 pub struct Parser {
     token_stream: TokenStream,
@@ -37,7 +38,7 @@ impl Parser {
         Self {
             token_stream: TokenStream::new(lexer),
             module: Module::new(name),
-            function_keyword: "fun".into(),
+            function_keyword: "fn".into(),
         }
     }
     pub fn parse(&mut self) -> Result<&Module> {
@@ -128,16 +129,10 @@ impl Parser {
                     self.parse_special_token(Token::Comma)?;
                     continue;
                 }
-                Token::BraceRight => {
+                Token::BraceRight|Token::Vertical => {
                     break;
                 }
-                Token::Star => {
-                    let p0 = self.parse_special_token(Token::Star)?;
-                    let (name, p1) = self.parse_identifier()?;
-                    v.push(VariableDeclaration::new(name).with_type(Type::Any).with_var_arg(true));
-                    continue;
-                }
-                _ => todo!(),
+                t => panic!("unexpected token {:?} at {:?}", t, pos),
             }
         }
         Ok(v)
@@ -188,23 +183,36 @@ impl Parser {
         self.module.register_function(&fun.name(), fun);
         Ok(())
     }
+    fn try_parse_token(&mut self, token: Token) -> bool {
+        let (token0, _) = self.token_stream.peek();
+        if token0 == token {
+            self.token_stream.next();
+            return true;
+        }
+        false
+    }
     fn parse_function_declaration(&mut self) -> Result<Function> {
+        let mut fun = Function::default();
         let fun_name = self.function_keyword.clone();
         let p0 = self.parse_keyword(&fun_name)?;
-        let (name, p1) = self.parse_identifier()?;
+        let (mut name, p1) = self.parse_identifier()?;
+        if self.try_parse_token(Token::Dot){
+            let (name0, p2) = self.parse_identifier()?;
+            fun.set_binding_struct(name);
+            name = name0;
+        }
         let p2 = self.parse_special_token(Token::BraceLeft)?;
         let param_list = self.parse_param_list()?;
         let p3 = self.parse_special_token(Token::BraceRight)?;
         let (peek, p4) = self.token_stream.peek();
-        if let Token::Colon = peek {
-            let p5 = self.parse_special_token(Token::Colon)?;
+        if self.try_parse_token(Token::Arrow){
             let (type_name, p6) = self.parse_type_name()?;
-            return Ok(Function::default()
+            return Ok(fun
                 .with_name(name)
                 .with_args(param_list)
                 .with_return_type(type_name.into()));
         }
-        Ok(Function::default()
+        Ok(fun
             .with_name(name)
             .with_args(param_list)
             .with_return_type("Unit".into()))
@@ -322,36 +330,75 @@ impl Parser {
             p0 + p1 +  p4 + p5,
         ))
     }
+    pub fn parse_chain_expr(&mut self) -> Result<ExprNode> {
+        let mut expr = self.parse_primary_expr()?;
+        
+        loop {
+            let (peek, _) = self.token_stream.peek();
+            expr = match peek {
+                Token::Dot => {
+                    self.parse_special_token(Token::Dot)?;
+                    let (name, pos) = self.parse_identifier()?;
+                    ExprNode::from(Expr::Member(Box::new(expr), name)).with_position(pos)
+                }
+                Token::BracketLeft => {
+                    self.parse_special_token(Token::BracketLeft)?;
+                    let index = self.parse_expr()?;
+                    let pos = index.position();
+                    self.parse_special_token(Token::BracketRight)?;
+                    ExprNode::from(Expr::Index(Box::new(expr), Box::new(index))).with_position(pos)
+                }
+                _ => break,
+            };
+        }
+        
+        Ok(expr)
+    }
+    fn parse_fn_args(&mut self)->Result<(Vec<Argument>,Position)>{
+        let mut p0 = self.parse_special_token(Token::BraceLeft)?;
+        let mut args = vec![];
+        loop {
+            let (peek, p1) = self.token_stream.peek();
+            p0 = p0 + p1;
+            match peek {
+                Token::BraceRight => {
+                    let p2 = self.parse_special_token(Token::BraceRight)?;
+                    p0 = p0 + p2;
+                    break;
+                }
+                Token::Comma => {
+                    let p2 = self.parse_special_token(Token::Comma)?;
+                    p0 = p0 + p2;
+                    continue;
+                }
+                _ => {
+                    let expr = self.parse_expr()?;
+                    args.push(Argument::new(expr));
+                }
+            }
+        }
+        Ok((args,p0))
+    }
     pub fn parse_primary_expr(&mut self) -> Result<ExprNode> {
         let (token, mut pos) = self.token_stream.next();
         match token {
+            Token::Vertical=> {
+                let  peek = self.token_stream.peek().0;
+                let mut l = vec![];
+                if peek != Token::Vertical {
+                     l = self.parse_param_list()?;
+                }
+                let p1 = self.parse_special_token(Token::Vertical)?;
+                let block = self.parse_block()?;
+                Ok(ExprNode::from(Expr::Closure(l,block)).with_position(p1+pos))
+            }
             Token::Identifier(id) => {
                 let (peek, _) = self.token_stream.peek();
                 match peek {
+
                     Token::BraceLeft => {
-                        let p0 = self.parse_special_token(Token::BraceLeft)?;
-                        let mut args = vec![];
-                        pos = pos + p0;
-                        loop {
-                            let (peek, p1) = self.token_stream.peek();
-                            pos = pos + p1;
-                            match peek {
-                                Token::BraceRight => {
-                                    let p2 = self.parse_special_token(Token::BraceRight)?;
-                                    pos = pos + p2;
-                                    break;
-                                }
-                                Token::Comma => {
-                                    let p2 = self.parse_special_token(Token::Comma)?;
-                                    pos = pos + p2;
-                                    continue;
-                                }
-                                _ => {
-                                    let expr = self.parse_expr()?;
-                                    args.push(Argument::new(expr));
-                                }
-                            }
-                        }
+                       let (args,p0) = self.parse_fn_args()?;
+                        pos = pos +p0;
                         Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args }))
                             .with_position(pos))
                     }
@@ -434,14 +481,17 @@ impl Parser {
         }
     }
     pub fn parse_fact_expr(&mut self) -> Result<ExprNode> {
-        let expr = self.parse_primary_expr()?;
+        let expr = self.parse_chain_expr()?;
         let p = expr.position();
         let (token, pos) = self.token_stream.peek();
-        return match token {
-            Token::Dot => {
-                let p0 = self.parse_special_token(Token::Dot)?;
-                let (name, p1) = self.parse_identifier()?;
-                Ok(ExprNode::from(Expr::Member(Box::new(expr), name)).with_position(p + p0 + p1))
+        match token {
+            Token::BraceLeft => {
+                let (mut args,p0)=self.parse_fn_args()?;
+                args.insert(0,Argument::new(expr.get_member_root()));
+                Ok(ExprNode::from(Expr::FnCall(FnCallExpr{
+                    name: expr.get_member_name(),
+                    args,
+                })))
             }
             Token::BracketLeft => {
                 let p0 = self.parse_special_token(Token::BracketLeft)?;
@@ -451,14 +501,15 @@ impl Parser {
                 Ok(ExprNode::from(Expr::Index(Box::new(expr), Box::new(index)))
                     .with_position(p0 + p1 + p2))
             }
+
             _ => Ok(expr),
-        };
+        }
     }
     pub fn parse_term(&mut self) -> Result<ExprNode> {
         let expr0 = self.parse_fact_expr()?;
         let p0 = expr0.position();
         let (token, _) = self.token_stream.peek();
-        return match token {
+        match token {
             Token::Star => {
                 let p1 = self.parse_special_token(Token::Star)?;
                 let expr1 = self.parse_term()?;
@@ -477,13 +528,13 @@ impl Parser {
                 )
             }
             _ => Ok(expr0),
-        };
+        }
     }
 
     pub fn parse_expr0(&mut self) -> Result<ExprNode> {
         let expr0 = self.parse_term()?;
         let (token, _) = self.token_stream.peek();
-        return match token {
+        match token {
             Token::Plus => {
                 let p0 = self.parse_special_token(Token::Plus)?;
                 let expr1 = self.parse_expr()?;
@@ -501,12 +552,12 @@ impl Parser {
                 )
             }
             _ => Ok(expr0),
-        };
+        }
     }
     pub fn parse_expr(&mut self) -> Result<ExprNode> {
         let expr0 = self.parse_expr0()?;
         let (token, _) = self.token_stream.peek();
-        return match token {
+        match token {
             Token::Equal => {
                 let p0 = self.parse_special_token(Token::Equal)?;
                 let expr1 = self.parse_expr()?;
@@ -540,11 +591,11 @@ impl Parser {
                 )
             }
             _ => Ok(expr0),
-        };
+        }
     }
     pub fn parse_keyword(&mut self, keyword: &str) -> Result<Position> {
         let (token, pos) = self.token_stream.next();
-        return match token {
+        match token {
             Token::Keyword(k) => {
                 if k == keyword {
                     return Ok(pos);
@@ -560,18 +611,18 @@ impl Parser {
                 "Keyword(?)".into(),
                 pos,
             )),
-        };
+        }
     }
     pub fn parse_identifier(&mut self) -> Result<(String, Position)> {
         let (token, pos) = self.token_stream.next();
-        return match token {
+        match token {
             Token::Identifier(id) => Ok((id, pos)),
             _ => Err(Error::UnexpectedToken(
                 token.to_string(),
                 "Identifier(?)".into(),
                 pos,
             )),
-        };
+        }
     }
     pub fn parse_special_token(&mut self, token: Token) -> Result<Position> {
         let (t, pos) = self.token_stream.next();
@@ -588,16 +639,16 @@ impl Parser {
 
     pub fn parse_type_name(&mut self) -> Result<(String, Position)> {
         let (token, p0) = self.token_stream.next();
-        return match token {
+        match token {
             Token::BracketLeft => {
                 let p1 = self.parse_special_token(Token::BracketRight)?;
                 let (name, p2) = self.parse_identifier()?;
                 Ok((format!("[]{}", name), p0 + p1 + p2))
             }
-            Token::Star => {
-                // let p0 = self.parse_special_token(Token::Star)?;
+            Token::Dot => {
+                let p0 = self.parse_special_token(Token::Dot)?;
                 let (name, p1) = self.parse_identifier()?;
-                Ok((format!("*{}", name), p0 + p1))
+                Ok((format!("..{}", name), p0 + p1))
             }
             Token::Identifier(id) => Ok((id, p0)),
             _ => Err(Error::UnexpectedToken(
@@ -605,7 +656,7 @@ impl Parser {
                 "Identifier(?)".into(),
                 p0,
             )),
-        };
+        }
     }
 }
 // use std::{env, fs};

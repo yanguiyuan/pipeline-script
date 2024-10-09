@@ -1,7 +1,6 @@
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::fs;
 use std::path::Path;
-use wrap_llvm::global::Global;
 use wrap_llvm::value::LLVMValue;
 use crate::compiler::Compiler;
 use crate::lexer::Lexer;
@@ -16,29 +15,9 @@ impl Default for Engine{
         Self{}
     }
 }
-#[repr(C)]
-struct Any{
-    id:i32,
-    ptr:*mut i8,
-}
-extern "C" fn println(obj:Any){
-    match obj.id {
-        7=>{
-            let s = unsafe { CStr::from_ptr(obj.ptr as *const c_char) };
-            println!("{}",s.to_str().unwrap());
-        }
-        4=>{
-            let v =obj.ptr as i64;
-            println!("{}",v);
-        }
-        3=>{
-            let value = obj.ptr as *mut i32;
-            unsafe { println!("{}", *value); }
-        }
-        t=>todo!("{t}")
-    }
 
-}
+
+
 impl Engine{
     pub fn run_file(&mut self, path: impl AsRef<Path>) {
         let r = fs::read_to_string(path.as_ref()).unwrap();
@@ -58,9 +37,16 @@ impl Engine{
         let mut compiler = Compiler::new(module.clone());
         let mut llvm_module = compiler.compile();
         let f1 = llvm_module.get_function("println").unwrap();
+        let f2 = llvm_module.get_function("print").unwrap();
+        let f3 = llvm_module.get_function("append").unwrap();
         llvm_module.dump();
         let executor = llvm_module.create_executor().unwrap();
-        executor.add_global_mapping(f1.as_ref(),println as *mut c_void);
+        executor.add_global_mapping(
+            f1.as_ref(),
+            crate::core::buidin::println as *mut c_void
+        );
+        executor.add_global_mapping(f2.as_ref(),crate::core::buidin::print as *mut c_void);
+        executor.add_global_mapping(f3.as_ref(),crate::core::buidin::append as *mut c_void);
         executor.run_function("$main.__main__",&mut []);
     }
     pub fn run_function(&mut self, name: impl Into<String>, args: Vec<LLVMValue>) {

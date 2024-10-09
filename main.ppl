@@ -1,5 +1,28 @@
-extern fun println(obj:Any)
-val b = "Hello,World!"
-println(b)
+extern fn println(obj:..Any)
+extern fn print(obj:..Any)
+extern fn append(obj:..Any)->String
+/*
+struct Person{
+    name:String,
+    age:Int32
+}
 
+fn createPerson()->Person{
+    return Person{
+        name:"张三",
+        age:18
+    }
+}
 
+fn Person.say(){
+    val v = append("我的名字是",this.name)
+    println(v)
+}
+val p = createPerson()
+p.say()
+*/
+val b = 6
+val a = |a:Int32|{
+    println("Hello world",a+b)
+}
+a(3,4)

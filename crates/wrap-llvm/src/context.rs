@@ -1,7 +1,7 @@
 use std::ffi::{c_uint, CString, c_char, CStr};
 use std::fmt::Result;
 use std::ptr;
-use llvm_sys::core::{LLVMArrayType2, LLVMConstString, LLVMFunctionType, LLVMInt32Type, LLVMInt8Type, LLVMPointerType, LLVMVoidType, LLVMContextCreate, LLVMCreateMemoryBufferWithMemoryRangeCopy, LLVMContextDispose};
+use llvm_sys::core::{LLVMArrayType2, LLVMConstString, LLVMFunctionType, LLVMInt32Type, LLVMInt8Type, LLVMPointerType, LLVMVoidType, LLVMContextCreate, LLVMCreateMemoryBufferWithMemoryRangeCopy, LLVMContextDispose, LLVMConstStringInContext, LLVMPointerTypeInContext, LLVMVoidTypeInContext, LLVMInt8TypeInContext, LLVMInt32TypeInContext, LLVMStructCreateNamed, LLVMStructSetBody};
 use llvm_sys::execution_engine::LLVMLinkInMCJIT;
 use llvm_sys::ir_reader::LLVMParseIRInContext;
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef, LLVMContextRef};
@@ -86,7 +86,7 @@ impl LLVMContext{
         LLVMModule::new(name)
     }
     pub fn i32_type(&self)->LLVMType{
-        let t = unsafe { LLVMInt32Type() };
+        let t = unsafe { LLVMInt32TypeInContext(self.llvm_ref) };
         LLVMType::Int32(t)
     }
     pub fn array_type(&self,el_ty:LLVMType,n:u64)->LLVMType{
@@ -94,7 +94,7 @@ impl LLVMContext{
         LLVMType::Array(Box::new(el_ty),t)
     }
     pub fn i8_type(&self)->LLVMType{
-        let t = unsafe { LLVMInt8Type() };
+        let t = unsafe { LLVMInt8TypeInContext(self.llvm_ref) };
         LLVMType::Int8(t)
     }
     pub fn function_type(&self,return_type:LLVMType,param_types:Vec<LLVMType>)->LLVMType{
@@ -109,19 +109,27 @@ impl LLVMContext{
     }
     pub fn unit_type(&self)->LLVMType{
         let t = unsafe{
-            LLVMVoidType()
+            LLVMVoidTypeInContext(self.llvm_ref)
         };
         LLVMType::Unit(t)
     }
     pub fn ptr_type(&self,t:LLVMType)->LLVMType{
-        let t0 =unsafe { LLVMPointerType(t.as_llvm_type_ref(), 0) };
+        let t0 =unsafe { LLVMPointerTypeInContext(self.llvm_ref, 0) };
         LLVMType::Pointer(Box::new(t),t0)
     }
     pub fn const_string(&self,str:impl AsRef<str>)->LLVMValueRef{
         let str0 = str.as_ref();
         let str = CString::new(str0).unwrap();
-        let c =unsafe { LLVMConstString(str.as_ptr(), str0.len() as c_uint,0) };
+        let c =unsafe { LLVMConstStringInContext(self.llvm_ref,str.as_ptr(), str0.len() as c_uint,0) };
         c
+    }
+    pub fn create_named_struct_type(&self,name:impl AsRef<str>,element_type:Vec<LLVMType>)->LLVMType{
+        let name = name.as_ref();
+        let name = CString::new(name).unwrap();
+        let mut et = element_type.iter().map(|t| t.as_llvm_type_ref()).collect::<Vec<LLVMTypeRef>>();
+        let t = unsafe { LLVMStructCreateNamed(self.llvm_ref, name.as_ptr()) };
+        unsafe { LLVMStructSetBody(t, et.as_mut_ptr(), element_type.len() as c_uint, 0); }
+        LLVMType::Struct(element_type,t)
     }
 }
 

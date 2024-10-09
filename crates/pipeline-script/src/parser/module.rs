@@ -43,8 +43,11 @@ impl Module {
     pub fn get_class(&self, class_name: &str) -> Option<&Class> {
         return self.classes.get(class_name);
     }
-    pub fn get_functions(&self) -> &HashMap<String, Function> {
+    pub fn get_functions_ref(&self) -> &HashMap<String, Function> {
         &self.functions
+    }
+    pub fn get_functions(&self) ->HashMap<String, Function> {
+        self.functions.clone()
     }
     pub fn register_function(&mut self, name: &str, f: Function) {
         self.functions.insert(name.into(), f);
@@ -123,5 +126,8 @@ impl Module {
     pub fn get_function(&self, name: impl Into<String>) -> Option<Function> {
         let r = self.functions.get(name.into().as_str());
         r.cloned()
+    }
+    pub fn set_name(&mut self, name: impl Into<String>) {
+        self.name = name.into();
     }
 }

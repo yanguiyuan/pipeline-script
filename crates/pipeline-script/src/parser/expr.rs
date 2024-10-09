@@ -3,12 +3,30 @@ use std::collections::HashMap;
 use scanner_rust::generic_array::typenum::N10;
 
 use crate::lexer::position::Position;
+use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
+use crate::parser::stmt::StmtNode;
+
 #[derive(Debug, Clone)]
 pub struct ExprNode{
     expr:Expr,
     pos:Position,
     ty:Option<Type>
+}
+
+impl ExprNode {
+    pub(crate) fn get_closure_body(&self) -> Vec<StmtNode> {
+        match &self.expr {
+            Expr::Closure(_,body)=>body.clone(),
+            _=>panic!("not closure expr")
+        }
+    }
+    pub fn get_closure_params(&self) -> Vec<VariableDeclaration> {
+        match &self.expr {
+            Expr::Closure(params, _) => params.clone(),
+            _ => panic!("not closure expr"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -26,14 +44,15 @@ pub enum Expr {
     Map(Vec<(ExprNode, ExprNode)>),
     Index(Box<ExprNode>, Box<ExprNode>),
     Address(Box<ExprNode>),
+    Closure(Vec<VariableDeclaration>,Vec<StmtNode>),
     Struct(StructExpr),
     Member(Box<ExprNode>, String),
     None,
 }
 #[derive(Debug, Clone)]
 pub struct StructExpr {
-    name: String,
-    props: HashMap<String, ExprNode>,
+    pub(crate) name: String,
+    pub(crate) props: HashMap<String, ExprNode>,
 }
 
 
@@ -104,6 +123,12 @@ impl ExprNode {
             ty:None
         }
     }
+    pub fn is_closure(&self)->bool{
+        match &self.expr {
+            Expr::Closure(_,_)=>true,
+            _=>false
+        }
+    }
     pub fn with_position(mut self,pos:Position)->Self{
         self.pos = pos;
         self
@@ -120,6 +145,18 @@ impl ExprNode {
     }
     pub fn get_type(&self)->Option<Type>{
         self.ty.clone()
+    }
+    pub fn get_member_name(&self)->String{
+        match &self.expr {
+            Expr::Member(_,name)=>name.clone(),
+            _=>panic!("not member expr")
+        }
+    }
+    pub fn get_member_root(&self)->ExprNode{
+        match &self.expr {
+            Expr::Member(root,_)=>*root.clone(),
+            _=>panic!("not member expr")
+        }
     }
 }
 

@@ -34,17 +34,20 @@ impl Compiler {
         }
     }
     pub fn compile(&mut self) -> &mut LLVMModule {
+        let background = Context::background();
+        let ctx = Context::with_type_table(&background, HashMap::new());
         // 编译结构体
         for (name, item) in self.module.get_structs() {
             let fields = item.get_fields();
             let mut struct_type = vec![];
             let mut field_index: HashMap<String, usize> = HashMap::new();
             for (i, field) in fields.iter().enumerate() {
-                let t = field.field_type.as_llvm_type();
+                let t = self.get_type(&ctx, &field.field_type);
                 struct_type.push(t);
                 field_index.insert(field.name.clone(), i);
             }
-            let t = Global::struct_type(struct_type);
+            let t = item.get_type();
+            let t = self.get_type(&ctx, &t);
             self.llvm_module.register_struct(name, field_index, t);
         }
         // 编译函数声明
@@ -57,14 +60,13 @@ impl Compiler {
                     is_var_arg = true;
                     continue;
                 }
-                let ty = arg.r#type();
-                let t = arg.r#type().unwrap().as_llvm_type();
+                let ty = arg.r#type().unwrap();
+                let t = self.get_type(&ctx, &ty);
                 arg_types.push(t);
             }
             let mut t;
             let return_type0 = item.return_type();
-            let return_type = return_type0.as_llvm_type();
-
+            let return_type = self.get_type(&ctx, return_type0);
             if is_var_arg {
                 t = Global::function_type_with_var_arg(return_type, arg_types);
             } else {
@@ -79,9 +81,10 @@ impl Compiler {
                 self.llvm_module.register_function(name, t, param_names);
             }
         }
-        let background = Context::background();
+
         let builder = Global::create_builder();
-        let ctx = Context::with_builder(&background, builder);
+        let ctx = Context::with_builder(&ctx, builder);
+
         // 编译函数实现
         for (name, item) in self.module.get_functions() {
             if item.is_extern {
@@ -94,6 +97,7 @@ impl Compiler {
             let ctx = Context::with_function(&ctx, function.clone());
             let ctx = Context::with_scope(&ctx, Scope::new());
             let ctx = Context::with_flag(&ctx, "return", false);
+
             for stmt in item.body() {
                 self.compile_stmt(stmt, &ctx);
             }
@@ -102,7 +106,6 @@ impl Compiler {
                 builder.build_return_void();
             }
         }
-
         // 编译主函数
         let mut main = self.llvm_module.register_function(
             "$main.__main__",
@@ -124,7 +127,55 @@ impl Compiler {
         if !flag {
             builder.build_return_void();
         }
-        return &mut self.llvm_module;
+        &mut self.llvm_module
+    }
+    fn compile_type(&self, ty: &Type)->LLVMType{
+        match ty {
+            Type::Int8 => Global::i8_type(),
+            Type::Int16 => Global::i16_type(),
+            Type::Int32 => Global::i32_type(),
+            Type::Int64 => Global::i64_type(),
+            Type::Unit => Global::unit_type(),
+            Type::Pointer(i) => Global::pointer_type(i.as_llvm_type()),
+            Type::Any=> {
+                let v = vec![Global::i32_type(), Global::pointer_type(Global::i8_type())];
+                self.ctx.create_named_struct_type("Any",v)
+            }
+            Type::Array(t)=>Global::struct_type(vec![Global::i64_type(),Global::array_type(t.as_llvm_type())]),
+            Type::String=>Global::pointer_type(Global::i8_type()),
+            Type::Struct(name,s)=>{
+                match name {
+                    None => {
+                        let mut v = vec![];
+                        for (_,t) in s.iter(){
+                            v.push(t.as_llvm_type());
+                        }
+                        Global::struct_type(v)
+                    }
+                    Some(name) => {
+                        let mut v = vec![];
+                        for (_,t) in s.iter(){
+                            v.push(t.as_llvm_type());
+                        }
+                        self.ctx.create_named_struct_type(name,v)
+                    }
+                }
+
+            },
+            Type::ArrayVarArg(t)=>Global::struct_type(vec![Global::i64_type(),Global::pointer_type(self.compile_type(t))]),
+            _=> panic!("Unknown type: {:?}", ty),
+        }
+    }
+    fn get_type(&self,ctx:&Context,ty:&Type)->LLVMType{
+        let r = ctx.get_type(ty);
+        match r {
+            None => {
+                let t = self.compile_type(ty);
+                ctx.register_type(ty, &t);
+                t
+            },
+            Some(t) => t
+        }
     }
     fn compile_stmt(&self, stmt: &StmtNode, ctx: &Context) {
         let builder = ctx.get_builder();
@@ -144,15 +195,12 @@ impl Compiler {
                 if t.is_array() {
                     return ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
                 }
-                let ty = t.as_llvm_type();
                 if v.value.is_pointer() {
                     let v = Value::new(v.value, t.clone());
                     ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
                     return
                 }
-                let ptr = builder.build_alloca(val.name(), &ty);
-                ctx.set_symbol(val.name(), Value::new(ptr, t.clone()));
-                builder.build_store(ptr, v.value);
+                ctx.set_symbol(val.name(), v);
             }
             Stmt::Assign(lhs, rhs) => {
                 let lhs = self.compile_expr_with_ptr(&lhs, ctx);
@@ -205,6 +253,7 @@ impl Compiler {
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_exit_bb)
             }
+            Stmt::Noop => {}
             _ => todo!("compile stmt"),
         }
     }
@@ -221,12 +270,10 @@ impl Compiler {
                 }
                 let function = ctx.get_current_function();
                 let a = function.get_param(name.as_ref());
-                
                 if a.is_some() {
                     let a = a.unwrap();
-                    let ty = a.get_type();
-                    if ty.is_struct() {
-                        let ptr = builder.build_alloca(&name, &ty);
+                    if ty0.is_struct() {
+                        let ptr = builder.build_alloca(&name, &ty0.as_llvm_type());
                         builder.build_store(ptr, a);
                         let ty = expr.get_type().unwrap();
                         ctx.get_scope().set(name, Value::new(ptr, ty0.clone()));
@@ -235,6 +282,7 @@ impl Compiler {
                     return Value::new(a, ty0);
                 }
                 ctx.get_symbol(name).unwrap()
+
             }
             Expr::Index(target, index) => {
                 let v = self.compile_expr_with_ptr(&target, ctx);
@@ -269,10 +317,15 @@ impl Compiler {
                     let f = self.module.get_function(name).unwrap();
                     let t = f.get_param_type(index).unwrap();
                     let mut v = self.compile_expr(&arg.value, &ctx);
+                    if f.is_extern&&!t.is_pointer()&&(t.is_struct()||t.is_array()||t.is_array_vararg()){
+                        let ty = self.get_type(ctx,&t);
+                        let v0 = builder.build_alloca("",&ty);
+                        builder.build_store(v0,v.value);
+                        v = Value::new(v0,Type::Pointer(Box::new(t.clone())))
+                    }
                     if t.is_any() {
                         let mut val = v.get_value();
                         if !(v.ty.is_pointer()||v.ty.is_string()){
-                            dbg!(&v.ty);
                             let ty = v.ty.as_llvm_type();
                             val = builder.build_alloca("",&ty);
                             builder.build_store(val,v.value);
@@ -353,29 +406,47 @@ impl Compiler {
                 let scope = ctx.get_scope();
                 if scope.has(&name) {
                     let ptr = scope.get(name).unwrap();
-                    return Value::new(builder.build_load(ty0.as_llvm_type(), ptr.get_value()),ty0);
+                    if ptr.get_type() == ty0{
+                        return ptr
+                    }
+                    let ty = self.get_type(ctx,&ty0);
+                    return Value::new(builder.build_load(ty, ptr.get_value()),ty0);
                 }
                 let param = ctx.get_current_function().get_param(name.as_ref());
                 if param.is_some() {
                     return Value::new(param.unwrap(),ty0);
                 }
                 let ptr = ctx.get_symbol(&name).unwrap();
-                // let v = builder.build_load(ty0.as_llvm_type(), ptr.get_value());
-                // Value::new(v, ty0)
+                if ptr.get_type() == ty0{
+                    return ptr
+                }
+                if !ty0.is_pointer(){
+                    let v0 = builder.build_load(ptr.ty.as_llvm_type(),ptr.value);
+                    return Value::new(v0, ty0)
+                }
                 ptr
             }
             Expr::Array(v) => {
+                let l = v.len();
                 let mut llvm_args = vec![];
-                let t = ctx.get(ContextKey::Type).unwrap();
-                let t = t.as_type();
-                let t = t.get_element_type().unwrap();
-                let ctx = Context::with_type(ctx, t);
+                let t = ty0.get_element_type().unwrap();
+                let ty = self.get_type(ctx,t);
                 for arg in v {
-                    let v = self.compile_expr(&arg, &ctx);
+                    let mut v = self.compile_expr(&arg, &ctx);
+                    if t.is_any(){
+                        let val = v.get_value();
+
+                        let temp =builder.build_struct_insert(Global::undef(ty.clone()),0,Global::const_i32(v.get_type().id()));
+                        let r =builder.build_struct_insert(temp,1,val);
+                        v = Value::new(r,t.clone());
+                     }
                     llvm_args.push(v.get_value());
                 }
 
-                let v = builder.build_array(t.as_llvm_type(), llvm_args);
+                let v1 = builder.build_array(ty, llvm_args);
+                let ty = self.get_type(ctx,&ty0);
+                let tmp = builder.build_struct_insert(Global::undef(ty),0,Global::const_i64(l as i64));
+                let v = builder.build_struct_insert(tmp,1,v1);
                 Value::new(v,ty0)
             }
             Expr::Index(target, index) => {
@@ -392,8 +463,6 @@ impl Compiler {
                     .iter()
                     .map(|(field_name, p)| {
                         let field_index = field_index_map.get(field_name).unwrap();
-                        let field_type = struct_type.get_struct_field_type(field_index.clone());
-                        let ctx = Context::with_type(ctx, &field_type.into());
                         let v = self.compile_expr(p, &ctx);
                         (*field_index, v)
                     })
@@ -406,10 +475,10 @@ impl Compiler {
                 Value::new(Global::const_struct(props),ty0)
             }
             Expr::Member(target, field_name) => {
-                let v = self.compile_expr_with_ptr(&target, ctx);
+                let v = self.compile_expr(&target, ctx);
                 let ty = v.get_type();
                 let (idx,_) = ty.get_struct_field(field_name).unwrap();
-                let v = builder.build_struct_get(target.get_type().unwrap().as_llvm_type(), ty0.as_llvm_type(), v.get_value(), idx);
+                let v = builder.build_struct_get( v.get_value(), idx);
                 Value::new(v, ty0)
             }
             Expr::Address(target) => self.compile_expr_with_ptr(&target, ctx),

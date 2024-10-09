@@ -52,14 +52,12 @@ pub enum Token {
     NotEqual,
     ///->
     Arrow,
-    /// |
-    BitOr,
     /// !
     Negate,
     /// &&
     And,
-    /// ||
-    Or,
+    /// |
+    Vertical,
     /// @
     Annotation,
     /// &
@@ -95,11 +93,10 @@ impl Display for Token {
             Token::Equal => write!(f, "Symbol(==)"),
             Token::NotEqual => write!(f, "Symbol(!=)"),
             Token::Arrow => write!(f, "Symbol(->)"),
-            Token::BitOr => write!(f, "Symbol(|)"),
             Token::Eof => write!(f, "EOF"),
             Token::Negate => write!(f, "Symbol(!)"),
             Token::And => write!(f, "Symbol(&&)"),
-            Token::Or => write!(f, "Symbol(||)"),
+            Token::Vertical => write!(f, "Symbol(|)"),
             Token::Annotation => write!(f, "Symbol(@)"),
             Token::BitAnd => write!(f, "Symbol(&)"),
             _ => todo!()
@@ -137,11 +134,10 @@ impl Token {
             Token::ScopeSymbol => 24,
             Token::NotEqual => 25,
             Token::Arrow => 26,
-            Token::BitOr => 27,
-            Token::Negate => 28,
-            Token::And => 29,
-            Token::Or => 30,
-            Token::Annotation => 31,
+            Token::Negate => 27,
+            Token::And => 28,
+            Token::Vertical => 29,
+            Token::Annotation => 30,
             _ => todo!()
         }
     }

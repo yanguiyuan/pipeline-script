@@ -16,11 +16,11 @@ impl Struct{
         Global::struct_type(self.fields.iter().map(|f|f.field_type.as_llvm_type()).collect())
     }
     pub fn get_type(&self)->Type{
-        let mut m = HashMap::new();
-        for (idx,v) in self.fields.iter().enumerate(){
-            m.insert(v.name.clone(),(idx,v.field_type.clone()));
+        let mut m =vec![];
+        for field in self.fields.clone(){
+            m.push((field.name,field.field_type))
         }
-        Type::Struct(m)
+        Type::Struct(Some(self.name.clone()),m)
     }
     pub fn get_name(&self)->&str{
         &self.name

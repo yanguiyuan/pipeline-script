@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use wrap_llvm::builder::Builder;
 use wrap_llvm::function::Function;
+use wrap_llvm::types::LLVMType;
 use crate::context::scope::Scope;
 use crate::core::value::Value;
 use crate::parser::r#type::Type;
@@ -11,11 +12,12 @@ pub enum ContextValue {
     Background,
     Builder(Arc<Builder>),
     SymbolType(Arc<RwLock<HashMap<String,Type>>>),
+    AliasType(Arc<RwLock<HashMap<String,Type>>>),
     SymbolTable(Arc<RwLock<HashMap<String, Value>>>),
     Scope(Scope),
     Flag(Arc<RwLock<bool>>),
     Function(Function),
-    Type(Type)
+    TypeTable(Arc<RwLock<HashMap<Type,LLVMType>>>)
 }
 
 impl ContextValue {
@@ -25,9 +27,9 @@ impl ContextValue {
             _=>panic!("not a builder")
         }
     }
-    pub fn as_type(&self)->Type{
+    pub fn as_type_table(&self)->Arc<RwLock<HashMap<Type, LLVMType>>>{
         match self {
-            ContextValue::Type(t)=>t.clone(),
+            ContextValue::TypeTable(t)=>t.clone(),
             _=>panic!("not a type")
         }
     }

@@ -12,18 +12,17 @@ pub mod global;
 #[cfg(test)]
 mod tests {
     use std::{ffi::{CString, c_char, c_void, CStr}, ptr};
-    use std::task::Context;
-    use std::thread::Scope;
-    use llvm_sys::core::LLVMDumpModule;
-    use llvm_sys::{target::LLVM_InitializeAllTargets, core::{LLVMContextCreate, LLVMDisposeModule, LLVMContextDispose, LLVMCreateMemoryBufferWithContentsOfFile, LLVMCreateMemoryBufferWithMemoryRangeCopy}, ir_reader::LLVMParseIRInContext, prelude::{LLVMContextRef, LLVMModuleRef}};
-
     use crate::{context::LLVMContext, module};
     use crate::global::Global;
-
+    #[repr(C)]
+    struct Array{
+        len:i64,
+        ptr:*mut Any,
+    }
     #[repr(C)]
     struct Any{
         id:i32,
-        ptr:*mut i8,
+        ptr:*mut c_void,
     }
     extern "C" fn println(obj:Any){
         match obj.id {
@@ -44,32 +43,85 @@ mod tests {
         }
 
     }
+    extern "C" fn append(obj:Array){
+        for i in 0..obj.len {
+            let obj = unsafe { obj.ptr.offset(i as isize) };
+            unsafe {
+                match (*obj).id {
+                    7 => {
+                        let s = unsafe { CStr::from_ptr((*obj).ptr as *const c_char) };
+                        print!("{}", s.to_str().unwrap());
+                    }
+                    4 => {
+                        let v = (*obj).ptr as i64;
+                        print!("{}", v);
+                    }
+                    3 => {
+                        let value = (*obj).ptr as i32;
+                        unsafe { print!("{}", *value); }
+                    }
+                    t => todo!("{t}")
+                }
+            }
+        }
+    }
     #[test]
     fn it_works() {
         let ctx = LLVMContext::with_jit();
         let llvm_ir = r#"
-        ; ModuleID = 'main'
-        source_filename = "main"
+  ; ModuleID = 'main'
+source_filename = "main"
 
-        @0 = private unnamed_addr constant [13 x i8] c"Hello,World!\00", align 1
+%Any = type { i32, ptr }
+%Person = type { ptr, i32 }
 
-        declare void @println({ i32, ptr } %0)
+@0 = private unnamed_addr constant [7 x i8] c"\E5\BC\A0\E4\B8\89\00", align 1
+@1 = private unnamed_addr constant [16 x i8] c"\E6\88\91\E7\9A\84\E5\90\8D\E5\AD\97\E6\98\AF\00", align 1
 
-        define void @"$main.__main__"() {
-        entry:
-            ;%0 = load ptr, ptr @0, align 8
-            %any = alloca { i32, ptr }, align 8
-            store { i32, ptr } { i32 7, ptr @0 }, ptr %any, align 8
-            call void @println(ptr %any)
-            ret void
-        }
+declare void @println(%Any %0)
+
+declare void @print(%Any %0)
+
+define %Person @createPerson() {
+entry:
+  ret %Person { ptr @0, i32 18 }
+}
+
+define void @say(%Person %0) {
+entry:
+  %1 = extractvalue %Person %0, 0
+  %2 = insertvalue %Any { i32 7, ptr undef }, ptr %1, 1
+  %3 = alloca [2 x %Any], align 8
+  %4 = getelementptr %Any, ptr %3, i32 0
+  store %Any { i32 7, ptr @1 }, ptr %4, align 8
+  %5 = getelementptr %Any, ptr %3, i32 1
+  store %Any %2, ptr %5, align 8
+  %6 = insertvalue { i64, ptr } { i64 2, ptr undef }, ptr %3, 1
+  %7 = alloca { i64, ptr }, align 8
+  store { i64, ptr } %6, ptr %7, align 8
+  call void @append(ptr %7)
+  ret void
+}
+
+declare void @append({i64,ptr} %0)
+
+define void @"$main.__main__"() {
+entry:
+  %0 = call %Person @createPerson()
+  ;%1 = load { ptr, i32 }, %Person %0, align 8
+  call void @say(%Person %0)
+  ret void
+}
+
         "#;
         let module = ctx.parse_ir(llvm_ir).expect("解析IR失败");
-       let f1 = module.get_function_ref("println");
+        let f1 = module.get_function_ref("println");
+        let f2 = module.get_function_ref("append");
 //        module.dump();
         let exec = module.create_executor().expect("创建执行器失败");
 
-       exec.add_global_mapping(f1,println as *mut c_void);
+        exec.add_global_mapping(f1,println as *mut c_void);
+        exec.add_global_mapping(f2,append as *mut c_void);
         exec.run_function("$main.__main__", &mut []);
     }
     #[test]

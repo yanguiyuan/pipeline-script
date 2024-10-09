@@ -1,7 +1,8 @@
 use std::ffi::{c_uint, CString};
-use llvm_sys::core::{LLVMConstString, LLVMGetElementType, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMTypeOf};
+use llvm_sys::core::{LLVMConstString, LLVMGetElementType, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMGetUndef, LLVMTypeOf, LLVMVoidType};
 use llvm_sys::LLVMTypeKind;
 use llvm_sys::prelude::LLVMValueRef;
+use crate::global::Global;
 use crate::types::LLVMType;
 #[derive(Clone, Debug, Copy)]
 pub enum LLVMValue{
@@ -16,6 +17,7 @@ pub enum LLVMValue{
     Pointer(LLVMValueRef),
     Array(LLVMValueRef),
     Struct(LLVMValueRef),
+    Undef(LLVMValueRef),
     Unit,
 }
 
@@ -70,8 +72,9 @@ impl LLVMValue{
             LLVMValue::Pointer(i) => *i,
             LLVMValue::Array(i) => *i,
             LLVMValue::Struct(i) => *i,
-            LLVMValue::Unit => panic!("Unit is not a llvm value"),
-            t=>{
+            LLVMValue::Undef(i) => *i,
+            LLVMValue::Unit => Global::undef(Global::unit_type()).as_llvm_value_ref(),
+            t => {
                 panic!("Unknown type: {:?}", t)
             }
         }
@@ -97,7 +100,7 @@ impl LLVMValue{
                 LLVMType::Array(Box::new(LLVMType::from(element_type)), ty)
             },
             // LLVMValue::Struct(_)=>LLVMType::Struct(ty),
-            _=>todo!()
+            t=>panic!("{t:?}")
         }
     }
     pub fn is_unit(&self)->bool{

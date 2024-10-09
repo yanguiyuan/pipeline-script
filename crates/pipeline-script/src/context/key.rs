@@ -1,11 +1,14 @@
+use crate::parser::r#type::Type;
+
 #[derive(Clone, Debug)]
 pub enum ContextKey {
     Background,
     Builder,
     SymbolTable,
     SymbolType,
+    AliasType,
     Flag(String),
-    Type,
+    TypeTable,
     Function,
     Scope,
 }
@@ -25,9 +28,9 @@ impl PartialEq for ContextKey {
                     _=>false
                 }
             }
-            ContextKey::Type => {
+            ContextKey::TypeTable => {
                 match other {
-                    ContextKey::Type => true,
+                    ContextKey::TypeTable => true,
                     _=>false
                 }
             }
@@ -58,6 +61,12 @@ impl PartialEq for ContextKey {
             ContextKey::SymbolType => {
                 match other {
                     ContextKey::SymbolType => true,
+                    _=>false
+                }
+            }
+            ContextKey::AliasType => {
+                match other {
+                    ContextKey::AliasType => true,
                     _=>false
                 }
             }

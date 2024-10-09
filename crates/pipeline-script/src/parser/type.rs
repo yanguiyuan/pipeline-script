@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use wrap_llvm::global::Global;
 use wrap_llvm::types::LLVMType;
 use crate::parser::r#struct::Struct;
-#[derive(Clone, Debug,PartialEq)]
+#[derive(Clone, Debug,PartialEq,Eq,Hash)]
 pub enum Type {
     Int8,
     Int16,
@@ -15,12 +15,14 @@ pub enum Type {
     Bool,
     Pointer(Box<Type>),
     Alias(String),
-    Struct(HashMap<String,(usize,Type)>),
+    Struct(Option<String>,Vec<(String,Type)>),
     Function(Box<Type>, Vec<Type>),
     Array(Box<Type>),
     Map(Box<Type>, Box<Type>),
     Any,
     Unit,
+    ArrayVarArg(Box<Type>),
+    VarArg,
 }
 impl From<&str> for Type {
     fn from(s: &str) -> Self {
@@ -34,6 +36,7 @@ impl From<&str> for Type {
             "Double" => Type::Double,
             "String" => Type::String,
             "Bool" => Type::Bool,
+            "Any"=>Type::Any,
 //            t=>Type::Struct(t.into()),
             _ => panic!("Unknown type: {}", s),
         }
@@ -79,6 +82,11 @@ impl From<String> for Type {
                 let t = s.into();
                 Type::Array(Box::new(t))
             }
+            s if s.starts_with("..")=>{
+                let s = s.strip_prefix("..").unwrap();
+                let t = s.into();
+                Type::ArrayVarArg(Box::new(t))
+            }
             t => Type::Alias(t.into()),
         }
     }
@@ -86,6 +94,7 @@ impl From<String> for Type {
 impl Type {
     pub fn id(&self) -> i32 {
         match self {
+            Type::Unit => 0,
             Type::Int8 => 1,
             Type::Int16 => 2,
             Type::Int32 => 3,
@@ -95,6 +104,7 @@ impl Type {
             Type::String => 7,
             Type::Bool => 8,
             // Type::Any => 9,
+
             t=>panic!("{t:?}")
         }
     }
@@ -112,13 +122,41 @@ impl Type {
             _ => false,
         }
     }
+    pub fn is_array_vararg(&self) -> bool {
+        match self {
+            Type::ArrayVarArg(_) => true,
+            _ => false,
+        }
+    }
+    pub fn with_return_type(&self, return_type: Type) -> Type {
+        match self {
+            Type::Function(_, args) => Type::Function(Box::new(return_type), args.clone()),
+            _ => panic!("Not a function type"),
+        }
+    }
     pub fn get_struct_field(&self,name:impl AsRef<str>)->Option<(usize,Type)>{
         match self {
-            Type::Struct(m)=>{
-                let e = m.get(name.as_ref()).unwrap();
-                Some(e.clone())
+            Type::Struct(_,m)=>{
+                for (i, (field_name, t)) in m.iter().enumerate() {
+                    if field_name == name.as_ref() {
+                        return Some((i, t.clone()));
+                    }
+                }
+                None
             }
             _=>None,
+        }
+    }
+    pub fn get_function_arg_count(&self)-> usize{
+        match self {
+            Type::Function(_, args) => args.len(),
+            _ => panic!("Not a function type"),
+        }
+    }
+    pub fn get_function_arg_type(&self,index:usize)->Option<Type>{
+        match self {
+            Type::Function(_, args) => args.get(index).cloned(),
+            _ => panic!("Not a function type"),
         }
     }
     pub fn is_i8(&self) -> bool {
@@ -159,7 +197,7 @@ impl Type {
     }
     pub fn is_struct(&self) -> bool {
         match self {
-            Type::Struct(_) => true,
+            Type::Struct(_,_) => true,
             _ => false,
         }
     }
@@ -181,7 +219,14 @@ impl Type {
             Type::Any=>Global::struct_type(vec![Global::i32_type(),Global::pointer_type(Global::i8_type())]),
             Type::Array(t)=>Global::array_type(t.as_llvm_type()),
             Type::String=>Global::pointer_type(Global::i8_type()),
-            // Type::Struct(s)
+            Type::Struct(_,s)=>{
+                let mut v = vec![];
+                for (_,t) in s.iter(){
+                    v.push(t.as_llvm_type());
+                }
+                Global::struct_type(v)
+            },
+            Type::ArrayVarArg(t)=>Global::pointer_type(t.as_llvm_type()),
             _=> panic!("Unknown type: {:?}", self),
         }
     }
@@ -189,6 +234,18 @@ impl Type {
         match self {
             Type::Alias(s) => Some(s.clone()),
             _ => None,
+        }
+    }
+    pub fn get_struct_fields(&self) -> Option<&Vec<(String,  Type)>> {
+        match self {
+            Type::Struct(_,s) => Some(s),
+            _ => None,
+        }
+    }
+    pub fn is_alias(&self) -> bool {
+        match self {
+            Type::Alias(_) => true,
+            _ => false,
         }
     }
     pub fn get_function_return_type(&self) -> Option<Type> {
@@ -201,6 +258,7 @@ impl Type {
         match self {
             Type::Array(t) => Some(t),
             Type::Pointer(t) => Some(t),
+            Type::ArrayVarArg(t) => Some(t),
             _ => None,
         }
     }

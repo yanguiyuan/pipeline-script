@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::{c_uint,  CString};
 use std::sync::Arc;
-use llvm_sys::core::{LLVMAppendBasicBlock, LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMGetParam, LLVMPositionBuilderAtEnd};
+use llvm_sys::core::{LLVMAppendBasicBlock, LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildExtractElement, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMGetParam, LLVMGetUndef, LLVMPositionBuilderAtEnd, LLVMStructCreateNamed};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use crate::function::Function;
@@ -82,12 +82,19 @@ impl Builder{
         }
         arr0.into()
     }
-    pub fn build_struct_get(&self,ty:LLVMType,element_ty:LLVMType,val:LLVMValue,idx:usize)->LLVMValue{
+    pub fn build_struct_get(&self,val:LLVMValue,idx:usize)->LLVMValue{
         let name = CString::new("").unwrap();
         unsafe {
-            let p = LLVMBuildStructGEP2(self.inner, ty.as_llvm_type_ref(), val.as_llvm_value_ref(), idx as c_uint, name.as_ptr());
-            let p:LLVMValue = p.into();
-            LLVMBuildLoad2(self.inner,element_ty.as_llvm_type_ref(), p.as_llvm_value_ref(), name.as_ptr())
+            let v = LLVMBuildExtractValue(self.inner, val.as_llvm_value_ref(), idx as c_uint, name.as_ptr());
+            v
+        }.into()
+
+    }
+    pub fn build_struct_insert(&self,val:LLVMValue,idx:usize,value:LLVMValue)->LLVMValue{
+        let name = CString::new("").unwrap();
+        unsafe {
+            let v = LLVMBuildInsertValue(self.inner, val.as_llvm_value_ref(), value.as_llvm_value_ref(), idx as c_uint, name.as_ptr());
+            v
         }.into()
     }
     pub fn build_struct_gep(&self,ty:LLVMType,val:LLVMValue,idx:usize)->LLVMValue{
