@@ -1,12 +1,12 @@
-pub mod token;
-pub mod position;
 pub mod iter;
+pub mod position;
 mod test;
+pub mod token;
 
-use std::ops::Add;
 use crate::lexer::iter::TokenStream;
 use crate::lexer::position::Position;
 use crate::lexer::token::Token;
+use std::ops::Add;
 
 #[derive(Debug, Clone)]
 pub struct Lexer {
@@ -17,10 +17,6 @@ pub struct Lexer {
     row: usize,
     keywords: Vec<&'static str>,
 }
-
-
-
-
 
 impl IntoIterator for Lexer {
     type Item = (Token, Position);
@@ -43,7 +39,7 @@ impl Lexer {
             file_name: file_name.into(),
             keywords: vec![
                 "let", "fn", "fun", "return", "if", "while", "import", "else", "val", "var",
-                "break", "continue", "for", "in", "class", "static", "trait","struct","extern"
+                "break", "continue", "for", "in", "class", "static", "trait", "struct", "extern",
             ],
         }
     }
@@ -251,7 +247,8 @@ impl Lexer {
                             self.next_char();
                         }
                         ('/', '/') => {
-                            while self.current_char().is_some()&&self.current_char() != Some('\n') {
+                            while self.current_char().is_some() && self.current_char() != Some('\n')
+                            {
                                 self.next_char();
                             }
                         }
@@ -353,7 +350,7 @@ impl Lexer {
         }
 
         pos.set_span(v.len() + 2);
-        let v = v.replace("\\n","\n");
+        let v = v.replace("\\n", "\n");
         Some((Token::String(v), pos))
     }
     #[allow(unused)]

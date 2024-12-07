@@ -1,6 +1,7 @@
+use std::vec;
+
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
-use crate::parser::stmt::Stmt;
 
 use super::stmt::StmtNode;
 #[derive(Clone, Debug)]
@@ -8,8 +9,10 @@ use super::stmt::StmtNode;
 pub struct Function {
     name: String,
     return_type: Type,
+    generic_list: Vec<Type>,
     args: Vec<VariableDeclaration>,
     body: Vec<StmtNode>,
+    #[allow(unused)]
     is_generic: bool,
     binding_struct: Option<String>,
     #[allow(unused)]
@@ -28,11 +31,13 @@ impl Function {
             return_type,
             args,
             body,
+            generic_list:vec![],
             binding_struct: None,
             is_generic: false,
             is_extern,
         }
     }
+
     pub fn name(&self) -> String {
         self.name.clone()
     }
@@ -45,25 +50,31 @@ impl Function {
     pub fn return_type(&self) -> &Type {
         &self.return_type
     }
-    pub fn with_extern(mut self, is_extern: bool) ->Self {
+    pub fn with_generic_list(mut self,list:Vec<Type>)->Self{
+        self.generic_list = list;
+        self
+    }
+    pub fn with_extern(mut self, is_extern: bool) -> Self {
         self.is_extern = is_extern;
         self
-
+    }
+    pub fn add_generic(&mut self,g:Type){
+        self.generic_list.push(g);
     }
     pub fn args_count(&self) -> usize {
         self.args.len()
     }
-    pub fn has_binding(&self)->bool{
+    pub fn has_binding(&self) -> bool {
         match self.binding_struct {
             None => false,
-            Some(_) => true
+            Some(_) => true,
         }
     }
-    pub fn get_binding(&self)->String{
+    pub fn get_binding(&self) -> String {
         self.binding_struct.clone().unwrap()
     }
-    pub fn insert_arg(&mut self,index:usize,vd:VariableDeclaration){
-        self.args.insert(index,vd)
+    pub fn insert_arg(&mut self, index: usize, vd: VariableDeclaration) {
+        self.args.insert(index, vd)
     }
     pub fn set_binding_struct(&mut self, binding_struct: impl Into<String>) {
         self.binding_struct = Some(binding_struct.into());
@@ -72,18 +83,18 @@ impl Function {
     pub fn set_body(&mut self, body: Vec<StmtNode>) {
         self.body = body;
     }
-    pub fn with_return_type(mut self, return_type: Type)->Self {
+    pub fn with_return_type(mut self, return_type: Type) -> Self {
         self.return_type = return_type;
         self
     }
     pub fn set_return_type(&mut self, return_type: Type) {
         self.return_type = return_type;
     }
-    pub fn with_name(mut self, name: String)->Self {
+    pub fn with_name(mut self, name: String) -> Self {
         self.name = name;
         self
     }
-    pub fn with_args(mut self, args: Vec<VariableDeclaration>)->Self {
+    pub fn with_args(mut self, args: Vec<VariableDeclaration>) -> Self {
         self.args = args;
         self
     }
@@ -96,12 +107,11 @@ impl Function {
     }
     pub fn get_type(&self) -> Type {
         let mut args = vec![];
-        for i in &self.args{
+        for i in &self.args {
             args.push(i.r#type().unwrap());
         }
         Type::Function(Box::new(self.return_type.clone()), args)
     }
-
 }
 
 impl Default for Function {
@@ -111,6 +121,7 @@ impl Default for Function {
             return_type: Type::Unit,
             is_generic: false,
             args: vec![],
+            generic_list: vec![],
             binding_struct: None,
             body: vec![],
             is_extern: false,

@@ -1,6 +1,4 @@
-
 use std::collections::HashMap;
-use scanner_rust::generic_array::typenum::N10;
 
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
@@ -8,22 +6,28 @@ use crate::parser::r#type::Type;
 use crate::parser::stmt::StmtNode;
 
 #[derive(Debug, Clone)]
-pub struct ExprNode{
-    expr:Expr,
-    pos:Position,
-    ty:Option<Type>
+pub struct ExprNode {
+    expr: Expr,
+    pos: Position,
+    ty: Option<Type>,
 }
 
 impl ExprNode {
     pub(crate) fn get_closure_body(&self) -> Vec<StmtNode> {
         match &self.expr {
-            Expr::Closure(_,body)=>body.clone(),
-            _=>panic!("not closure expr")
+            Expr::Closure(_, body, _) => body.clone(),
+            _ => panic!("not closure expr"),
         }
     }
     pub fn get_closure_params(&self) -> Vec<VariableDeclaration> {
         match &self.expr {
-            Expr::Closure(params, _) => params.clone(),
+            Expr::Closure(params, _, _) => params.clone(),
+            _ => panic!("not closure expr"),
+        }
+    }
+    pub fn get_closure_captures(&self) -> Vec<(String, Type)> {
+        match &self.expr {
+            Expr::Closure(_, _, captures) => captures.clone(),
             _ => panic!("not closure expr"),
         }
     }
@@ -44,7 +48,7 @@ pub enum Expr {
     Map(Vec<(ExprNode, ExprNode)>),
     Index(Box<ExprNode>, Box<ExprNode>),
     Address(Box<ExprNode>),
-    Closure(Vec<VariableDeclaration>,Vec<StmtNode>),
+    Closure(Vec<VariableDeclaration>, Vec<StmtNode>, Vec<(String, Type)>),
     Struct(StructExpr),
     Member(Box<ExprNode>, String),
     None,
@@ -54,7 +58,6 @@ pub struct StructExpr {
     pub(crate) name: String,
     pub(crate) props: HashMap<String, ExprNode>,
 }
-
 
 impl StructExpr {
     pub fn new(name: String, props: HashMap<String, ExprNode>) -> Self {
@@ -116,56 +119,56 @@ impl Argument {
     }
 }
 impl ExprNode {
-    pub fn new(expr:Expr)->Self{
-        Self{
+    pub fn new(expr: Expr) -> Self {
+        Self {
             expr,
-            pos:Position::none(),
-            ty:None
+            pos: Position::none(),
+            ty: None,
         }
     }
-    pub fn is_closure(&self)->bool{
+    pub fn is_closure(&self) -> bool {
         match &self.expr {
-            Expr::Closure(_,_)=>true,
-            _=>false
+            Expr::Closure(..) => true,
+            _ => false,
         }
     }
-    pub fn with_position(mut self,pos:Position)->Self{
+    pub fn with_position(mut self, pos: Position) -> Self {
         self.pos = pos;
         self
     }
-    pub fn with_type(mut self,ty:Type)->Self{
+    pub fn with_type(mut self, ty: Type) -> Self {
         self.ty = Some(ty);
         self
     }
-    pub fn position(&self)->Position{
+    pub fn position(&self) -> Position {
         self.pos.clone()
     }
-    pub fn get_expr(&self)->Expr{
+    pub fn get_expr(&self) -> Expr {
         self.expr.clone()
     }
-    pub fn get_type(&self)->Option<Type>{
+    pub fn get_type(&self) -> Option<Type> {
         self.ty.clone()
     }
-    pub fn get_member_name(&self)->String{
+    pub fn get_member_name(&self) -> String {
         match &self.expr {
-            Expr::Member(_,name)=>name.clone(),
-            _=>panic!("not member expr")
+            Expr::Member(_, name) => name.clone(),
+            _ => panic!("not member expr"),
         }
     }
-    pub fn get_member_root(&self)->ExprNode{
+    pub fn get_member_root(&self) -> ExprNode {
         match &self.expr {
-            Expr::Member(root,_)=>*root.clone(),
-            _=>panic!("not member expr")
+            Expr::Member(root, _) => *root.clone(),
+            _ => panic!("not member expr"),
         }
     }
 }
 
 impl From<Expr> for ExprNode {
     fn from(value: Expr) -> Self {
-        ExprNode{
-            expr:value,
-            pos:Position::none(),
-            ty:None,
+        ExprNode {
+            expr: value,
+            pos: Position::none(),
+            ty: None,
         }
     }
 }

@@ -1,10 +1,8 @@
-
-use std::collections::HashMap;
 use crate::parser::class::Class;
 use crate::parser::function::Function;
 use crate::parser::r#struct;
 use crate::parser::stmt::StmtNode;
-
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Module {
@@ -30,7 +28,7 @@ impl Module {
     pub fn register_struct(&mut self, name: &str, s: r#struct::Struct) {
         self.structs.insert(name.into(), s);
     }
-    pub fn get_structs(&self)-> &HashMap<String, r#struct::Struct> {
+    pub fn get_structs(&self) -> &HashMap<String, r#struct::Struct> {
         &self.structs
     }
     pub fn get_struct(&self, name: &str) -> Option<&r#struct::Struct> {
@@ -46,7 +44,7 @@ impl Module {
     pub fn get_functions_ref(&self) -> &HashMap<String, Function> {
         &self.functions
     }
-    pub fn get_functions(&self) ->HashMap<String, Function> {
+    pub fn get_functions(&self) -> HashMap<String, Function> {
         self.functions.clone()
     }
     pub fn register_function(&mut self, name: &str, f: Function) {
@@ -79,7 +77,7 @@ impl Module {
         &mut self,
         class_name: impl AsRef<str>,
         method_name: impl Into<String>,
-        method:Function,
+        method: Function,
     ) {
         let class_result = self.classes.get_mut(class_name.as_ref()).unwrap();
         class_result.register_method(method_name.into(), method)
@@ -88,7 +86,6 @@ impl Module {
         self.name.clone()
     }
     pub fn merge(&mut self, module: &Module) {
-
         let new_functions: HashMap<_, _> = module
             .functions
             .iter()

@@ -1,28 +1,26 @@
 extern fn println(obj:..Any)
+extern fn len(obj:Array<Any>)->Int64
 extern fn print(obj:..Any)
 extern fn append(obj:..Any)->String
+
 /*
-struct Person{
-    name:String,
-    age:Int32
+val a = |a:Int32,d:Int32|{
+    val b =12
+    val c = 12
+    println(a+b+c+d)
 }
-
-fn createPerson()->Person{
-    return Person{
-        name:"张三",
-        age:18
-    }
+fn boo(callback:Fn(Int32,Int32)){
+    callback(3,8)
 }
-
-fn Person.say(){
-    val v = append("我的名字是",this.name)
-    println(v)
-}
-val p = createPerson()
-p.say()
+boo(a)
 */
-val b = 6
-val a = |a:Int32|{
-    println("Hello world",a+b)
+val c = [1,2,30]
+val d = c.append(5)
+println(len(d))
+
+fn append<T>(target:Array<T>,obj:..T)->Array<T>{
+    val l0= len(target) + len(obj)
+    val p = mem.malloc(l * sizeof<T>())
+    men.copy(p,target)
+    return p
 }
-a(3,4)

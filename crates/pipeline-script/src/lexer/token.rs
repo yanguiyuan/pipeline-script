@@ -99,7 +99,7 @@ impl Display for Token {
             Token::Vertical => write!(f, "Symbol(|)"),
             Token::Annotation => write!(f, "Symbol(@)"),
             Token::BitAnd => write!(f, "Symbol(&)"),
-            _ => todo!()
+            _ => todo!(),
         }
     }
 }
@@ -138,7 +138,7 @@ impl Token {
             Token::And => 28,
             Token::Vertical => 29,
             Token::Annotation => 30,
-            _ => todo!()
+            _ => todo!(),
         }
     }
     pub fn is_colon(&self) -> bool {

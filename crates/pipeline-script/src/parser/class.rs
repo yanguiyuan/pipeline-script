@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::function::Function;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct Class {

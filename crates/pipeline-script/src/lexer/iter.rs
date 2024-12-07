@@ -1,6 +1,6 @@
-use crate::lexer::Lexer;
 use crate::lexer::position::Position;
 use crate::lexer::token::Token;
+use crate::lexer::Lexer;
 
 pub struct TokenStream {
     tokenizer: Lexer,

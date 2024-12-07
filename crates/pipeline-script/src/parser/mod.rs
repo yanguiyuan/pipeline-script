@@ -22,10 +22,10 @@ pub mod declaration;
 pub mod expr;
 pub mod function;
 pub mod module;
+mod peg;
 pub mod stmt;
 pub mod r#struct;
 pub mod r#type;
-mod peg;
 
 pub struct Parser {
     token_stream: TokenStream,
@@ -53,7 +53,7 @@ impl Parser {
     }
     pub fn parse_stmt(&mut self) -> Result<StmtNode> {
         loop {
-            let (token, pos) = self.token_stream.peek();
+            let (token, _) = self.token_stream.peek();
             return Ok(match token {
                 Token::Keyword(k) => match k.as_str() {
                     "var" => self.parse_var_stmt()?,
@@ -81,7 +81,7 @@ impl Parser {
                     }
                     t => {
                         if t == self.function_keyword.as_str() {
-                            self.parse_function()?;
+                            self.parse_function().unwrap();
                             continue;
                         }
                         todo!()
@@ -119,17 +119,17 @@ impl Parser {
             let (token, pos) = self.token_stream.peek();
             match token {
                 Token::Identifier(id) => {
-                    let p0 = self.parse_identifier()?;
-                    let p1 = self.parse_special_token(Token::Colon)?;
-                    let (type_name, p2) = self.parse_type_name()?;
-                    v.push(VariableDeclaration::new(id).with_type(type_name.into()));
+                    let _ = self.parse_identifier()?;
+                    let _ = self.parse_special_token(Token::Colon)?;
+                    let ty = self.parse_type()?;
+                    v.push(VariableDeclaration::new(id).with_type(ty));
                     continue;
                 }
                 Token::Comma => {
                     self.parse_special_token(Token::Comma)?;
                     continue;
                 }
-                Token::BraceRight|Token::Vertical => {
+                Token::BraceRight | Token::Vertical => {
                     break;
                 }
                 t => panic!("unexpected token {:?} at {:?}", t, pos),
@@ -144,17 +144,17 @@ impl Parser {
         todo!()
     }
     fn parse_struct(&mut self) -> Result<()> {
-        let p0 = self.parse_keyword("struct")?;
-        let (struct_name, p1) = self.parse_identifier()?;
-        let p2 = self.parse_special_token(Token::ParenLeft)?;
+        let _ = self.parse_keyword("struct")?;
+        let (struct_name, _) = self.parse_identifier()?;
+        let _ = self.parse_special_token(Token::ParenLeft)?;
         let mut fields = vec![];
         loop {
-            let (token, pos) = self.token_stream.peek();
+            let (token, _) = self.token_stream.peek();
             match token {
                 Token::Identifier(id) => {
-                    let p0 = self.parse_identifier()?;
-                    let p1 = self.parse_special_token(Token::Colon)?;
-                    let (type_name, p2) = self.parse_type_name()?;
+                    let _ = self.parse_identifier()?;
+                    let _ = self.parse_special_token(Token::Colon)?;
+                    let (type_name, _) = self.parse_type_name()?;
                     fields.push(StructField::new(id, type_name.into()));
                     continue;
                 }
@@ -177,8 +177,8 @@ impl Parser {
     fn parse_enum(&mut self) {}
     fn parse_trait(&mut self) {}
     fn parse_function(&mut self) -> Result<()> {
-        let mut fun = self.parse_function_declaration()?;
-        let block = self.parse_block()?;
+        let mut fun = self.parse_function_declaration().unwrap();
+        let block = self.parse_block().unwrap();
         fun.set_body(block);
         self.module.register_function(&fun.name(), fun);
         Ok(())
@@ -194,41 +194,49 @@ impl Parser {
     fn parse_function_declaration(&mut self) -> Result<Function> {
         let mut fun = Function::default();
         let fun_name = self.function_keyword.clone();
-        let p0 = self.parse_keyword(&fun_name)?;
-        let (mut name, p1) = self.parse_identifier()?;
-        if self.try_parse_token(Token::Dot){
-            let (name0, p2) = self.parse_identifier()?;
+        let _ = self.parse_keyword(&fun_name)?;
+        let (mut name, _) = self.parse_identifier()?;
+        if self.try_parse_token(Token::Dot) {
+            let (name0, _) = self.parse_identifier()?;
             fun.set_binding_struct(name);
             name = name0;
         }
-        let p2 = self.parse_special_token(Token::BraceLeft)?;
+        // 解析泛型
+        let mut list = vec![];
+        if self.try_parse_token(Token::Less) {
+            let ty= self.parse_type()?;
+            list.push(ty);
+            self.parse_special_token(Token::Greater)?;
+        }
+        let _ = self.parse_special_token(Token::BraceLeft)?;
         let param_list = self.parse_param_list()?;
-        let p3 = self.parse_special_token(Token::BraceRight)?;
-        let (peek, p4) = self.token_stream.peek();
-        if self.try_parse_token(Token::Arrow){
-            let (type_name, p6) = self.parse_type_name()?;
+        let _ = self.parse_special_token(Token::BraceRight)?;
+        if self.try_parse_token(Token::Arrow) {
+            let ret_ty= self.parse_type()?;
             return Ok(fun
                 .with_name(name)
                 .with_args(param_list)
-                .with_return_type(type_name.into()));
+                .with_generic_list(list)
+                .with_return_type(ret_ty));
         }
         Ok(fun
             .with_name(name)
             .with_args(param_list)
+            .with_generic_list(list)
             .with_return_type("Unit".into()))
     }
     fn parse_block(&mut self) -> Result<Vec<StmtNode>> {
         let mut result = vec![];
         self.parse_special_token(Token::ParenLeft)?;
         loop {
-            let (token, pos) = self.token_stream.peek();
+            let (token, _) = self.token_stream.peek();
             match token {
                 Token::ParenRight => {
                     self.parse_special_token(Token::ParenRight)?;
                     break;
                 }
                 _ => {
-                    result.push(self.parse_stmt()?);
+                    result.push(self.parse_stmt().unwrap());
                 }
             }
         }
@@ -300,22 +308,25 @@ impl Parser {
     }
     pub fn parse_var_stmt(&mut self) -> Result<StmtNode> {
         let p0 = self.parse_keyword("var")?;
-        let (name, p1) = self.parse_identifier()?;
+        let (name, _) = self.parse_identifier()?;
         let p2 = self.parse_special_token(Token::Colon)?;
         let (type_name, p3) = self.parse_type_name()?;
         let p4 = self.parse_special_token(Token::Assign)?;
         let expr = self.parse_expr()?;
         let p5 = expr.position();
         Ok(StmtNode::new(
-            Stmt::VarDecl(VariableDeclaration::new(name).with_type(type_name.into()).with_default(expr)),
+            Stmt::VarDecl(
+                VariableDeclaration::new(name)
+                    .with_type(type_name.into())
+                    .with_default(expr),
+            ),
             p0 + p2 + p3 + p4 + p5,
         ))
     }
     pub fn parse_val_stmt(&mut self) -> Result<StmtNode> {
         let p0 = self.parse_keyword("val")?;
         let (name, mut p1) = self.parse_identifier()?;
-        let mut ty:Option<Type>;
-        let  mut vd = VariableDeclaration::new(name);
+        let mut vd = VariableDeclaration::new(name);
         if self.token_stream.peek().0 == Token::Colon {
             p1 = p1 + self.parse_special_token(Token::Colon)?;
             let (type_name, p3) = self.parse_type_name()?;
@@ -327,12 +338,12 @@ impl Parser {
         let p5 = expr.position();
         Ok(StmtNode::new(
             Stmt::ValDecl(vd.with_default(expr)),
-            p0 + p1 +  p4 + p5,
+            p0 + p1 + p4 + p5,
         ))
     }
     pub fn parse_chain_expr(&mut self) -> Result<ExprNode> {
         let mut expr = self.parse_primary_expr()?;
-        
+
         loop {
             let (peek, _) = self.token_stream.peek();
             expr = match peek {
@@ -351,10 +362,10 @@ impl Parser {
                 _ => break,
             };
         }
-        
+
         Ok(expr)
     }
-    fn parse_fn_args(&mut self)->Result<(Vec<Argument>,Position)>{
+    fn parse_fn_args(&mut self) -> Result<(Vec<Argument>, Position)> {
         let mut p0 = self.parse_special_token(Token::BraceLeft)?;
         let mut args = vec![];
         loop {
@@ -377,28 +388,27 @@ impl Parser {
                 }
             }
         }
-        Ok((args,p0))
+        Ok((args, p0))
     }
     pub fn parse_primary_expr(&mut self) -> Result<ExprNode> {
         let (token, mut pos) = self.token_stream.next();
         match token {
-            Token::Vertical=> {
-                let  peek = self.token_stream.peek().0;
+            Token::Vertical => {
+                let peek = self.token_stream.peek().0;
                 let mut l = vec![];
                 if peek != Token::Vertical {
-                     l = self.parse_param_list()?;
+                    l = self.parse_param_list()?;
                 }
                 let p1 = self.parse_special_token(Token::Vertical)?;
                 let block = self.parse_block()?;
-                Ok(ExprNode::from(Expr::Closure(l,block)).with_position(p1+pos))
+                Ok(ExprNode::from(Expr::Closure(l, block, vec![])).with_position(p1 + pos))
             }
             Token::Identifier(id) => {
                 let (peek, _) = self.token_stream.peek();
                 match peek {
-
                     Token::BraceLeft => {
-                       let (args,p0) = self.parse_fn_args()?;
-                        pos = pos +p0;
+                        let (args, p0) = self.parse_fn_args()?;
+                        pos = pos + p0;
                         Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args }))
                             .with_position(pos))
                     }
@@ -421,10 +431,10 @@ impl Parser {
                                     continue;
                                 }
                                 Token::Identifier(ident) => {
-                                    let (name, p3) = self.parse_identifier()?;
-                                    let p4 = self.parse_special_token(Token::Colon)?;
+                                    let (_, _) = self.parse_identifier()?;
+                                    let _ = self.parse_special_token(Token::Colon)?;
                                     let expr = self.parse_expr()?;
-                                    let p5 = expr.position();
+                                    let _ = expr.position();
                                     fields.insert(ident, expr);
                                 }
                                 _ => todo!("parse primary expr"),
@@ -448,7 +458,7 @@ impl Parser {
             }
             Token::BitAnd => {
                 let expr = self.parse_primary_expr()?;
-                let p0 = expr.position();
+                let _ = expr.position();
                 Ok(ExprNode::from(Expr::Address(Box::new(expr))).with_position(pos))
             }
             Token::BracketLeft => {
@@ -482,13 +492,13 @@ impl Parser {
     }
     pub fn parse_fact_expr(&mut self) -> Result<ExprNode> {
         let expr = self.parse_chain_expr()?;
-        let p = expr.position();
-        let (token, pos) = self.token_stream.peek();
+        let _ = expr.position();
+        let (token, _) = self.token_stream.peek();
         match token {
             Token::BraceLeft => {
-                let (mut args,p0)=self.parse_fn_args()?;
-                args.insert(0,Argument::new(expr.get_member_root()));
-                Ok(ExprNode::from(Expr::FnCall(FnCallExpr{
+                let (mut args, _) = self.parse_fn_args()?;
+                args.insert(0, Argument::new(expr.get_member_root()));
+                Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                     name: expr.get_member_name(),
                     args,
                 })))
@@ -516,7 +526,7 @@ impl Parser {
                 let p2 = expr1.position();
                 Ok(
                     ExprNode::from(Expr::Binary(Op::Mul, Box::new(expr0), Box::new(expr1)))
-                        .with_position(p0+p1+p2),
+                        .with_position(p0 + p1 + p2),
                 )
             }
             Token::Slash => {
@@ -636,10 +646,89 @@ impl Parser {
             ))
         }
     }
+    pub fn parse_simple_type(&mut self) -> Result<Type>{
+        let (token, p0) = self.token_stream.next();
+        match &token {
+            Token::Dot => {
+                let _ = self.parse_special_token(Token::Dot)?;
+                let ty = self.parse_type()?;
+                Ok(Type::ArrayVarArg(Box::new(ty)))
+            }
+            Token::Identifier(id) => match id.as_str() {
+                "Any" => Ok(Type::Any),
+                "Unit" => Ok(Type::Unit),
+                "Int8" => Ok(Type::Int8),
+                "Int16" => Ok(Type::Int16),
+                "Int32" => Ok(Type::Int32),
+                "Int64" => Ok(Type::Int64),
+                "Float" => Ok(Type::Float),
+                "Double" => Ok(Type::Double),
+                "Bool" => Ok(Type::Bool),
+                "String" => Ok(Type::String),
+                "Array"=>{
+                    self.parse_special_token(Token::Less)?;
+                    let el_ty = self.parse_type()?;
+                    self.parse_special_token(Token::Greater)?;
+                    Ok(Type::Array(Box::new(el_ty)))
+                },
+                "Fn" => {
+                    self.parse_special_token(Token::BraceLeft)?;
+                    let mut param_type = vec![];
+                    loop {
+                        let peek = self.token_stream.peek().0;
+                        match peek {
+                            Token::BraceRight => {
+                                self.parse_special_token(Token::BraceRight)?;
+                                break;
+                            }
+                            Token::Comma => {
+                                self.parse_special_token(Token::Comma)?;
+                            }
+
+                            Token::Identifier(_) => {
+                                let ty = self.parse_type()?;
+                                param_type.push(ty);
+                            }
+                            t => {
+                                return Err(Error::UnexpectedToken(
+                                    t.to_string(),
+                                    "Identifier(?)".into(),
+                                    p0,
+                                ))
+                            }
+                        }
+                    }
+                    Ok(Type::Function(Box::new(Type::Unit), param_type))
+                }
+                name => Ok(Type::Alias(name.into()))
+            },
+            Token::BracketLeft => {
+                self.parse_special_token(Token::BracketLeft)?;
+                let ty = self.parse_type()?;
+                self.parse_special_token(Token::BracketRight)?;
+                return Ok(Type::Array(Box::new(ty)));
+            }
+            _ => Err(Error::UnexpectedToken(
+                token.to_string(),
+                "Identifier(?)".into(),
+                p0,
+            )),
+        }
+    }
+    pub fn parse_type(&mut self) -> Result<Type> {
+        let ty = self.parse_simple_type()?;
+        let mut list = vec![];
+        if self.try_parse_token(Token::Less){
+            let t0 = self.parse_type()?;
+            list.push(t0);
+            let _ = self.parse_special_token(Token::Greater);
+        }
+        Ok(Type::Generic(Box::new(ty), list))
+    }
 
     pub fn parse_type_name(&mut self) -> Result<(String, Position)> {
         let (token, p0) = self.token_stream.next();
-        match token {
+        match &token {
             Token::BracketLeft => {
                 let p1 = self.parse_special_token(Token::BracketRight)?;
                 let (name, p2) = self.parse_identifier()?;
@@ -650,7 +739,7 @@ impl Parser {
                 let (name, p1) = self.parse_identifier()?;
                 Ok((format!("..{}", name), p0 + p1))
             }
-            Token::Identifier(id) => Ok((id, p0)),
+            Token::Identifier(id) => Ok((id.to_string(), p0)),
             _ => Err(Error::UnexpectedToken(
                 token.to_string(),
                 "Identifier(?)".into(),

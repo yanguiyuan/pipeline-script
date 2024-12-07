@@ -1,9 +1,8 @@
-
-pub mod lexer;
-pub mod plugin;
-pub mod parser;
-pub mod core;
 mod compiler;
+pub mod core;
+pub mod lexer;
+pub mod parser;
+pub mod plugin;
 
 mod context;
 pub mod preprocessor;
@@ -76,7 +75,5 @@ fun add(a:Int,b:Int){
     }
 
     #[test]
-    fn it_works() {
-        
-    }
+    fn it_works() {}
 }

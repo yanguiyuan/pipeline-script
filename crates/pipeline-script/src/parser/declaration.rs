@@ -1,4 +1,3 @@
-
 use crate::parser::r#type::Type;
 
 use super::expr::ExprNode;
@@ -10,9 +9,9 @@ pub struct VariableDeclaration {
     pub is_var_arg: bool,
 }
 impl VariableDeclaration {
-    pub fn new(name:impl Into<String>) -> Self {
+    pub fn new(name: impl Into<String>) -> Self {
         Self {
-            name:name.into(),
+            name: name.into(),
             default: None,
             declaration_type: None,
             is_var_arg: false,

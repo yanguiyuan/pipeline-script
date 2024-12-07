@@ -1,21 +1,18 @@
-
+use super::expr::ExprNode;
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
-use crate::parser::expr::Expr;
-use crate::parser::r#type::Type;
-use super::expr::ExprNode;
 
 #[derive(Debug, Clone)]
-pub struct StmtNode{
-    stmt:Stmt,
-    pos:Position
+pub struct StmtNode {
+    stmt: Stmt,
+    pos: Position,
 }
 #[derive(Debug, Clone)]
 pub enum Stmt {
     EvalExpr(Box<ExprNode>),
     ValDecl(VariableDeclaration),
     VarDecl(VariableDeclaration),
-    Assign(Box<ExprNode>,Box<ExprNode>),
+    Assign(Box<ExprNode>, Box<ExprNode>),
     Return(Box<ExprNode>),
     If(Box<IfStmt>),
     While(Box<ExprNode>, Vec<StmtNode>),
@@ -36,15 +33,16 @@ pub struct IfStmt {
 }
 
 impl IfStmt {
-    pub fn new(branches: Vec<IfBranchStmt>,else_body: Option<Vec<StmtNode>>)->Self{
-        Self{
-            branches,else_body
+    pub fn new(branches: Vec<IfBranchStmt>, else_body: Option<Vec<StmtNode>>) -> Self {
+        Self {
+            branches,
+            else_body,
         }
     }
-    pub fn set_else_body(&mut self,else_body: Option<Vec<StmtNode>>){
+    pub fn set_else_body(&mut self, else_body: Option<Vec<StmtNode>>) {
         self.else_body = else_body;
     }
-    pub fn set_branches(&mut self,branches: Vec<IfBranchStmt>){
+    pub fn set_branches(&mut self, branches: Vec<IfBranchStmt>) {
         self.branches = branches;
     }
     pub fn get_branches(&self) -> &Vec<IfBranchStmt> {
@@ -61,12 +59,10 @@ pub struct IfBranchStmt {
 }
 
 impl IfBranchStmt {
-    pub fn new( condition: ExprNode,body: Vec<StmtNode>)->Self{
-        Self{
-            condition,body
-        }
+    pub fn new(condition: ExprNode, body: Vec<StmtNode>) -> Self {
+        Self { condition, body }
     }
-    
+
     pub fn get_condition(&self) -> &ExprNode {
         &self.condition
     }
@@ -81,19 +77,17 @@ impl Stmt {
 }
 
 impl StmtNode {
-    pub fn new(stmt:Stmt,pos:Position)->Self{
-        Self{
-            stmt,pos
-        }
+    pub fn new(stmt: Stmt, pos: Position) -> Self {
+        Self { stmt, pos }
     }
 
-    pub fn get_stmt(&self)->Stmt{
+    pub fn get_stmt(&self) -> Stmt {
         self.stmt.clone()
     }
-    pub fn is_noop(&self)->bool{
+    pub fn is_noop(&self) -> bool {
         self.stmt.is_noop()
     }
-    pub fn position(&self)->Position{
+    pub fn position(&self) -> Position {
         self.pos.clone()
     }
 }
