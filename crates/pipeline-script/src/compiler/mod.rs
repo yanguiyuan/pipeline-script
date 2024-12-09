@@ -167,7 +167,10 @@ impl Compiler {
                     v.push(t.as_llvm_type());
                 }
                 let t = ret.as_llvm_type();
-                Global::struct_type(vec![Global::pointer_type(Global::function_type(t, v)),Global::pointer_type(Global::unit_type())])
+                Global::struct_type(vec![
+                    Global::pointer_type(Global::function_type(t, v)),
+                    Global::pointer_type(Global::unit_type()),
+                ])
             }
             Type::ArrayVarArg(t) => Global::struct_type(vec![
                 Global::i64_type(),
@@ -328,13 +331,13 @@ impl Compiler {
                     ty0,
                 )
             }
-            Expr::Struct(_)=>{
+            Expr::Struct(_) => {
                 let val = self.compile_expr(expr, ctx);
                 let element_ty = ty0.get_element_type().unwrap();
                 let ptr = builder.build_alloca("", &element_ty.as_llvm_type());
                 builder.build_store(ptr, val.get_value());
                 Value::new(ptr, ty0)
-            },
+            }
             t => todo!("compile expr with ptr {t:?}"),
         }
     }
@@ -532,12 +535,11 @@ impl Compiler {
                     .get_props()
                     .iter()
                     .map(|(field_name, p)| {
-
                         let field_index = field_index_map.get(field_name).unwrap();
                         let ty = p.get_type().unwrap();
-                        if ty.is_pointer(){
+                        if ty.is_pointer() {
                             let v = self.compile_expr_with_ptr(p, &ctx);
-                            return (*field_index, v)
+                            return (*field_index, v);
                         }
                         let v = self.compile_expr(p, &ctx);
                         (*field_index, v)
@@ -553,13 +555,13 @@ impl Compiler {
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr(&target, ctx);
                 let ty = v.get_type();
-                if ty.is_pointer(){
+                if ty.is_pointer() {
                     let ty = ty.get_element_type().unwrap();
                     let val = builder.build_load(ty.as_llvm_type(), v.get_value());
                     let (idx, _) = ty.get_struct_field(field_name).unwrap();
                     let v = builder.build_struct_get(val, idx);
                     let v = Value::new(v, ty0);
-                    return v
+                    return v;
                 }
                 let (idx, _) = ty.get_struct_field(field_name).unwrap();
                 let v = builder.build_struct_get(v.get_value(), idx);

@@ -9,7 +9,7 @@ pub struct Any {
     id: i32,
     ptr: *mut i8,
 }
-pub extern "C" fn len(target:Array)->i64{
+pub extern "C" fn len(target: Array) -> i64 {
     target.len
 }
 pub extern "C" fn println(obj: Array) {

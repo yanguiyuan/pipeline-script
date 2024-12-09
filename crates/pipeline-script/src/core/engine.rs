@@ -1,6 +1,6 @@
 use crate::compiler::Compiler;
 use crate::lexer::Lexer;
-use crate::parser::{ Parser};
+use crate::parser::Parser;
 use crate::preprocessor::r#type::TypePreprocessor;
 use std::ffi::c_void;
 use std::fs;

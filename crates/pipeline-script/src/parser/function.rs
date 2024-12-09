@@ -31,7 +31,7 @@ impl Function {
             return_type,
             args,
             body,
-            generic_list:vec![],
+            generic_list: vec![],
             binding_struct: None,
             is_generic: false,
             is_extern,
@@ -50,7 +50,7 @@ impl Function {
     pub fn return_type(&self) -> &Type {
         &self.return_type
     }
-    pub fn with_generic_list(mut self,list:Vec<Type>)->Self{
+    pub fn with_generic_list(mut self, list: Vec<Type>) -> Self {
         self.generic_list = list;
         self
     }
@@ -58,7 +58,7 @@ impl Function {
         self.is_extern = is_extern;
         self
     }
-    pub fn add_generic(&mut self,g:Type){
+    pub fn add_generic(&mut self, g: Type) {
         self.generic_list.push(g);
     }
     pub fn args_count(&self) -> usize {

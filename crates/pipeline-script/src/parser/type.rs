@@ -11,7 +11,7 @@ pub enum Type {
     String,
     Bool,
     Pointer(Box<Type>),
-    Generic(Box<Type>,Vec<Type>),
+    Generic(Box<Type>, Vec<Type>),
     Alias(String),
     Struct(Option<String>, Vec<(String, Type)>),
     Function(Box<Type>, Vec<Type>),
@@ -276,7 +276,9 @@ impl Type {
     }
     pub fn get_env_type(&self) -> Option<Type> {
         match self {
-            Type::Closure { ptr:_, env } => Some(Type::Pointer(Box::new(Type::Struct(None, env.clone())))),
+            Type::Closure { ptr: _, env } => {
+                Some(Type::Pointer(Box::new(Type::Struct(None, env.clone()))))
+            }
             _ => None,
         }
     }

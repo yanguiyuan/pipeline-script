@@ -162,9 +162,9 @@ impl Token {
         matches!(self, Token::Assign)
     }
     pub fn get_identifier_value(&self) -> &str {
-        return match self {
+        match self {
             Token::Identifier(s) => s.as_str(),
             _ => "",
-        };
+        }
     }
 }
