@@ -2,7 +2,8 @@ extern fn println(obj:..Any)
 extern fn len(obj:Array<Any>)->Int64
 extern fn print(obj:..Any)
 extern fn append(obj:..Any)->String
-
+extern fn malloc(len:Int64)->Pointer
+extern fn sizeof<T>() -> Int64
 /*
 val a = |a:Int32,d:Int32|{
     val b =12
@@ -14,13 +15,27 @@ fn boo(callback:Fn(Int32,Int32)){
 }
 boo(a)
 */
-val c = [1,2,30]
-val d = c.append(5)
-println(len(d))
 
+/*
 fn append<T>(target:Array<T>,obj:..T)->Array<T>{
     val l0= len(target) + len(obj)
     val p = mem.malloc(l * sizeof<T>())
     men.copy(p,target)
     return p
 }
+*/
+/*
+fn twoSize<T>() -> Int64{
+    val a = 4
+    return 5 * sizeof::<T>()
+}
+val space = twoSize::<Int64>()
+println(space)
+*/
+fn Array<T>(l:Int64)->Array<T>{
+    val p = malloc(l * sizeof::<T>())
+    return p
+}
+val a = Array::<Int32>(10)
+a[0] = 12
+println(a[0])

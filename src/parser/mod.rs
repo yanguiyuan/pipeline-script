@@ -76,7 +76,7 @@ impl Parser {
                         continue;
                     }
                     "extern" => {
-                        self.parse_extern_function_declaration()?;
+                        self.parse_extern_function_declaration().unwrap();
                         continue;
                     }
                     t => {
@@ -208,11 +208,16 @@ impl Parser {
             list.push(ty);
             self.parse_special_token(Token::Greater)?;
         }
+        let mut is_template = false;
+        if !list.is_empty() {
+            is_template = true;
+        }
+        fun = fun.with_template(is_template);
         let _ = self.parse_special_token(Token::BraceLeft)?;
         let param_list = self.parse_param_list()?;
         let _ = self.parse_special_token(Token::BraceRight)?;
         if self.try_parse_token(Token::Arrow) {
-            let ret_ty = self.parse_type()?;
+            let ret_ty = self.parse_type().unwrap();
             return Ok(fun
                 .with_name(name)
                 .with_args(param_list)
@@ -390,9 +395,39 @@ impl Parser {
         }
         Ok((args, p0))
     }
+    fn parse_generic_list(&mut self) -> Result<Vec<Type>> {
+        let mut list = vec![];
+        let _ = self.parse_special_token(Token::Less)?;
+        let ty = self.parse_type()?;
+        list.push(ty);
+        let mut flag = 0b001 | 0b010;//期望下一个是竖线或者>
+        loop {
+            let (peek, _) = self.token_stream.peek();
+            match peek {
+                // 0b001
+                Token::Vertical if flag & 0b001 == 0b001 => {
+                    let _ = self.parse_special_token(Token::Vertical)?;
+                    flag = 0b100;
+                    continue
+                }
+                // 0b010
+                Token::Greater if flag & 0b010 == 0b010 => {
+                    let _ = self.parse_special_token(Token::Greater)?;
+                    break;
+                }
+                // 0b100
+               _ if flag & 0b100 == 0b100 => {
+                    let ty = self.parse_type()?;
+                    list.push(ty);
+                    flag = 0b010|0b001
+                }
+                t=>panic!("unexpected token {:?}", t),
+            }
+        }
+        Ok(list)
+    }
     pub fn parse_primary_expr(&mut self) -> Result<ExprNode> {
         let (token, mut pos) = self.token_stream.next_token();
-        dbg!(&token);
         match token {
             Token::Vertical => {
                 let peek = self.token_stream.peek().0;
@@ -401,16 +436,23 @@ impl Parser {
                     l = self.parse_param_list().unwrap();
                 }
                 let p1 = self.parse_special_token(Token::Vertical)?;
-                let block = self.parse_block()?;
+                let block = self.parse_block().unwrap();
                 Ok(ExprNode::from(Expr::Closure(l, block, vec![])).with_position(p1 + pos))
             }
             Token::Identifier(id) => {
                 let (peek, _) = self.token_stream.peek();
                 match peek {
+                    Token::ScopeSymbol => {
+                        let _ = self.parse_special_token(Token::ScopeSymbol)?;
+                        let list = self.parse_generic_list().unwrap();
+                        let (args, _) = self.parse_fn_args().unwrap();
+                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args,generics:list }))
+                            .with_position(pos))
+                    }
                     Token::BraceLeft => {
                         let (args, p0) = self.parse_fn_args().unwrap();
                         pos = pos + p0;
-                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args }))
+                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args,generics: vec![] }))
                             .with_position(pos))
                     }
                     Token::ParenLeft => {
@@ -501,6 +543,7 @@ impl Parser {
                 args.insert(0, Argument::new(expr.get_member_root()));
                 Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                     name: expr.get_member_name(),
+                    generics: vec![],
                     args,
                 })))
             }
@@ -666,6 +709,15 @@ impl Parser {
                 "Double" => Ok(Type::Double),
                 "Bool" => Ok(Type::Bool),
                 "String" => Ok(Type::String),
+                "Pointer" =>{
+                    if self.token_stream.peek().0 != Token::Less {
+                        return Ok(Type::Pointer(Box::new(Type::Any)))
+                    }
+                    self.parse_special_token(Token::Less)?;
+                    let el_ty = self.parse_type()?;
+                    self.parse_special_token(Token::Greater)?;
+                    Ok(Type::Pointer(Box::new(el_ty)))
+                }
                 "Array" => {
                     self.parse_special_token(Token::Less)?;
                     let el_ty = self.parse_type()?;
@@ -723,6 +775,9 @@ impl Parser {
             let t0 = self.parse_type()?;
             list.push(t0);
             let _ = self.parse_special_token(Token::Greater);
+        }
+        if list.is_empty() {
+            return Ok(ty);
         }
         Ok(Type::Generic(Box::new(ty), list))
     }

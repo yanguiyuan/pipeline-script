@@ -88,6 +88,7 @@ pub enum Op {
 #[derive(Debug, Clone)]
 pub struct FnCallExpr {
     pub name: String,
+    pub generics: Vec<Type>,
     pub args: Vec<Argument>,
 }
 #[derive(Debug, Clone)]

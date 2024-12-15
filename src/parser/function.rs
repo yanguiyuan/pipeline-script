@@ -9,7 +9,9 @@ use super::stmt::StmtNode;
 pub struct Function {
     name: String,
     return_type: Type,
-    generic_list: Vec<Type>,
+    // 泛型模版，用来区分实例和模版，模版不用于生成llvm ir
+    pub is_template: bool,
+    pub generic_list: Vec<Type>,
     args: Vec<VariableDeclaration>,
     body: Vec<StmtNode>,
     #[allow(unused)]
@@ -31,6 +33,7 @@ impl Function {
             return_type,
             args,
             body,
+            is_template: false,
             generic_list: vec![],
             binding_struct: None,
             is_generic: false,
@@ -58,6 +61,10 @@ impl Function {
         self.is_extern = is_extern;
         self
     }
+    pub fn with_template(mut self,is_template: bool)->Self{
+        self.is_template = is_template;
+        self
+    }
     pub fn add_generic(&mut self, g: Type) {
         self.generic_list.push(g);
     }
@@ -79,7 +86,9 @@ impl Function {
     pub fn set_binding_struct(&mut self, binding_struct: impl Into<String>) {
         self.binding_struct = Some(binding_struct.into());
     }
-
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
     pub fn set_body(&mut self, body: Vec<StmtNode>) {
         self.body = body;
     }
@@ -125,6 +134,7 @@ impl Default for Function {
             binding_struct: None,
             body: vec![],
             is_extern: false,
+            is_template: false,
         }
     }
 }

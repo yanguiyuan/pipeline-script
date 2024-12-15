@@ -11,6 +11,7 @@ pub enum Type {
     String,
     Bool,
     Pointer(Box<Type>),
+    // 泛型 例如：Array<Int32>,即Generic(Array,[Int32])
     Generic(Box<Type>, Vec<Type>),
     Alias(String),
     Struct(Option<String>, Vec<(String, Type)>),
@@ -39,6 +40,7 @@ impl From<&str> for Type {
             "String" => Type::String,
             "Bool" => Type::Bool,
             "Any" => Type::Any,
+            "Pointer" => Type::Pointer(Box::new(Type::Any)),
             //            t=>Type::Struct(t.into()),
             _ => panic!("Unknown type: {}", s),
         }

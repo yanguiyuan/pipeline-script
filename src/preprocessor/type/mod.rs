@@ -71,15 +71,18 @@ impl TypePreprocessor {
                 new_f = f.clone();
             } else {
                 let mut symbol_types = HashMap::new();
+                let mut locals = vec![];
                 for i in f.args() {
                     let ty = i.r#type().unwrap();
                     symbol_types.insert(i.name(), ty);
+                    locals.push(i.name());
                 }
                 let ctx = Context::with_value(
                     &ctx,
                     ContextKey::SymbolType,
                     ContextValue::SymbolType(Arc::new(RwLock::new(symbol_types))),
                 );
+                let ctx = Context::with_local(&ctx, locals);
                 let mut v = vec![];
                 for i in f.body() {
                     let stmt = self.process_stmt(i, &ctx);
@@ -127,6 +130,10 @@ impl TypePreprocessor {
                 }
                 Type::Struct(name.clone(), fields)
             }
+            Type::Array(ty) => {
+                let ty = self.process_type(ty, ctx);
+                Type::Array(Box::new(ty))
+            }
             _ => ty.clone(),
         }
     }
@@ -155,10 +162,56 @@ impl TypePreprocessor {
                 )
             }
             Expr::FnCall(fc) => {
-                let fc_name = fc.name.clone();
+                let mut fc_name = fc.name.clone();
                 let mut new_fc = fc.clone();
                 let mut args = vec![];
                 let fc_type = ctx.get_symbol_type(&fc_name).unwrap();
+                let mut new_generics = vec![];
+                for i in &fc.generics{
+                    if i.is_alias(){
+                        // 当前解析函数是模版的话获取不到别名就跳过
+                        let ty = ctx.get_alias_type(i.get_alias_name().unwrap()).unwrap_or(i.clone());
+                        new_generics.push(ty)
+                    }else{
+                        new_generics.push(i.clone())
+                    }
+                }
+                let mut fc_return_type = fc_type.get_function_return_type().unwrap();
+                if !fc.generics.is_empty() && &fc.name!="sizeof"{
+                    for i in &fc.generics{
+                        fc_name = format!("{}${:?}",fc_name,i);
+                    }
+                    let mut template = self.module.get_function(&fc.name).unwrap().clone();
+
+                    let mut new_body = vec![];
+                    let mut symbol_types = HashMap::new();
+                    let mut locals = vec![];
+                    for i in template.args() {
+                        let ty = i.r#type().unwrap();
+                        symbol_types.insert(i.name(), ty);
+                        locals.push(i.name());
+                    }
+                    let ctx = Context::with_value(
+                        &ctx,
+                        ContextKey::SymbolType,
+                        ContextValue::SymbolType(Arc::new(RwLock::new(symbol_types))),
+                    );
+                    let ctx = Context::with_local(&ctx, locals);
+                    for (index,i) in template.generic_list.iter().enumerate(){
+                        ctx.set_alias_type(i.get_alias_name().unwrap(),fc.generics[index].clone());
+                    }
+                    for stmt in template.body(){
+                        let new_stmt = self.process_stmt(stmt,&ctx);
+                        new_body.push(new_stmt)
+                    }
+                    fc_return_type = self.process_type(template.return_type(),&ctx);
+                    template.set_name(fc_name.clone());
+                    template.is_template = false;
+                    template.generic_list = vec![];
+                    template.set_return_type(fc_return_type.clone());
+                    template.set_body(new_body);
+                    self.module.register_function(&fc_name,template);
+                }
                 let arg_count = fc_type.get_function_arg_count();
                 for (idx, arg) in fc.args.iter().enumerate() {
                     if idx == arg_count - 1 {
@@ -175,14 +228,15 @@ impl TypePreprocessor {
                             break;
                         }
                     }
-
                     let mut new_arg = arg.clone();
                     let arg0 = self.process_expr(&arg.value, ctx);
                     new_arg.value = arg0;
                     args.push(new_arg);
                 }
                 new_fc.args = args;
-                let fc_return_type = fc_type.get_function_return_type().unwrap();
+                new_fc.name = fc_name;
+                new_fc.generics = new_generics;
+
                 ExprNode::new(Expr::FnCall(new_fc)).with_type(fc_return_type)
             }
             Expr::Binary(op, l, r) => {
@@ -192,14 +246,14 @@ impl TypePreprocessor {
                 if ty == r.get_type().unwrap() {
                     ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(ty)
                 } else {
+                    dbg!(&l, &r);
                     panic!("type mismatch")
                 }
             }
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
-            Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int32),
+            Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
                 let ty = ctx.get_symbol_type(&name).unwrap();
-
                 if !ctx.is_local_variable(&name) {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
@@ -232,6 +286,7 @@ impl TypePreprocessor {
                 let index = self.process_expr(&index, ctx);
                 let ty = target.get_type().unwrap();
                 let ty = ty.get_element_type().unwrap();
+                dbg!(ty);
                 ExprNode::new(Expr::Index(Box::new(target), Box::new(index))).with_type(ty.clone())
             }
             Expr::Member(target, name) => {
@@ -368,12 +423,13 @@ impl TypePreprocessor {
                     new_decl.set_type(actual_type);
                     return StmtNode::new(Stmt::ValDecl(new_decl), stmt.position());
                 }
-                if expect == Some(actual_type) {
+                if expect == Some(actual_type.clone()) {
                     let mut new_decl = decl.clone();
                     ctx.set_symbol_type(decl.name.clone(), expect.unwrap());
                     new_decl.set_default(actual);
                     StmtNode::new(Stmt::ValDecl(new_decl), stmt.position())
                 } else {
+                    dbg!(actual_type, expect);
                     panic!("type mismatch")
                 }
             }
@@ -412,6 +468,11 @@ impl TypePreprocessor {
                 new_if_stmt.set_branches(branches);
                 new_if_stmt.set_else_body(else_body);
                 StmtNode::new(Stmt::If(new_if_stmt), stmt.position())
+            }
+            Stmt::Assign(target, expr) => {
+                let target = self.process_expr(&target, ctx);
+                let expr = self.process_expr(&expr, ctx);
+                StmtNode::new(Stmt::Assign(Box::new(target), Box::new(expr)), stmt.position())
             }
             _ => stmt.clone(),
         }

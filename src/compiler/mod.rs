@@ -50,6 +50,9 @@ impl Compiler {
         }
         // 编译函数声明
         for (name, item) in self.module.get_functions() {
+            if item.is_template {
+                continue;
+            }
             let args = item.args();
             let mut arg_types = vec![];
             let mut is_var_arg = false;
@@ -85,7 +88,7 @@ impl Compiler {
 
         // 编译函数实现
         for (name, item) in self.module.get_functions() {
-            if item.is_extern {
+            if item.is_extern ||item.is_template {
                 continue;
             }
             let function = self.llvm_module.get_function(name).unwrap();
@@ -142,7 +145,7 @@ impl Compiler {
             }
             Type::Array(t) => Global::struct_type(vec![
                 Global::i64_type(),
-                Global::array_type(t.as_llvm_type()),
+                Global::pointer_type(t.as_llvm_type()),
             ]),
             Type::String => Global::pointer_type(Global::i8_type()),
             Type::Struct(name, s) => match name {
@@ -231,6 +234,7 @@ impl Compiler {
                 ctx.set_symbol(val.name(), v);
             }
             Stmt::Assign(lhs, rhs) => {
+                dbg!(&lhs);
                 let lhs = self.compile_expr_with_ptr(&lhs, ctx);
                 let rhs = self.compile_expr(&rhs, ctx);
                 builder.build_store(lhs.value, rhs.value);
@@ -359,6 +363,7 @@ impl Compiler {
                     is_fn_param = false;
                 } else {
                     let current_function = ctx.get_current_function();
+                    dbg!(&name);
                     let function_index = current_function.get_param_index(name).unwrap();
                     function_decl = ctx
                         .get_current_function_type()
@@ -406,6 +411,14 @@ impl Compiler {
                     "int64" => {
                         let val = llvm_args.first().unwrap().clone();
                         let v = builder.build_zext(val, Global::i64_type());
+                        return Value::new(v, Type::Int64);
+                    }
+                    "sizeof" => {
+                        if fc.generics.len()!= 1 {
+                            panic!("sizeof must have one generic");
+                        }
+                        let generic = &fc.generics[0];
+                        let v = Global::sizeof(generic.as_llvm_type());
                         return Value::new(v, Type::Int64);
                     }
                     _ => {}

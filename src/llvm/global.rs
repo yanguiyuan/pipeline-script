@@ -1,12 +1,7 @@
 use crate::llvm::builder::Builder;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
-use llvm_sys::core::{
-    LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct,
-    LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef,
-    LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMStructType,
-    LLVMVoidType,
-};
+use llvm_sys::core::{LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct, LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef, LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMSizeOf, LLVMStructType, LLVMVoidType};
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef};
 use std::ffi::{c_uint, CString};
 
@@ -38,6 +33,9 @@ impl Global {
     pub fn const_i8(value: i8) -> LLVMValue {
         let v = unsafe { LLVMConstInt(LLVMInt8Type(), value as u64, 0) };
         LLVMValue::Int8(v)
+    }
+    pub fn sizeof(ty: LLVMType) -> LLVMValue {
+        unsafe { LLVMSizeOf(ty.as_llvm_type_ref()) }.into()
     }
     pub fn const_i16(value: i16) -> LLVMValue {
         let v = unsafe { LLVMConstInt(LLVMInt16Type(), value as u64, 0) };
