@@ -1,3 +1,5 @@
+mod id;
+
 use crate::lexer::position::Position;
 use crate::parser::expr::StructExpr;
 use std::collections::HashMap;
@@ -13,6 +15,8 @@ use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
 use std::sync::{Arc, RwLock};
+use crate::preprocessor::r#type::id::id;
+
 static mut ENV_ID: i64 = 0;
 pub struct TypePreprocessor {
     module: Module,
@@ -139,7 +143,7 @@ impl TypePreprocessor {
     }
     fn process_expr(&mut self, expr: &ExprNode, ctx: &Context) -> ExprNode {
         match expr.get_expr() {
-            Expr::Closure(l, body, _) => {
+            Expr::Closure(mut l, mut body, _) => {
                 let mut new_body = vec![];
                 let mut local = vec![];
                 let ctx = Context::with_capture(ctx);
@@ -147,19 +151,109 @@ impl TypePreprocessor {
                 for i in &l {
                     local.push(i.name());
                     param_type.push(i.r#type().unwrap());
+                    ctx.set_symbol_type(i.name(), i.r#type().unwrap())
                 }
                 let ctx = Context::with_local(&ctx, local);
-                for i in body {
-                    let stmt = self.process_stmt(&i, &ctx);
+                for i in &body {
+                    let stmt = self.process_stmt(i, &ctx);
                     new_body.push(stmt)
                 }
                 let captures = ctx.get_captures().unwrap();
-                ExprNode::new(Expr::Closure(l, new_body, captures.clone())).with_type(
+                let actual = ExprNode::new(Expr::Closure(l.clone(), new_body.clone(), captures.clone())).with_type(
                     Type::Closure {
                         ptr: (Box::new(Type::Unit), param_type),
-                        env: captures,
+                        env: captures.clone(),
                     },
-                )
+                );
+                let mut env_props = HashMap::new();
+                let mut fields = vec![];
+                for (name, ty) in &captures {
+                    env_props.insert(
+                        name.clone(),
+                        ExprNode::new(Expr::Variable(name.clone())).with_type(ty.clone()),
+                    );
+                    fields.push(StructField::new(name.clone(), ty.clone()))
+                }
+                let env_var_name = unsafe { format!("Env{}", id()) };
+                self.module.register_struct(
+                    &env_var_name,
+                    Struct {
+                        name: env_var_name.clone(),
+                        fields,
+                    },
+                );
+                // t0 是闭包的类型
+                let t0 = actual.get_type().unwrap();
+                let env_ty = t0.get_env_type().unwrap();
+                let env = Expr::Struct(StructExpr {
+                    name: env_var_name,
+                    props: env_props,
+                });
+                let env_node = ExprNode::new(env).with_type(env_ty.clone());
+                l.push(
+                    VariableDeclaration::new("env")
+                        .with_type(env_ty.clone())
+                        .with_default(env_node.clone()),
+                );
+                // 构造一个闭包函数 接受所有捕获变量为一个结构体env,然后将val a赋值为一个包含函数指针和环境变量的结构体，a的类型为闭包
+                for (name, ty) in captures {
+                    body.insert(
+                        0,
+                        StmtNode::new(
+                            Stmt::ValDecl(
+                                VariableDeclaration::new(name.clone())
+                                    .with_default(
+                                        ExprNode::new(Expr::Member(
+                                            Box::new(
+                                                ExprNode::new(Expr::Variable("env".into()))
+                                                    .with_type(env_ty.clone()),
+                                            ),
+                                            name,
+                                        ))
+                                            .with_type(ty.clone()),
+                                    )
+                                    .with_type(ty),
+                            ),
+                            Position::none(),
+                        ),
+                    );
+                }
+                let closure_var_name = unsafe { format!("Closure{}",id()) };
+                let lambda_function =
+                    Function::new(closure_var_name.clone(), Type::Unit, l, new_body, false);
+
+                self.module
+                    .register_function(&closure_var_name, lambda_function);
+                let mut closure_struct = HashMap::new();
+                let closure_fn_gen_type = t0.get_closure_fn_gen_type().unwrap();
+                closure_struct.insert(
+                    "ptr".into(),
+                    ExprNode::new(Expr::Variable(closure_var_name.clone()))
+                        .with_type(closure_fn_gen_type.clone()),
+                );
+                closure_struct.insert("env".into(), env_node);
+                let mut closure_struct_type0 = vec![];
+                closure_struct_type0.push(("ptr".into(), closure_fn_gen_type.clone()));
+                closure_struct_type0.push(("env".into(), env_ty.clone()));
+
+                let mut closure_fields = vec![];
+                closure_fields.push(StructField::new("ptr".into(), closure_fn_gen_type));
+                closure_fields.push(StructField::new("env".into(), env_ty));
+                self.module.register_struct(
+                    &closure_var_name,
+                    Struct {
+                        name: closure_var_name.clone(),
+                        fields: closure_fields,
+                    },
+                );
+                let closure_sturct_type =
+                    Type::Struct(Some(closure_var_name.clone()), closure_struct_type0);
+
+                ctx.set_symbol_type(closure_var_name.clone(), closure_sturct_type.clone());
+                ExprNode::new(Expr::Struct(StructExpr {
+                    name: closure_var_name,
+                    props: closure_struct,
+                })).with_type(closure_sturct_type.clone())
             }
             Expr::FnCall(fc) => {
                 let mut fc_name = fc.name.clone();
@@ -304,117 +398,7 @@ impl TypePreprocessor {
                 ctx.try_add_local(decl.name());
                 let expect = decl.declaration_type.clone();
                 let actual = decl.get_default().unwrap();
-                // 这里不清楚作用
-                if actual.is_closure() {
-                    let closure_params = actual.get_closure_params();
-                    for vd in &closure_params {
-                        ctx.set_symbol_type(vd.name(), vd.r#type().unwrap())
-                    }
-                }
                 let actual = self.process_expr(actual, ctx);
-                if actual.is_closure() {
-                    let mut body = actual.get_closure_body();
-                    let mut closure_params = actual.get_closure_params();
-                    let captures = actual.get_closure_captures();
-                    let mut env_props = HashMap::new();
-                    let mut fields = vec![];
-                    for (name, ty) in &captures {
-                        env_props.insert(
-                            name.clone(),
-                            ExprNode::new(Expr::Variable(name.clone())).with_type(ty.clone()),
-                        );
-                        fields.push(StructField::new(name.clone(), ty.clone()))
-                    }
-                    let env_var_name = unsafe { format!("Env{}", ENV_ID) };
-                    unsafe {
-                        ENV_ID = ENV_ID + 1;
-                    }
-                    self.module.register_struct(
-                        &env_var_name,
-                        Struct {
-                            name: env_var_name.clone(),
-                            fields,
-                        },
-                    );
-                    // t0 是闭包的类型
-                    let t0 = actual.get_type().unwrap();
-                    let env_ty = t0.get_env_type().unwrap();
-                    let env = Expr::Struct(StructExpr {
-                        name: env_var_name,
-                        props: env_props,
-                    });
-                    let env_node = ExprNode::new(env).with_type(env_ty.clone());
-                    closure_params.push(
-                        VariableDeclaration::new("env")
-                            .with_type(env_ty.clone())
-                            .with_default(env_node.clone()),
-                    );
-                    // 构造一个闭包函数 接受所有捕获变量为一个结构体env,然后将val a赋值为一个包含函数指针和环境变量的结构体，a的类型为闭包
-                    for (name, ty) in captures {
-                        body.insert(
-                            0,
-                            StmtNode::new(
-                                Stmt::ValDecl(
-                                    VariableDeclaration::new(name.clone())
-                                        .with_default(
-                                            ExprNode::new(Expr::Member(
-                                                Box::new(
-                                                    ExprNode::new(Expr::Variable("env".into()))
-                                                        .with_type(env_ty.clone()),
-                                                ),
-                                                name,
-                                            ))
-                                            .with_type(ty.clone()),
-                                        )
-                                        .with_type(ty),
-                                ),
-                                Position::none(),
-                            ),
-                        );
-                    }
-
-                    let lambda_function =
-                        Function::new(decl.name(), Type::Unit, closure_params, body, false);
-
-                    self.module
-                        .register_function(&decl.name.clone(), lambda_function);
-                    let mut new_decl = decl.clone();
-                    let mut closure_struct = HashMap::new();
-                    let closure_fn_gen_type = t0.get_closure_fn_gen_type().unwrap();
-                    closure_struct.insert(
-                        "ptr".into(),
-                        ExprNode::new(Expr::Variable(decl.name.clone()))
-                            .with_type(closure_fn_gen_type.clone()),
-                    );
-                    closure_struct.insert("env".into(), env_node);
-                    let mut closure_struct_type0 = vec![];
-                    closure_struct_type0.push(("ptr".into(), closure_fn_gen_type.clone()));
-                    closure_struct_type0.push(("env".into(), env_ty.clone()));
-                    let closure_var_name = unsafe { format!("Closure{}", ENV_ID) };
-                    unsafe { ENV_ID = ENV_ID + 1 }
-                    let mut closure_fields = vec![];
-                    closure_fields.push(StructField::new("ptr".into(), closure_fn_gen_type));
-                    closure_fields.push(StructField::new("env".into(), env_ty));
-                    self.module.register_struct(
-                        &closure_var_name,
-                        Struct {
-                            name: closure_var_name.clone(),
-                            fields: closure_fields,
-                        },
-                    );
-                    let closure_sturct_type =
-                        Type::Struct(Some(closure_var_name.clone()), closure_struct_type0);
-                    new_decl.set_default(
-                        ExprNode::new(Expr::Struct(StructExpr {
-                            name: closure_var_name.clone(),
-                            props: closure_struct,
-                        }))
-                        .with_type(closure_sturct_type.clone()),
-                    );
-                    ctx.set_symbol_type(decl.name, closure_sturct_type);
-                    new_decl.set_type(t0);
-                    return StmtNode::new(Stmt::ValDecl(new_decl), stmt.position());
-                }
                 let actual_type = actual.get_type().unwrap();
                 if expect == None {
                     ctx.set_symbol_type(decl.name.clone(), actual_type.clone());

@@ -32,15 +32,15 @@ impl Engine {
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();
         let f1 = llvm_module.get_function("println").unwrap();
-        let f2 = llvm_module.get_function("print").unwrap();
-        let f3 = llvm_module.get_function("append").unwrap();
-        let f4 = llvm_module.get_function("len").unwrap();
+        // let f2 = llvm_module.get_function("print").unwrap();
+        // let f3 = llvm_module.get_function("append").unwrap();
+        // let f4 = llvm_module.get_function("len").unwrap();
         llvm_module.dump();
         let executor = llvm_module.create_executor().unwrap();
         executor.add_global_mapping(f1.as_ref(), crate::core::buidin::println as *mut c_void);
-        executor.add_global_mapping(f2.as_ref(), crate::core::buidin::print as *mut c_void);
-        executor.add_global_mapping(f3.as_ref(), crate::core::buidin::append as *mut c_void);
-        executor.add_global_mapping(f4.as_ref(), crate::core::buidin::len as *mut c_void);
+        // executor.add_global_mapping(f2.as_ref(), crate::core::buidin::print as *mut c_void);
+        // executor.add_global_mapping(f3.as_ref(), crate::core::buidin::append as *mut c_void);
+        // executor.add_global_mapping(f4.as_ref(), crate::core::buidin::len as *mut c_void);
         executor.run_function("$main.__main__", &mut []);
     }
     pub fn run_function(&mut self, _: impl Into<String>, _: Vec<LLVMValue>) {}

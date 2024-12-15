@@ -7,7 +7,7 @@ use crate::lexer::Lexer;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::expr::{Argument, Expr, FnCallExpr, Op, StructExpr};
 use std::collections::HashMap;
-
+use std::vec;
 use crate::parser::function::Function;
 use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
@@ -380,6 +380,13 @@ impl Parser {
                 Token::BraceRight => {
                     let p2 = self.parse_special_token(Token::BraceRight)?;
                     p0 = p0 + p2;
+                    // 解析外置闭包
+                    let peek0 = self.token_stream.peek().0;
+                    if peek0 == Token::ParenLeft {
+                        let body = self.parse_block().unwrap();
+                        let expr = Expr::Closure(vec![], body,vec![]);
+                        args.push(Argument::new(ExprNode::from(expr)));
+                    }
                     break;
                 }
                 Token::Comma => {
