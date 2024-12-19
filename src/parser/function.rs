@@ -61,7 +61,7 @@ impl Function {
         self.is_extern = is_extern;
         self
     }
-    pub fn with_template(mut self,is_template: bool)->Self{
+    pub fn with_template(mut self, is_template: bool) -> Self {
         self.is_template = is_template;
         self
     }

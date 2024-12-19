@@ -2,7 +2,13 @@ use crate::llvm::function::Function;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
-use llvm_sys::core::{LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMPositionBuilderAtEnd, LLVMSizeOf};
+use llvm_sys::core::{
+    LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr,
+    LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
+    LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul,
+    LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2,
+    LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMPositionBuilderAtEnd, LLVMSizeOf,
+};
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
 use std::ffi::{c_uint, CString};

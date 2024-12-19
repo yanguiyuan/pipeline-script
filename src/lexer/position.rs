@@ -12,8 +12,6 @@ pub struct Position {
     pub module_name: String,
 }
 
-
-
 impl Add for Position {
     type Output = Position;
 

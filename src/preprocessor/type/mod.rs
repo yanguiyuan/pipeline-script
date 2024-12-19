@@ -14,8 +14,8 @@ use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
-use std::sync::{Arc, RwLock};
 use crate::preprocessor::r#type::id::id;
+use std::sync::{Arc, RwLock};
 
 static mut ENV_ID: i64 = 0;
 pub struct TypePreprocessor {
@@ -159,12 +159,12 @@ impl TypePreprocessor {
                     new_body.push(stmt)
                 }
                 let captures = ctx.get_captures().unwrap();
-                let actual = ExprNode::new(Expr::Closure(l.clone(), new_body.clone(), captures.clone())).with_type(
-                    Type::Closure {
-                        ptr: (Box::new(Type::Unit), param_type),
-                        env: captures.clone(),
-                    },
-                );
+                let actual =
+                    ExprNode::new(Expr::Closure(l.clone(), new_body.clone(), captures.clone()))
+                        .with_type(Type::Closure {
+                            ptr: (Box::new(Type::Unit), param_type),
+                            env: captures.clone(),
+                        });
                 let mut env_props = HashMap::new();
                 let mut fields = vec![];
                 for (name, ty) in &captures {
@@ -210,7 +210,7 @@ impl TypePreprocessor {
                                             ),
                                             name,
                                         ))
-                                            .with_type(ty.clone()),
+                                        .with_type(ty.clone()),
                                     )
                                     .with_type(ty),
                             ),
@@ -218,7 +218,7 @@ impl TypePreprocessor {
                         ),
                     );
                 }
-                let closure_var_name = unsafe { format!("Closure{}",id()) };
+                let closure_var_name = unsafe { format!("Closure{}", id()) };
                 let lambda_function =
                     Function::new(closure_var_name.clone(), Type::Unit, l, new_body, false);
 
@@ -253,7 +253,8 @@ impl TypePreprocessor {
                 ExprNode::new(Expr::Struct(StructExpr {
                     name: closure_var_name,
                     props: closure_struct,
-                })).with_type(closure_sturct_type.clone())
+                }))
+                .with_type(closure_sturct_type.clone())
             }
             Expr::FnCall(fc) => {
                 let mut fc_name = fc.name.clone();
@@ -261,19 +262,21 @@ impl TypePreprocessor {
                 let mut args = vec![];
                 let fc_type = ctx.get_symbol_type(&fc_name).unwrap();
                 let mut new_generics = vec![];
-                for i in &fc.generics{
-                    if i.is_alias(){
+                for i in &fc.generics {
+                    if i.is_alias() {
                         // 当前解析函数是模版的话获取不到别名就跳过
-                        let ty = ctx.get_alias_type(i.get_alias_name().unwrap()).unwrap_or(i.clone());
+                        let ty = ctx
+                            .get_alias_type(i.get_alias_name().unwrap())
+                            .unwrap_or(i.clone());
                         new_generics.push(ty)
-                    }else{
+                    } else {
                         new_generics.push(i.clone())
                     }
                 }
                 let mut fc_return_type = fc_type.get_function_return_type().unwrap();
-                if !fc.generics.is_empty() && &fc.name!="sizeof"{
-                    for i in &fc.generics{
-                        fc_name = format!("{}${:?}",fc_name,i);
+                if !fc.generics.is_empty() && &fc.name != "sizeof" {
+                    for i in &fc.generics {
+                        fc_name = format!("{}${:?}", fc_name, i);
                     }
                     let mut template = self.module.get_function(&fc.name).unwrap().clone();
 
@@ -291,20 +294,20 @@ impl TypePreprocessor {
                         ContextValue::SymbolType(Arc::new(RwLock::new(symbol_types))),
                     );
                     let ctx = Context::with_local(&ctx, locals);
-                    for (index,i) in template.generic_list.iter().enumerate(){
-                        ctx.set_alias_type(i.get_alias_name().unwrap(),fc.generics[index].clone());
+                    for (index, i) in template.generic_list.iter().enumerate() {
+                        ctx.set_alias_type(i.get_alias_name().unwrap(), fc.generics[index].clone());
                     }
-                    for stmt in template.body(){
-                        let new_stmt = self.process_stmt(stmt,&ctx);
+                    for stmt in template.body() {
+                        let new_stmt = self.process_stmt(stmt, &ctx);
                         new_body.push(new_stmt)
                     }
-                    fc_return_type = self.process_type(template.return_type(),&ctx);
+                    fc_return_type = self.process_type(template.return_type(), &ctx);
                     template.set_name(fc_name.clone());
                     template.is_template = false;
                     template.generic_list = vec![];
                     template.set_return_type(fc_return_type.clone());
                     template.set_body(new_body);
-                    self.module.register_function(&fc_name,template);
+                    self.module.register_function(&fc_name, template);
                 }
                 let arg_count = fc_type.get_function_arg_count();
                 for (idx, arg) in fc.args.iter().enumerate() {
@@ -347,6 +350,7 @@ impl TypePreprocessor {
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
+                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name).unwrap();
                 if !ctx.is_local_variable(&name) {
                     ctx.add_capture(name.clone(), ty.clone())
@@ -456,7 +460,10 @@ impl TypePreprocessor {
             Stmt::Assign(target, expr) => {
                 let target = self.process_expr(&target, ctx);
                 let expr = self.process_expr(&expr, ctx);
-                StmtNode::new(Stmt::Assign(Box::new(target), Box::new(expr)), stmt.position())
+                StmtNode::new(
+                    Stmt::Assign(Box::new(target), Box::new(expr)),
+                    stmt.position(),
+                )
             }
             _ => stmt.clone(),
         }

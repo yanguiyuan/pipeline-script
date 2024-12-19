@@ -1,7 +1,12 @@
 use crate::llvm::builder::Builder;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
-use llvm_sys::core::{LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct, LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef, LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMSizeOf, LLVMStructType, LLVMVoidType};
+use llvm_sys::core::{
+    LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct,
+    LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef,
+    LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMSizeOf,
+    LLVMStructType, LLVMVoidType,
+};
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef};
 use std::ffi::{c_uint, CString};
 

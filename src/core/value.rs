@@ -1,5 +1,5 @@
-use crate::parser::r#type::Type;
 use crate::llvm::value::LLVMValue;
+use crate::parser::r#type::Type;
 
 #[derive(Debug, Clone)]
 pub struct Value {

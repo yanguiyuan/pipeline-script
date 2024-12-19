@@ -1,11 +1,11 @@
 use crate::context::scope::Scope;
 use crate::core::value::Value;
-use crate::parser::r#type::Type;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use crate::llvm::builder::Builder;
 use crate::llvm::function::Function;
 use crate::llvm::types::LLVMType;
+use crate::parser::r#type::Type;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone)]
 pub enum ContextValue {

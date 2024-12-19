@@ -88,7 +88,7 @@ impl Compiler {
 
         // 编译函数实现
         for (name, item) in self.module.get_functions() {
-            if item.is_extern ||item.is_template {
+            if item.is_extern || item.is_template {
                 continue;
             }
             let function = self.llvm_module.get_function(name).unwrap();
@@ -374,6 +374,7 @@ impl Compiler {
                 }
                 // 处理传入的参数
                 for (index, arg) in args.iter().enumerate() {
+                    dbg!(&args);
                     let t = function_decl.get_function_arg_type(index).unwrap();
                     let mut v = self.compile_expr(&arg.value, &ctx);
                     if is_extern
@@ -414,7 +415,7 @@ impl Compiler {
                         return Value::new(v, Type::Int64);
                     }
                     "sizeof" => {
-                        if fc.generics.len()!= 1 {
+                        if fc.generics.len() != 1 {
                             panic!("sizeof must have one generic");
                         }
                         let generic = &fc.generics[0];

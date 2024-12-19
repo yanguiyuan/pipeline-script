@@ -6,13 +6,13 @@ use crate::lexer::token::Token;
 use crate::lexer::Lexer;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::expr::{Argument, Expr, FnCallExpr, Op, StructExpr};
-use std::collections::HashMap;
-use std::vec;
 use crate::parser::function::Function;
 use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, IfStmt, Stmt};
+use std::collections::HashMap;
+use std::vec;
 
 use self::expr::ExprNode;
 use self::stmt::StmtNode;
@@ -384,7 +384,7 @@ impl Parser {
                     let peek0 = self.token_stream.peek().0;
                     if peek0 == Token::ParenLeft {
                         let body = self.parse_block().unwrap();
-                        let expr = Expr::Closure(vec![], body,vec![]);
+                        let expr = Expr::Closure(vec![], body, vec![]);
                         args.push(Argument::new(ExprNode::from(expr)));
                     }
                     break;
@@ -407,7 +407,7 @@ impl Parser {
         let _ = self.parse_special_token(Token::Less)?;
         let ty = self.parse_type()?;
         list.push(ty);
-        let mut flag = 0b001 | 0b010;//期望下一个是竖线或者>
+        let mut flag = 0b001 | 0b010; //期望下一个是竖线或者>
         loop {
             let (peek, _) = self.token_stream.peek();
             match peek {
@@ -415,7 +415,7 @@ impl Parser {
                 Token::Vertical if flag & 0b001 == 0b001 => {
                     let _ = self.parse_special_token(Token::Vertical)?;
                     flag = 0b100;
-                    continue
+                    continue;
                 }
                 // 0b010
                 Token::Greater if flag & 0b010 == 0b010 => {
@@ -423,12 +423,12 @@ impl Parser {
                     break;
                 }
                 // 0b100
-               _ if flag & 0b100 == 0b100 => {
+                _ if flag & 0b100 == 0b100 => {
                     let ty = self.parse_type()?;
                     list.push(ty);
-                    flag = 0b010|0b001
+                    flag = 0b010 | 0b001
                 }
-                t=>panic!("unexpected token {:?}", t),
+                t => panic!("unexpected token {:?}", t),
             }
         }
         Ok(list)
@@ -453,14 +453,22 @@ impl Parser {
                         let _ = self.parse_special_token(Token::ScopeSymbol)?;
                         let list = self.parse_generic_list().unwrap();
                         let (args, _) = self.parse_fn_args().unwrap();
-                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args,generics:list }))
-                            .with_position(pos))
+                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                            name: id,
+                            args,
+                            generics: list,
+                        }))
+                        .with_position(pos))
                     }
                     Token::BraceLeft => {
                         let (args, p0) = self.parse_fn_args().unwrap();
                         pos = pos + p0;
-                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr { name: id, args,generics: vec![] }))
-                            .with_position(pos))
+                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                            name: id,
+                            args,
+                            generics: vec![],
+                        }))
+                        .with_position(pos))
                     }
                     Token::ParenLeft => {
                         // 解析结构体构造
@@ -716,9 +724,9 @@ impl Parser {
                 "Double" => Ok(Type::Double),
                 "Bool" => Ok(Type::Bool),
                 "String" => Ok(Type::String),
-                "Pointer" =>{
+                "Pointer" => {
                     if self.token_stream.peek().0 != Token::Less {
-                        return Ok(Type::Pointer(Box::new(Type::Any)))
+                        return Ok(Type::Pointer(Box::new(Type::Any)));
                     }
                     self.parse_special_token(Token::Less)?;
                     let el_ty = self.parse_type()?;
