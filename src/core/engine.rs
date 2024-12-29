@@ -56,7 +56,7 @@ impl Engine {
         let module = parser.parse().unwrap();
         let mut type_preprocessor = TypePostprocessor::new();
         let module = type_preprocessor.process_module(&module);
-        dbg!(&module);
+        // dbg!(&module);
         //编译
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();

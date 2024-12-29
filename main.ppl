@@ -1,7 +1,7 @@
 import core
 extern fn call(f:Pointer<Unit>)
+val a = "123"
 
-fn hello(a:Int32){
-    println(a)
+if(a == "123"){
+    println("123")
 }
-call(hello)

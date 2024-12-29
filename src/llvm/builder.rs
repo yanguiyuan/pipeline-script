@@ -2,6 +2,7 @@ use crate::llvm::function::Function;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
+use std::cell::RefCell;
 use llvm_sys::core::{
     LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr,
     LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
@@ -11,11 +12,13 @@ use llvm_sys::core::{
 };
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
+use std::collections::HashMap;
 use std::ffi::{c_uint, CString};
 
 #[derive(Clone, Debug)]
 pub struct Builder {
     inner: LLVMBuilderRef,
+    strings: RefCell<HashMap<String, LLVMValue>>,
     // function_map:HashMap<String,Function>,
     // symbol_table:RefCell<HashMap<String,(LLVMType,LLVMValue)>>,
     // current_function:Function
@@ -24,7 +27,7 @@ unsafe impl Send for Builder {}
 unsafe impl Sync for Builder {}
 impl Builder {
     pub(crate) fn new(builder: LLVMBuilderRef) -> Self {
-        Self { inner: builder }
+        Self { inner: builder ,strings:HashMap::new().into()}
     }
     pub fn build_return_void(&self) {
         unsafe {
@@ -54,11 +57,15 @@ impl Builder {
         r.into()
     }
     pub fn build_global_string(&self, name: impl AsRef<str>, value: impl AsRef<str>) -> LLVMValue {
-        let name = name.as_ref();
-        let name = CString::new(name).unwrap();
+        let name0 = name.as_ref();
+        if self.strings.borrow().contains_key(name0){
+            return self.strings.borrow().get(name0).unwrap().clone();
+        }
+        let name = CString::new(name0).unwrap();
         let str = value.as_ref();
         let str = CString::new(str).unwrap();
         let r = unsafe { LLVMBuildGlobalString(self.inner, str.as_ptr(), name.as_ptr()) };
+        self.strings.borrow_mut().insert(name0.to_string(), r.into());
         r.into()
     }
     pub fn build_alloca(&self, name: impl AsRef<str>, ty: &LLVMType) -> LLVMValue {
