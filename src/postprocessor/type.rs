@@ -1,5 +1,3 @@
-mod id;
-
 use crate::lexer::position::Position;
 use crate::parser::expr::StructExpr;
 use std::collections::HashMap;
@@ -14,14 +12,13 @@ use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
-use crate::preprocessor::r#type::id::id;
+use crate::postprocessor::id::id;
 use std::sync::{Arc, RwLock};
 
-static mut ENV_ID: i64 = 0;
-pub struct TypePreprocessor {
+pub struct TypePostprocessor {
     module: Module,
 }
-impl TypePreprocessor {
+impl TypePostprocessor {
     pub fn new() -> Self {
         Self {
             module: Module::new("unknown"),
@@ -143,7 +140,7 @@ impl TypePreprocessor {
     }
     fn process_expr(&mut self, expr: &ExprNode, ctx: &Context) -> ExprNode {
         match expr.get_expr() {
-            Expr::Closure(mut l, mut body, _) => {
+            Expr::Closure(mut l, body, _) => {
                 let mut new_body = vec![];
                 let mut local = vec![];
                 let ctx = Context::with_capture(ctx);
@@ -174,7 +171,7 @@ impl TypePreprocessor {
                     );
                     fields.push(StructField::new(name.clone(), ty.clone()))
                 }
-                let env_var_name = unsafe { format!("Env{}", id()) };
+                let env_var_name = format!("Env{}", id());
                 self.module.register_struct(
                     &env_var_name,
                     Struct {
@@ -197,7 +194,7 @@ impl TypePreprocessor {
                 );
                 // 构造一个闭包函数 接受所有捕获变量为一个结构体env,然后将val a赋值为一个包含函数指针和环境变量的结构体，a的类型为闭包
                 for (name, ty) in captures {
-                    body.insert(
+                    new_body.insert(
                         0,
                         StmtNode::new(
                             Stmt::ValDecl(
@@ -218,7 +215,7 @@ impl TypePreprocessor {
                         ),
                     );
                 }
-                let closure_var_name = unsafe { format!("Closure{}", id()) };
+                let closure_var_name = format!("Closure{}", id());
                 let lambda_function =
                     Function::new(closure_var_name.clone(), Type::Unit, l, new_body, false);
 
@@ -350,9 +347,8 @@ impl TypePreprocessor {
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
-                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name).unwrap();
-                if !ctx.is_local_variable(&name) {
+                if !ctx.is_local_variable(&name) && !ty.is_function() {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
                 ExprNode::new(Expr::Variable(name)).with_type(ty)

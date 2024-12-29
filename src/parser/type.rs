@@ -120,6 +120,12 @@ impl Type {
             _ => false,
         }
     }
+    pub fn is_function(&self) -> bool {
+        match self {
+            Type::Function(_, _) => true,
+            _ => false,
+        }
+    }
     pub fn is_pointer(&self) -> bool {
         match self {
             Type::Pointer(_) => true,

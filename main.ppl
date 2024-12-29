@@ -1,32 +1,7 @@
-extern fn println(obj:..Any)
-// extern fn len(obj:Array<Any>)->Int64
-// extern fn print(obj:..Any)
-// extern fn append(obj:..Any)->String
-// extern fn malloc(len:Int64)->Pointer<Unit>
-// extern fn sizeof<T>() -> Int64
-/*
-struct Array<T>{
-    ptr:Pointer<T>,
-    len:Int64
+import core
+extern fn call(f:Pointer<Unit>)
+
+fn hello(a:Int32){
+    println(a)
 }
-*/
-fn parallel(callback:Fn()){
-    callback();
-}
-fn step(callback:Fn()){
-    callback();
-}
-fn pipeline(callback:Fn()){
-    callback();
-}
-pipeline() {
-    parallel() {
-        println("Hello World from parallel")
-    }
-    step() {
-        println("Hello World from step")
-    }
-    parallel() {
-        println("Hello World from parallel")
-    }
-}
+call(hello)

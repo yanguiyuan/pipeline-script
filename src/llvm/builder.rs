@@ -7,7 +7,7 @@ use llvm_sys::core::{
     LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
     LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul,
     LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2,
-    LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMPositionBuilderAtEnd, LLVMSizeOf,
+    LLVMBuildSub, LLVMBuildZExt, LLVMDisposeBuilder, LLVMPositionBuilderAtEnd,
 };
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};

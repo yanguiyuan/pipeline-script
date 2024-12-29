@@ -363,7 +363,6 @@ impl Compiler {
                     is_fn_param = false;
                 } else {
                     let current_function = ctx.get_current_function();
-                    dbg!(&name);
                     let function_index = current_function.get_param_index(name).unwrap();
                     function_decl = ctx
                         .get_current_function_type()
@@ -374,7 +373,6 @@ impl Compiler {
                 }
                 // 处理传入的参数
                 for (index, arg) in args.iter().enumerate() {
-                    dbg!(&args);
                     let t = function_decl.get_function_arg_type(index).unwrap();
                     let mut v = self.compile_expr(&arg.value, &ctx);
                     if is_extern

@@ -74,6 +74,11 @@ impl Lexer {
                 Some(c) => {
                     let peek = self.peek_char().unwrap_or('\0');
                     match (c, peek) {
+                        ('r', '"') => {
+                            let r = self.scan_format_string('"');
+                            self.increase_index();
+                            return r;
+                        }
                         ('.', p) if !p.is_numeric() => {
                             let r = Some((Token::Dot, self.with_pos(1)));
                             self.next_char();
@@ -350,6 +355,23 @@ impl Lexer {
         pos.set_span(v.len() + 2);
         let v = v.replace("\\n", "\n");
         Some((Token::String(v), pos))
+    }
+    fn scan_format_string(&mut self, prefix: char) -> Option<(Token, Position)> {
+        let mut v = String::new();
+        let mut pos = self.with_pos(0);
+        self.increase_index();
+        self.increase_index();
+        while let Some(c) = self.current_char() {
+            if c == prefix {
+                break;
+            }
+            v.push(c);
+            self.increase_index();
+        }
+
+        pos.set_span(v.len() + 2);
+        let v = v.replace("\\n", "\n");
+        Some((Token::FormatString(v), pos))
     }
     #[allow(unused)]
     pub fn get_source(&self) -> Vec<char> {

@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     String(String),
+    FormatString(String),
     Int(i64),
     Float(f64),
     Identifier(String),
@@ -99,6 +100,7 @@ impl Display for Token {
             Token::Vertical => write!(f, "Symbol(|)"),
             Token::Annotation => write!(f, "Symbol(@)"),
             Token::BitAnd => write!(f, "Symbol(&)"),
+            Token::FormatString(s) => write!(f, "FormatString({s})"),
             _ => todo!(),
         }
     }

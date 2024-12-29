@@ -13,6 +13,7 @@ pub struct ExprNode {
 }
 
 impl ExprNode {
+    #[allow(unused)]
     pub(crate) fn get_closure_body(&self) -> Vec<StmtNode> {
         match &self.expr {
             Expr::Closure(_, body, _) => body.clone(),
