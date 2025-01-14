@@ -58,14 +58,14 @@ impl Builder {
     }
     pub fn build_global_string(&self, name: impl AsRef<str>, value: impl AsRef<str>) -> LLVMValue {
         let name0 = name.as_ref();
-        if self.strings.borrow().contains_key(name0){
-            return self.strings.borrow().get(name0).unwrap().clone();
-        }
         let name = CString::new(name0).unwrap();
-        let str = value.as_ref();
-        let str = CString::new(str).unwrap();
+        let str0 = value.as_ref();
+        if self.strings.borrow().contains_key(str0){
+            return self.strings.borrow().get(str0).unwrap().clone();
+        }
+        let str = CString::new(str0).unwrap();
         let r = unsafe { LLVMBuildGlobalString(self.inner, str.as_ptr(), name.as_ptr()) };
-        self.strings.borrow_mut().insert(name0.to_string(), r.into());
+        self.strings.borrow_mut().insert(str0.to_string(), r.into());
         r.into()
     }
     pub fn build_alloca(&self, name: impl AsRef<str>, ty: &LLVMType) -> LLVMValue {

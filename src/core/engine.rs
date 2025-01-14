@@ -3,15 +3,17 @@ use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::postprocessor::r#type::TypePostprocessor;
 use crate::preprocessor::{FormatStringPreprocessor, ImportPreprocessor, Preprocessor};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::fs;
 use std::path::Path;
+use crate::ast::visit::{VisitMode, VisitResult, Visitor};
 
 pub struct Engine {
     prelude_scripts: Vec<String>,
     preprocessors: Vec<Box<dyn Preprocessor>>,
     function_map: HashMap<String, *mut c_void>,
+    visitors: Vec<Box<dyn Visitor>>
 }
 impl Default for Engine {
     fn default() -> Self {
@@ -20,6 +22,7 @@ impl Default for Engine {
             preprocessors: vec![
                 Box::new(ImportPreprocessor::default()),
             ],
+            visitors: vec![],
             function_map: HashMap::new(),
         }
     }
@@ -32,6 +35,9 @@ impl Engine {
     }
     pub fn register_external_function(&mut self, name: impl Into<String>, f: *mut c_void) {
         self.function_map.insert(name.into(), f);
+    }
+    pub fn register_visitor(&mut self, visitor: impl Visitor +'static) {
+        self.visitors.push(Box::new(visitor));
     }
     pub fn register_preprocessor(&mut self, preprocessor: impl Preprocessor + 'static) {
         self.preprocessors.push(Box::new(preprocessor));
@@ -57,15 +63,36 @@ impl Engine {
         let mut type_preprocessor = TypePostprocessor::new();
         let module = type_preprocessor.process_module(&module);
         // dbg!(&module);
-        //编译
-        let mut compiler = Compiler::new(module.clone());
-        let llvm_module = compiler.compile();
-        llvm_module.dump();
-        let executor = llvm_module.create_executor().unwrap();
-        for (name, f) in &self.function_map {
-            let func = llvm_module.get_function(name).unwrap();
-            executor.add_global_mapping(func.as_ref(), *f);
+        let mut ast = module.to_ast();
+        let mut queue = VecDeque::new();
+        queue.push_back(&mut ast);
+        'outer: while !queue.is_empty() {
+            let node = queue.pop_front().unwrap();
+            for i in self.visitors.iter_mut() {
+                if i.match_id(node.get_id()){
+                    let result =i.visit(node);
+                    if let VisitMode::One = i.mode() {
+                        break 'outer;
+                    }
+                    if let VisitResult::Break = result {
+                        break;
+                    }
+                }
+            }
+            for i in node.get_mut_children() {
+                queue.push_back(i);
+            }
         }
-        executor.run_function("$main.__main__", &mut []);
+        dbg!(&ast);
+        //编译
+        // let mut compiler = Compiler::new(module.clone());
+        // let llvm_module = compiler.compile();
+        // llvm_module.dump();
+        // let executor = llvm_module.create_executor().unwrap();
+        // for (name, f) in &self.function_map {
+        //     let func = llvm_module.get_function(name).unwrap();
+        //     executor.add_global_mapping(func.as_ref(), *f);
+        // }
+        // executor.run_function("$main.__main__", &mut []);
     }
 }

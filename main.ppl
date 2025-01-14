@@ -1,7 +1,5 @@
 import core
 extern fn call(f:Pointer<Unit>)
-val a = "123"
 
-if(a == "123"){
-    println("123")
-}
+val a = 10
+println(a)

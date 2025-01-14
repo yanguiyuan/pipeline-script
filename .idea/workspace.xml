@@ -7,27 +7,27 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat:外置闭包">
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Cargo.lock" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core.ppl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 相同字符串常量地址相同">
+      <change afterPath="$PROJECT_DIR$/src/ast/data.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ast/node.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ast/visit.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/postprocessor/manage.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/postprocessor/method.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/app.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/app.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/buidin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/buidin.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lexer/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/token.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/declaration.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/declaration.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/type.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocessor/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocessor/type/id.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/preprocessor/type/mod.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/module.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plugin/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/builtin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,6 +96,11 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\01-Projects\pipeline-script\src\ast" />
+    </key>
+  </component>
   <component name="RsExternalLinterProjectSettings">
     <option name="tool" value="Clippy" />
   </component>
@@ -194,7 +199,10 @@
       <workItem from="1734963588027" duration="1294000" />
       <workItem from="1735140937205" duration="2345000" />
       <workItem from="1735382197683" duration="16268000" />
-      <workItem from="1735466172176" duration="329000" />
+      <workItem from="1735466172176" duration="8016000" />
+      <workItem from="1735732213130" duration="13430000" />
+      <workItem from="1735825868208" duration="6896000" />
+      <workItem from="1736856790840" duration="6027000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -220,7 +228,15 @@
       <option name="project" value="LOCAL" />
       <updated>1734271992182</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="fix: 相同字符串常量地址相同">
+      <option name="closed" value="true" />
+      <created>1735467784840</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1735467784840</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -241,14 +257,15 @@
     <MESSAGE value="refactor:重构项目结构" />
     <MESSAGE value="feat:泛型返回值" />
     <MESSAGE value="feat:外置闭包" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat:外置闭包" />
+    <MESSAGE value="fix: 相同字符串常量地址相同" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 相同字符串常量地址相同" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
-          <line>454</line>
+          <line>446</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>

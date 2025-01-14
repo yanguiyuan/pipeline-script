@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use crate::ast::data::Data;
+use crate::ast::node::Node;
 use super::expr::ExprNode;
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
@@ -86,6 +89,159 @@ impl StmtNode {
     }
     pub fn is_noop(&self) -> bool {
         self.stmt.is_noop()
+    }
+    pub fn to_ast(&self) -> Node {
+        match &self.stmt {
+            Stmt::EvalExpr(expr) => expr.to_ast(),
+            Stmt::ValDecl(decl) => decl.to_ast(),
+            Stmt::VarDecl(decl) => decl.to_ast(),
+            Stmt::Assign(lhs, rhs) => {
+                let mut children = vec![];
+                children.push(lhs.to_ast());
+                children.push(rhs.to_ast());
+                Node::new(
+                    "Assign"
+                ).with_children(children)
+            },
+            Stmt::Return(expr) => {
+                let mut children = vec![];
+                children.push(expr.to_ast());
+                Node::new(
+                    "Return"
+                ).with_children(children)
+            },
+            // If=>[IfBranch([Expr,Block]),*Block]
+            Stmt::If(if_stmt) => {
+                let mut children = vec![];
+                for i in if_stmt.get_branches() {
+                    let mut branch_children = vec![];
+                    branch_children.push(i.get_condition().to_ast());
+                    let mut body_children = vec![];
+                    for j in i.get_body() {
+                        body_children.push(j.to_ast());
+                    }
+                    let body_node = Node::new(
+                        "Block"
+                    ).with_children(body_children);
+                    branch_children.push(body_node);
+                    let branch_node = Node::new(
+                        "IfBranch",
+                    ).with_children(branch_children);
+                    children.push(branch_node);
+                }
+                if let Some(else_body) = if_stmt.get_else_body() {
+                    let mut else_children = vec![];
+                    for i in else_body {
+                        else_children.push(i.to_ast());
+                    }
+                    let else_node = Node::new(
+                        "Block",
+                    ).with_children(else_children);
+                    children.push(else_node);
+                }
+                Node::new(
+                    "If",
+                ).with_children(children)
+            },
+            Stmt::While(condition, body) => {
+                let mut children = vec![];
+                children.push(condition.to_ast());
+                let mut body_children = vec![];
+                for i in body {
+                    body_children.push(i.to_ast());
+                }
+                let body_node = Node::new(
+                    "Block",
+                ).with_children(body_children);
+                children.push(body_node);
+                Node::new(
+                    "While",
+                ).with_children(children)
+            },
+            // Stmt::ForIn(ident, range, expr, body) => {
+            //     let mut children = vec![];
+            //     let mut ident_children = vec![];
+            //     ident_children.push(Node::new(
+            //         node_manager.register_id("Ident"),
+            //         vec![],
+            //         vec![Node::new(
+            //             node_manager.register_id("String"),
+            //             vec![Data::String(ident.clone())],
+            //             vec![],
+            //         )],
+            //     ));
+            //     let ident_node = Node::new(
+            //         node_manager.register_id("Pattern"),
+            //         vec![],
+            //         ident_children,
+            //     );
+            //     children.push(ident_node);
+            //     if let Some(range) = range {
+            //         let mut range_children = vec![];
+            //         range_children.push(Node::new(
+            //             node_manager.register_id("Ident"),
+            //             vec![],
+            //             vec![Node::new(
+            //                 node_manager.register_id("String"),
+            //                 vec![Data::String(range.clone())],
+            //                 vec![],
+            //             )],
+            //         ));
+            //         let range_node = Node::new(
+            //             node_manager.register_id("Pattern"),
+            //             vec![],
+            //             range_children,
+            //         );
+            //         children.push(range_node);
+            //     }
+            //     children.push(expr.to_ast(node_manager));
+            //     let mut body_children = vec![];
+            //     for i in body {
+            //         body_children.push(i.to_ast(node_manager));
+            //     }
+            //     let body_node = Node::new(
+            //         node_manager.register_id("Block"),
+            //         vec![],
+            //         body_children,
+            //     );
+            //     children.push(body_node);
+            //     Node::new(
+            //         node_manager.register_id("ForIn"),
+            //         vec![],
+            //         children,
+            //     )
+            // },
+            Stmt::IndexAssign(lhs, index, rhs) => {
+                let mut children = vec![];
+                children.push(lhs.to_ast());
+                children.push(index.to_ast());
+                children.push(rhs.to_ast());
+                Node::new(
+                    "IndexAssign",
+                ).with_children(children)
+            },
+            Stmt::Break => {
+                Node::new(
+                    "Break",
+                )
+            },
+            Stmt::Continue => {
+                Node::new(
+                    "Continue",
+                )
+            },
+            Stmt::Import(path) => {
+                let mut data = HashMap::new();
+                data.insert("path".to_string(), Data::String(path.clone()));
+                Node::new(
+                    "Import",
+                ).with_data(data)
+            },
+            Stmt::Noop => {
+                Node::new("Noop")
+            },
+            _=>panic!("Unknown stmt: {:?}", self),
+        }
     }
     pub fn position(&self) -> Position {
         self.pos.clone()

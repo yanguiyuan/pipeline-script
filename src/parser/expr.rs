@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-
+use std::fmt::{Display, Formatter};
+use crate::ast::data::Data;
+use crate::ast::node::Node;
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
@@ -13,6 +15,107 @@ pub struct ExprNode {
 }
 
 impl ExprNode {
+    pub fn to_ast(&self) -> Node {
+        match &self.expr {
+            Expr::String(s) => {
+                let mut data = HashMap::new();
+                data.insert("value".to_string(), Data::String(s.clone()));
+                Node::new("Expr:String").with_data(data)
+            },
+            Expr::Int(i) => {
+                let mut data = HashMap::new();
+                data.insert("value".to_string(), Data::Int64(*i));
+                Node::new("Expr:Int").with_data(data)
+            },
+
+            Expr::Float(f) => {
+                let mut data = HashMap::new();
+                data.insert("value".to_string(), Data::Float64(*f));
+                Node::new("Expr:Float").with_data(data)
+            },
+            Expr::Boolean(b) => {
+                let mut data = HashMap::new();
+                data.insert("value".to_string(), Data::Boolean(*b));
+                Node::new("Expr:Boolean").with_data(data)
+            },
+            Expr::BraceExpr(expr) => expr.to_ast(),
+            Expr::FnCall(call) => {
+                let mut children = vec![];
+                for arg in call.args.iter() {
+                    children.push(arg.value.to_ast())
+                }
+                let mut data = HashMap::new();
+                data.insert("name".into(),Data::String(call.name.clone()));
+                // data.push(node_manager.register_id(&call.generics.len().to_string()));
+                // for i in call.generics.iter() {
+                //     data.push(node_manager.register_id(&i.to_string()))
+                // }
+                Node::new("Expr:FnCall").with_data(data).with_children(children)
+            }
+            Expr::Variable(v) => {
+                let mut data = HashMap::new();
+                data.insert("name".into(),Data::String(v.clone()));
+                Node::new("Expr:Variable").with_data(data)
+            },
+            Expr::Binary(op, left, right) => {
+                let mut data =HashMap::new();
+                data.insert("op".into(),op.to_string().into());
+                let l = left.to_ast();
+                let r = right.to_ast();
+                Node::new("Expr:Binary").with_data(data).with_children(vec![l,r])
+            }
+            Expr::Unary(op, expr) => {
+                let mut data = HashMap::new();
+                data.insert("op".into(),op.to_string().into());
+                let node = expr.to_ast();
+                Node::new("Expr:Unary").with_data(data).with_children(vec![node])
+            }
+            Expr::Array(exprs) => {
+                let mut children = vec![];
+                for expr in exprs.iter() {
+                    children.push(expr.to_ast())
+                }
+                Node::new("Expr:Array").with_children(children)
+            }
+            Expr::Map(exprs) => {
+                let mut children = vec![];
+                for (k, v) in exprs.iter() {
+                    children.push(k.to_ast());
+                    children.push(v.to_ast());
+                }
+                Node::new("Expr:Map").with_children(children)
+            }
+            Expr::Index(left, right) => {
+                let left = left.to_ast();
+                let right = right.to_ast();
+                Node::new("Expr:Index").with_children(vec![left, right])
+            }
+            Expr::Address(expr) => {
+                let node = expr.to_ast();
+                Node::new("Expr:Address").with_children(vec![node])
+            }
+            Expr::Closure(params, body, captures) => {
+                let mut children = vec![];
+                for stmt in body.iter() {
+                    children.push(stmt.to_ast())
+                }
+                Node::new("Expr:Closure").with_children(children)
+            }
+            Expr::Struct(s) => {
+                let mut children = vec![];
+                for (k, v) in s.props.iter() {
+                    children.push(v.to_ast());
+                }
+                Node::new("Expr:Struct").with_children(children)
+            }
+            Expr::Member(root, name) => {
+                let node = root.to_ast();
+                Node::new("Expr:Member").with_children(vec![node])
+            }
+            Expr::None => Node::new("None"),
+        }
+    }
+
     #[allow(unused)]
     pub(crate) fn get_closure_body(&self) -> Vec<StmtNode> {
         match &self.expr {
@@ -86,10 +189,30 @@ pub enum Op {
     And,
     Or,
 }
+impl Display for Op {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Op::Plus => write!(f, "+"),
+            Op::Minus => write!(f, "-"),
+            Op::Mul => write!(f, "*"),
+            Op::Div => write!(f, "/"),
+            Op::Mod => write!(f, "%"),
+            Op::Greater => write!(f, ">"),
+            Op::Less => write!(f, "<"),
+            Op::Equal => write!(f, "=="),
+            Op::NotEqual => write!(f, "!="),
+            Op::Negate => write!(f, "!"),
+            Op::And => write!(f, "&&"),
+            Op::Or => write!(f, "||"),
+        }
+    }
+
+}
 #[derive(Debug, Clone)]
 pub struct FnCallExpr {
     pub name: String,
     pub generics: Vec<Type>,
+    pub is_method: bool,
     pub args: Vec<Argument>,
 }
 #[derive(Debug, Clone)]

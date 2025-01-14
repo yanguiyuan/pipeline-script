@@ -436,14 +436,6 @@ impl Parser {
     pub fn parse_primary_expr(&mut self) -> Result<ExprNode> {
         let (token, mut pos) = self.token_stream.next_token();
         match token {
-            // Token::FormatString(s)=>{
-            //     // 分离出表达式
-            //     Ok(ExprNode::from(Expr::FnCall(FnCallExpr{
-            //         name: "append".to_string(),
-            //         generics: vec![],
-            //         args: vec![],
-            //     })))
-            // },
             Token::Vertical => {
                 let peek = self.token_stream.peek().0;
                 let mut l = vec![];
@@ -464,6 +456,7 @@ impl Parser {
                         Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                             name: id,
                             args,
+                            is_method: false,
                             generics: list,
                         }))
                         .with_position(pos))
@@ -474,6 +467,7 @@ impl Parser {
                         Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                             name: id,
                             args,
+                            is_method: false,
                             generics: vec![],
                         }))
                         .with_position(pos))
@@ -563,10 +557,12 @@ impl Parser {
         match token {
             Token::BraceLeft => {
                 let (mut args, _) = self.parse_fn_args()?;
+                let root =  expr.get_member_root();
                 args.insert(0, Argument::new(expr.get_member_root()));
                 Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                     name: expr.get_member_name(),
                     generics: vec![],
+                    is_method: true,
                     args,
                 })))
             }

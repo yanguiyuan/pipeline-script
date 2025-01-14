@@ -2,6 +2,8 @@ use crate::core::engine::Engine;
 use crate::plugin::Plugin;
 use std::ffi::c_void;
 use std::path::{Path, PathBuf};
+use crate::ast::visit::Visitor;
+
 pub struct App {
     engine: Engine,
     path: PathBuf,
@@ -15,6 +17,10 @@ impl App {
     }
     pub fn register_external_function(mut self, name: &str, func: *mut c_void) -> Self {
         self.engine.register_external_function(name, func);
+        self
+    }
+    pub fn register_visitor(mut self, visitor: impl Visitor +'static) -> Self {
+        self.engine.register_visitor(visitor);
         self
     }
     pub fn add_plugin(mut self, plugin: impl Plugin) -> Self {

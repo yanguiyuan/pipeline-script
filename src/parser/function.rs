@@ -1,5 +1,8 @@
+use std::any::Any;
+use std::collections::HashMap;
 use std::vec;
-
+use crate::ast::data::Data;
+use crate::ast::node::Node;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
 
@@ -39,6 +42,21 @@ impl Function {
             is_generic: false,
             is_extern,
         }
+    }
+    pub fn to_ast(&self) -> Node {
+        let mut data =HashMap::new();
+        data.insert("name".into(),Data::String(self.name.clone()));
+        data.insert("is_template".into(),Data::Boolean(self.is_template));
+        data.insert("is_extern".into(),Data::Boolean(self.is_extern));
+        data.insert("type".into(),Data::Type(self.return_type.clone()));
+        let mut children = vec![];
+        for i in &self.args {
+            children.push(i.to_ast())
+        }
+        for i in &self.body {
+            children.push(i.to_ast())
+        }
+        Node::new("Function").with_data(data).with_children(children)
     }
 
     pub fn name(&self) -> String {

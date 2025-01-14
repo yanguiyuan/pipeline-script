@@ -3,6 +3,8 @@ use crate::parser::function::Function;
 use crate::parser::r#struct;
 use crate::parser::stmt::StmtNode;
 use std::collections::HashMap;
+use crate::ast::data::Data;
+use crate::ast::node::Node;
 
 #[derive(Clone, Debug)]
 pub struct Module {
@@ -24,6 +26,18 @@ impl Module {
             submodules: HashMap::new(),
             global_block: vec![],
         }
+    }
+    pub fn to_ast(&self ) -> Node {
+        let mut children = vec![];
+        for i in self.functions.values() {
+            let node = i.to_ast();
+            children.push(node)
+        }
+        for i in self.global_block.iter() {
+            let node = i.to_ast();
+            children.push(node)
+        }
+        Node::new("File").with_children(children)
     }
     pub fn register_struct(&mut self, name: &str, s: r#struct::Struct) {
         self.structs.insert(name.into(), s);
