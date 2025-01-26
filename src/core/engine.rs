@@ -7,7 +7,7 @@ use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::fs;
 use std::path::Path;
-use crate::ast::visit::{VisitMode, VisitResult, Visitor};
+use crate::ast::visit::{ VisitResult, Visitor};
 
 pub struct Engine {
     prelude_scripts: Vec<String>,
@@ -64,23 +64,27 @@ impl Engine {
         let module = type_preprocessor.process_module(&module);
         // dbg!(&module);
         let mut ast = module.to_ast();
-        let mut queue = VecDeque::new();
-        queue.push_back(&mut ast);
-        'outer: while !queue.is_empty() {
-            let node = queue.pop_front().unwrap();
-            for i in self.visitors.iter_mut() {
+        for i in self.visitors.iter_mut() {
+            let mut queue = VecDeque::new();
+            queue.push_back(&mut ast);
+            while !queue.is_empty() {
+                let mut skip = false;
+                let node = queue.pop_front().unwrap();
                 if i.match_id(node.get_id()){
                     let result =i.visit(node);
-                    if let VisitMode::One = i.mode() {
-                        break 'outer;
-                    }
                     if let VisitResult::Break = result {
                         break;
                     }
+                    if let VisitResult::Skip = result {
+                        skip = true;
+                    }
                 }
-            }
-            for i in node.get_mut_children() {
-                queue.push_back(i);
+                if skip {
+                    continue;
+                }
+                for i in node.get_mut_children() {
+                    queue.push_back(i);
+                }
             }
         }
         dbg!(&ast);
@@ -96,3 +100,4 @@ impl Engine {
         // executor.run_function("$main.__main__", &mut []);
     }
 }
+

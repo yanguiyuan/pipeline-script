@@ -4,10 +4,6 @@ pub enum VisitOrder{
     PreOrder,
     PostOrder,
 }
-pub enum VisitMode{
-    One,
-    Each,
-}
 pub enum VisitResult{
     Continue,
     // 停止遍历
@@ -16,16 +12,12 @@ pub enum VisitResult{
     Skip
 }
 pub trait Visitor{
-    fn mode(&self) -> VisitMode;
     fn match_id(&self, id:&str) -> bool;
     fn visit(&mut self, node:&mut Node)->VisitResult;
 }
 
 pub struct Printer;
 impl Visitor for Printer{
-    fn mode(&self) -> VisitMode {
-        VisitMode::Each
-    }
 
     fn match_id(&self, id: &str) -> bool {
         if id.starts_with("Function") {
