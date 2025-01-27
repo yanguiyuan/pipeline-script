@@ -16,25 +16,23 @@ pub struct ExprNode {
 
 impl ExprNode {
     pub fn to_ast(&self) -> Node {
+        let mut data = HashMap::new();
+        data.insert("type".into(),Data::Type(self.ty.as_ref().unwrap().clone()));
         match &self.expr {
             Expr::String(s) => {
-                let mut data = HashMap::new();
                 data.insert("value".to_string(), Data::String(s.clone()));
                 Node::new("Expr:String").with_data(data)
             },
             Expr::Int(i) => {
-                let mut data = HashMap::new();
                 data.insert("value".to_string(), Data::Int64(*i));
                 Node::new("Expr:Int").with_data(data)
             },
 
             Expr::Float(f) => {
-                let mut data = HashMap::new();
                 data.insert("value".to_string(), Data::Float64(*f));
                 Node::new("Expr:Float").with_data(data)
             },
             Expr::Boolean(b) => {
-                let mut data = HashMap::new();
                 data.insert("value".to_string(), Data::Boolean(*b));
                 Node::new("Expr:Boolean").with_data(data)
             },
@@ -44,38 +42,32 @@ impl ExprNode {
                 for arg in call.args.iter() {
                     children.push(arg.value.to_ast())
                 }
-                let mut data = HashMap::new();
                 data.insert("name".into(),Data::String(call.name.clone()));
-                // data.push(node_manager.register_id(&call.generics.len().to_string()));
-                // for i in call.generics.iter() {
-                //     data.push(node_manager.register_id(&i.to_string()))
-                // }
+                data.insert("is_method".into(),Data::Boolean(call.is_method));
                 Node::new("Expr:FnCall").with_data(data).with_children(children)
             }
             Expr::Variable(v) => {
-                let mut data = HashMap::new();
                 data.insert("name".into(),Data::String(v.clone()));
                 Node::new("Expr:Variable").with_data(data)
             },
             Expr::Binary(op, left, right) => {
-                let mut data =HashMap::new();
                 data.insert("op".into(),op.to_string().into());
                 let l = left.to_ast();
                 let r = right.to_ast();
                 Node::new("Expr:Binary").with_data(data).with_children(vec![l,r])
             }
             Expr::Unary(op, expr) => {
-                let mut data = HashMap::new();
                 data.insert("op".into(),op.to_string().into());
                 let node = expr.to_ast();
                 Node::new("Expr:Unary").with_data(data).with_children(vec![node])
             }
             Expr::Array(exprs) => {
                 let mut children = vec![];
+                data.insert("type".into(),Data::Type(self.ty.as_ref().unwrap().clone()));
                 for expr in exprs.iter() {
                     children.push(expr.to_ast())
                 }
-                Node::new("Expr:Array").with_children(children)
+                Node::new("Expr:Array").with_children(children).with_data(data)
             }
             Expr::Map(exprs) => {
                 let mut children = vec![];

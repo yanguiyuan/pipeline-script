@@ -3,6 +3,7 @@ pub mod format_string;
 pub mod builtin;
 pub mod task;
 pub mod test;
+pub mod method;
 
 #[allow(unused)]
 pub trait Plugin {

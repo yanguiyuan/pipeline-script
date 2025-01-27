@@ -557,7 +557,6 @@ impl Parser {
         match token {
             Token::BraceLeft => {
                 let (mut args, _) = self.parse_fn_args()?;
-                let root =  expr.get_member_root();
                 args.insert(0, Argument::new(expr.get_member_root()));
                 Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                     name: expr.get_member_name(),

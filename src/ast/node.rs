@@ -1,6 +1,9 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt::{Debug, Display};
 use crate::ast::data::Data;
+use crate::context::Context;
+
 #[derive(Debug)]
 pub struct Node{
     id: String,
@@ -8,6 +11,8 @@ pub struct Node{
     children: Vec<Node>,
     extra: HashMap<String,Box<dyn Any>>,
 }
+
+
 impl Node {
     pub fn new(id:impl Into<String>)->Self {
         Self {
@@ -15,6 +20,11 @@ impl Node {
             data:HashMap::new(),
             children: vec![],
             extra: HashMap::new()
+        }
+    }
+    pub fn build_llvm(&mut self,ctx:&Context) {
+        for child in self.children.iter_mut() {
+            child.build_llvm(ctx);
         }
     }
     pub fn with_extra(mut self, extra: HashMap<String,Box<dyn Any>>) ->Self{
@@ -43,5 +53,8 @@ impl Node {
     }
     pub fn get_data(&self,key:&str)->&Data{
         self.data.get(key).unwrap()
+    }
+    pub fn set_data(&mut self,key:impl Into<String>,value:Data){
+        self.data.insert(key.into(), value);
     }
 }

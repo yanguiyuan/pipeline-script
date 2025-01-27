@@ -49,6 +49,8 @@ impl Function {
         data.insert("is_template".into(),Data::Boolean(self.is_template));
         data.insert("is_extern".into(),Data::Boolean(self.is_extern));
         data.insert("type".into(),Data::Type(self.return_type.clone()));
+        data.insert("params_count".into(),Data::Int64(self.args.len() as i64));
+        data.insert("binding_struct".into(),Data::String(self.binding_struct.clone().unwrap_or("".into())));
         let mut children = vec![];
         for i in &self.args {
             children.push(i.to_ast())

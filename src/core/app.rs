@@ -2,7 +2,7 @@ use crate::core::engine::Engine;
 use crate::plugin::Plugin;
 use std::ffi::c_void;
 use std::path::{Path, PathBuf};
-use crate::ast::visit::Visitor;
+use crate::postprocessor::Visitor;
 
 pub struct App {
     engine: Engine,

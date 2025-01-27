@@ -7,7 +7,7 @@ use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::fs;
 use std::path::Path;
-use crate::ast::visit::{ VisitResult, Visitor};
+use crate::postprocessor::{VisitResult, Visitor};
 
 pub struct Engine {
     prelude_scripts: Vec<String>,
@@ -87,10 +87,9 @@ impl Engine {
                 }
             }
         }
-        dbg!(&ast);
         //编译
-        // let mut compiler = Compiler::new(module.clone());
-        // let llvm_module = compiler.compile();
+        let mut compiler = Compiler::new(module.clone());
+        let llvm_module = compiler.compile();
         // llvm_module.dump();
         // let executor = llvm_module.create_executor().unwrap();
         // for (name, f) in &self.function_map {

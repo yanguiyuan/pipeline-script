@@ -97,6 +97,12 @@ impl From<String> for Type {
     }
 }
 impl Type {
+    pub fn get_struct_name(&self) -> Option<&str> {
+        match self {
+            Type::Struct(name, _) => name.as_deref(),
+            _ => None,
+        }
+    }
     pub fn id(&self) -> i32 {
         match self {
             Type::Unit => 0,

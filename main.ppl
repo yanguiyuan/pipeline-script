@@ -1,5 +1,10 @@
 import core
 extern fn call(f:Pointer<Unit>)
+struct Object{}
 
-val a = 10
-println(a)
+fn Object.test() {
+    println("Hello from Rust!")
+}
+
+val a = Object{}
+a.test()
