@@ -1,0 +1,31 @@
+name: Rust CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      LLVM_SYS_180_PREFIX: /usr/lib/llvm-18
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+    - name: Install LLVM
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y llvm-18-dev libpolly-18-dev
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --verbose
