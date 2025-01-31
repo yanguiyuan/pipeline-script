@@ -8,6 +8,8 @@ use crate::llvm::types::LLVMType;
 use crate::parser::r#type::Type;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use crate::llvm::context::LLVMContext;
+use crate::llvm::module::LLVMModule;
 
 pub mod key;
 pub mod scope;
@@ -66,6 +68,21 @@ impl Context {
             ContextValue::TypeTable(Arc::new(RwLock::new(t))),
         )
     }
+    pub fn create_llvm_context() -> Self{
+        let llvm_ctx = LLVMContext::new();
+        let module = llvm_ctx.create_module("main");
+        let ctx = Context{
+            parent: None,
+            key: ContextKey::LLVMContext,
+            value: ContextValue::LLVMContext(Arc::new(RwLock::new(LLVMContext::new()))),
+        };
+        Self{
+            parent: Some(Box::new(ctx)),
+            key: ContextKey::LLVMModule,
+            value: ContextValue::LLVMModule(Arc::new(RwLock::new(module))),
+        }
+
+    }
     pub fn with_function(parent: &Context, f: Function) -> Self {
         Self::with_value(parent, ContextKey::Function, ContextValue::Function(f))
     }
@@ -75,6 +92,12 @@ impl Context {
             ContextKey::Flag(key.into()),
             ContextValue::Flag(Arc::new(RwLock::new(flag))),
         )
+    }
+    pub fn get_llvm_module(&self) -> Arc<RwLock<LLVMModule>> {
+        match self.get(ContextKey::LLVMModule) {
+            Some(ContextValue::LLVMModule(m)) => m.clone(),
+            _ => panic!("not a llvm module"),
+        }
     }
 
     pub fn with_local(parent: &Context, local: Vec<String>) -> Self {

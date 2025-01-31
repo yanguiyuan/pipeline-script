@@ -7,25 +7,16 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix：修改visitor链式执行逻辑">
-      <change afterPath="$PROJECT_DIR$/src/plugin/method.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/postprocessor/printer.rs" afterDir="false" />
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat：补齐ast中expr的Type">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/data.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/data.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ast/node.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/node.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/visit.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/app.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/app.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/key.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/key.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/value.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/module.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/type.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -202,7 +193,8 @@
       <workItem from="1735825868208" duration="6896000" />
       <workItem from="1736856790840" duration="6754000" />
       <workItem from="1737875491856" duration="4022000" />
-      <workItem from="1737962988022" duration="8472000" />
+      <workItem from="1737962988022" duration="9318000" />
+      <workItem from="1738337870503" duration="2944000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -252,7 +244,15 @@
       <option name="project" value="LOCAL" />
       <updated>1737879087864</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="feat：补齐ast中expr的Type">
+      <option name="closed" value="true" />
+      <created>1737975015972</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1737975015972</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -276,7 +276,8 @@
     <MESSAGE value="fix: 相同字符串常量地址相同" />
     <MESSAGE value="feat: 添加visitor接口" />
     <MESSAGE value="fix：修改visitor链式执行逻辑" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix：修改visitor链式执行逻辑" />
+    <MESSAGE value="feat：补齐ast中expr的Type" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat：补齐ast中expr的Type" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

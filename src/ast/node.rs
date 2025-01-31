@@ -2,6 +2,7 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use crate::ast::data::Data;
+use crate::ast::helper::build_function;
 use crate::context::Context;
 
 #[derive(Debug)]
@@ -23,6 +24,21 @@ impl Node {
         }
     }
     pub fn build_llvm(&mut self,ctx:&Context) {
+        let llvm_module = ctx.get_llvm_module();
+        match self.id.as_str() {
+           "File"=>{
+                dbg!(&self.data);
+            }
+            "Function"=>{
+                let name = self.data.get("name").unwrap().as_str().unwrap();
+                let return_type = self.data.get("type").unwrap().as_type().unwrap();
+                let is_extern = self.data.get("is_extern").unwrap().as_bool().unwrap();
+                build_function(llvm_module,is_extern,return_type,name);
+            }
+            _=>{
+                println!("unsupported {}",self.id);
+            }
+        }
         for child in self.children.iter_mut() {
             child.build_llvm(ctx);
         }

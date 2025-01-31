@@ -2,6 +2,7 @@ use crate::ast::data::Data;
 
 pub mod data;
 pub mod node;
+pub mod helper;
 
 trait NodeTrait{
     fn get_id(&self)->i32;

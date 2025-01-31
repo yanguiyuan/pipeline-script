@@ -22,11 +22,10 @@ mod ast;
 fn main() {
     App::new()
         .set_entry_file("main.ppl")
-
         .add_plugin(BuiltinPlugin)
         .add_plugin(FormatStringPlugin)
         .add_plugin(MethodPlugin)
-        .register_visitor(Printer{})
+        // .register_visitor(Printer{})
         .register_visitor(FunctionPrinter::new("Object.test"))
         .run();
 }

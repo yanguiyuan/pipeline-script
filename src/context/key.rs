@@ -3,6 +3,8 @@ pub enum ContextKey {
     Background,
     Builder,
     SymbolTable,
+    LLVMContext,
+    LLVMModule,
     SymbolType,
     /// 预处理阶段闭包捕获变量分析
     LocalVariable,
@@ -71,6 +73,14 @@ impl PartialEq for ContextKey {
             },
             ContextKey::Type(t) => match other {
                 ContextKey::Type(o) => t == o,
+                _ => false,
+            },
+            ContextKey::LLVMContext => match other {
+                ContextKey::LLVMContext => true,
+                _ => false,
+            },
+            ContextKey::LLVMModule => match other {
+                ContextKey::LLVMModule => true,
                 _ => false,
             },
         }

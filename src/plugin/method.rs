@@ -14,6 +14,9 @@ impl Visitor for MethodVisitor {
             return match binding {
                 None => crate::postprocessor::VisitResult::Continue,
                 Some(binding) => {
+                    if binding== ""{
+                        return crate::postprocessor::VisitResult::Continue;
+                    }
                     node.set_data("name", format!("{binding}.{}", node.get_data("name").as_str().unwrap()).into());
                     crate::postprocessor::VisitResult::Continue
                 }

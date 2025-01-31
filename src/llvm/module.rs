@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
 use std::sync::Arc;
-
+#[derive(Debug)]
 pub struct LLVMModule {
     module_ref: Arc<LLVMModuleRef>,
     function_map: HashMap<String, Function>,

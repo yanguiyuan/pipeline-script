@@ -7,6 +7,8 @@ use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::fs;
 use std::path::Path;
+use crate::context::Context;
+use crate::context::key::ContextKey;
 use crate::postprocessor::{VisitResult, Visitor};
 
 pub struct Engine {
@@ -88,8 +90,12 @@ impl Engine {
             }
         }
         //编译
-        let mut compiler = Compiler::new(module.clone());
-        let llvm_module = compiler.compile();
+        let ctx = Context::create_llvm_context();
+        ast.build_llvm(&ctx);
+        let module = ctx.get(ContextKey::LLVMModule).unwrap().as_module();
+        module.read().unwrap().dump();
+        // let mut compiler = Compiler::new(module.clone());
+        // let llvm_module = compiler.compile();
         // llvm_module.dump();
         // let executor = llvm_module.create_executor().unwrap();
         // for (name, f) in &self.function_map {
