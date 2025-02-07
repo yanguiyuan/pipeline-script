@@ -7,15 +7,17 @@ use std::collections::{HashMap, VecDeque};
 use std::ffi::c_void;
 use std::fs;
 use std::path::Path;
+use crate::ast::NodeTrait;
 use crate::context::Context;
 use crate::context::key::ContextKey;
-use crate::postprocessor::{VisitResult, Visitor};
+use crate::llvm::global::Global;
+use crate::postprocessor::{DynVisitor, VisitResult, Visitor};
 
 pub struct Engine {
     prelude_scripts: Vec<String>,
     preprocessors: Vec<Box<dyn Preprocessor>>,
     function_map: HashMap<String, *mut c_void>,
-    visitors: Vec<Box<dyn Visitor>>
+    visitors: Vec<Box<dyn DynVisitor>>
 }
 impl Default for Engine {
     fn default() -> Self {
@@ -63,17 +65,17 @@ impl Engine {
         let mut parser = Parser::new(lexer);
         let module = parser.parse().unwrap();
         let mut type_preprocessor = TypePostprocessor::new();
-        let module = type_preprocessor.process_module(&module);
+        let mut module = type_preprocessor.process_module(&module);
         // dbg!(&module);
-        let mut ast = module.to_ast();
+        // let mut ast = module.to_ast();
         for i in self.visitors.iter_mut() {
-            let mut queue = VecDeque::new();
-            queue.push_back(&mut ast);
+            let mut queue:VecDeque<&mut dyn NodeTrait> = VecDeque::new();
+            queue.push_back(&mut module);
             while !queue.is_empty() {
                 let mut skip = false;
                 let node = queue.pop_front().unwrap();
                 if i.match_id(node.get_id()){
-                    let result =i.visit(node);
+                    let result =i.dyn_visit(node);
                     if let VisitResult::Break = result {
                         break;
                     }
@@ -90,19 +92,21 @@ impl Engine {
             }
         }
         //编译
-        let ctx = Context::create_llvm_context();
-        ast.build_llvm(&ctx);
-        let module = ctx.get(ContextKey::LLVMModule).unwrap().as_module();
-        module.read().unwrap().dump();
-        // let mut compiler = Compiler::new(module.clone());
-        // let llvm_module = compiler.compile();
-        // llvm_module.dump();
-        // let executor = llvm_module.create_executor().unwrap();
-        // for (name, f) in &self.function_map {
-        //     let func = llvm_module.get_function(name).unwrap();
-        //     executor.add_global_mapping(func.as_ref(), *f);
-        // }
-        // executor.run_function("$main.__main__", &mut []);
+        // let ctx = Context::create_llvm_context();
+        // let builder = Global::create_builder();
+        // let ctx = Context::with_builder(&ctx, builder);
+        // ast.build_llvm(&ctx);
+        // let module = ctx.get(ContextKey::LLVMModule).unwrap().as_module();
+        // module.read().unwrap().dump();
+        let mut compiler = Compiler::new(module.clone());
+        let llvm_module = compiler.compile();
+        llvm_module.dump();
+        let executor = llvm_module.create_executor().unwrap();
+        for (name, f) in &self.function_map {
+            let func = llvm_module.get_function(name).unwrap();
+            executor.add_global_mapping(func.as_ref(), *f);
+        }
+        executor.run_function("$main.__main__", &mut []);
     }
 }
 

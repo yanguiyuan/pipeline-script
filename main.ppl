@@ -4,6 +4,7 @@ struct Object{}
 
 fn Object.test() {
     println("Hello from Rust!")
+    return 2
 }
 
 val a = Object{}

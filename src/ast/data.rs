@@ -1,6 +1,6 @@
 use crate::parser::r#type::Type;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum Data{
     String(String),
     Int32(i32),
@@ -31,6 +31,12 @@ impl Data {
     pub fn as_type(&self) -> Option<&Type>{
         match self {
             Data::Type(t) => Some(t),
+            _ => None,
+        }
+    }
+    pub fn as_i64(&self) -> Option<i64>{
+        match self {
+            Data::Int64(i) => Some(*i),
             _ => None,
         }
     }

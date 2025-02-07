@@ -99,6 +99,12 @@ impl Context {
             _ => panic!("not a llvm module"),
         }
     }
+    pub fn get_llvm_context(&self) -> Arc<RwLock<LLVMContext>> {
+        match self.get(ContextKey::LLVMContext) {
+            Some(ContextValue::LLVMContext(c)) => c.clone(),
+            _ => panic!("not a llvm context"),
+        }
+    }
 
     pub fn with_local(parent: &Context, local: Vec<String>) -> Self {
         Self::with_value(

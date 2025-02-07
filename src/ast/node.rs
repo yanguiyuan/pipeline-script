@@ -2,17 +2,43 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use crate::ast::data::Data;
-use crate::ast::helper::build_function;
+use crate::ast::NodeTrait;
 use crate::context::Context;
+use crate::core::value::Value;
 
 #[derive(Debug)]
 pub struct Node{
-    id: String,
-    data: HashMap<String,Data>,
-    children: Vec<Node>,
-    extra: HashMap<String,Box<dyn Any>>,
+    pub(crate) id: String,
+    pub(crate) data: HashMap<String,Data>,
+    pub(crate) children: Vec<Node>,
+    pub(crate) extra: HashMap<String,Box<dyn Any>>,
 }
 
+impl NodeTrait for Node{
+    fn get_id(&self) -> &str {
+        &self.id
+    }
+
+    fn get_data(&self, key: &str) -> Option<&Data> {
+        self.data.get(key)
+    }
+
+    fn set_data(&mut self, key: &str, value: Data) {
+        self.data.insert(key.into(), value);
+    }
+
+    fn get_children(&self) -> Vec<&dyn NodeTrait> {
+        self.children.iter().map(|child| child as &dyn NodeTrait).collect()
+    }
+    fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
+        self.children.iter_mut().map(|child| child as &mut dyn NodeTrait).collect()
+    }
+
+    fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
+        todo!()
+    }
+
+}
 
 impl Node {
     pub fn new(id:impl Into<String>)->Self {
@@ -23,26 +49,7 @@ impl Node {
             extra: HashMap::new()
         }
     }
-    pub fn build_llvm(&mut self,ctx:&Context) {
-        let llvm_module = ctx.get_llvm_module();
-        match self.id.as_str() {
-           "File"=>{
-                dbg!(&self.data);
-            }
-            "Function"=>{
-                let name = self.data.get("name").unwrap().as_str().unwrap();
-                let return_type = self.data.get("type").unwrap().as_type().unwrap();
-                let is_extern = self.data.get("is_extern").unwrap().as_bool().unwrap();
-                build_function(llvm_module,is_extern,return_type,name);
-            }
-            _=>{
-                println!("unsupported {}",self.id);
-            }
-        }
-        for child in self.children.iter_mut() {
-            child.build_llvm(ctx);
-        }
-    }
+
     pub fn with_extra(mut self, extra: HashMap<String,Box<dyn Any>>) ->Self{
         self.extra = extra;
         self

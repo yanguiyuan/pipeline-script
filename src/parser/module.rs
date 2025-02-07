@@ -1,3 +1,4 @@
+use std::any::Any;
 use crate::parser::class::Class;
 use crate::parser::function::Function;
 use crate::parser::r#struct;
@@ -5,6 +6,7 @@ use crate::parser::stmt::StmtNode;
 use std::collections::HashMap;
 use crate::ast::data::Data;
 use crate::ast::node::Node;
+use crate::ast::NodeTrait;
 
 #[derive(Clone, Debug)]
 pub struct Module {
@@ -15,7 +17,31 @@ pub struct Module {
     global_block: Vec<StmtNode>,
     submodules: HashMap<String, Box<Module>>,
 }
+impl NodeTrait for Module{
+    fn get_id(&self) -> &str {
+        "Module"
+    }
 
+    fn get_data(&self, key: &str) -> Option<&Data> {
+        None
+    }
+
+    fn set_data(&mut self, key: &str, value: Data) {
+        todo!()
+    }
+
+    fn get_children(&self) -> Vec<&dyn NodeTrait> {
+        todo!()
+    }
+
+    fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
+        vec![]
+    }
+
+    fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
+        todo!()
+    }
+}
 impl Module {
     pub fn new(name: impl Into<String>) -> Self {
         Self {

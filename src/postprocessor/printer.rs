@@ -1,4 +1,5 @@
 use crate::ast::node::Node;
+use crate::ast::NodeTrait;
 use crate::postprocessor::{VisitResult, Visitor};
 
 pub struct Printer {}
@@ -8,8 +9,8 @@ impl Visitor for Printer {
         true
     }
 
-    fn visit(&mut self, node: &mut Node) -> VisitResult {
-        dbg!(node);
+    fn visit(&mut self, node:&mut (impl NodeTrait + ?Sized)) -> VisitResult {
+        dbg!(node.get_id());
         VisitResult::Break
     }
 }

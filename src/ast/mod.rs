@@ -1,11 +1,19 @@
+use std::any::Any;
+use std::collections::HashMap;
 use crate::ast::data::Data;
+use crate::context::Context;
+use crate::core::value::Value;
 
 pub mod data;
 pub mod node;
 pub mod helper;
+mod compile;
 
-trait NodeTrait{
-    fn get_id(&self)->i32;
-    fn get_data(&self)->&Vec<Data>;
-    fn get_children(&self)->&Vec<node::Node>;
+pub trait NodeTrait{
+    fn get_id(&self)->&str;
+    fn get_data(&self,key:&str)->Option<&Data>;
+    fn set_data(&mut self,key:&str,value:Data);
+    fn get_children(&self)->Vec<&dyn NodeTrait>;
+    fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait>;
+    fn get_extra(&self)->&HashMap<String,Box<dyn Any>>;
 }
