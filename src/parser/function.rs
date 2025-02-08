@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::vec;
 use crate::ast::data::Data;
 use crate::ast::node::Node;
+use crate::ast::NodeTrait;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
 
@@ -22,6 +23,47 @@ pub struct Function {
     binding_struct: Option<String>,
     #[allow(unused)]
     pub(crate) is_extern: bool,
+}
+impl NodeTrait for Function{
+    fn get_id(&self) -> &str {
+        "Function"
+    }
+
+    fn get_data(&self, key: &str) -> Option<Data> {
+        match key {
+            "name" => Some(Data::String(self.name.clone())),
+            "binding_struct" => {
+                match &self.binding_struct {
+                    Some(s) => Some(Data::String(s.clone())),
+                    None => None,
+                }
+            },
+            _ => None,
+        }
+    }
+
+    fn set_data(&mut self, key: &str, value: Data) {
+        dbg!(key,&value);
+        match key {
+            "name"=>{
+                self.name = value.as_str().unwrap().into();
+                dbg!(&self.name);
+            }
+            _=>{}
+        }
+    }
+
+    fn get_children(&self) -> Vec<&dyn NodeTrait> {
+        todo!()
+    }
+
+    fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
+       vec![]
+    }
+
+    fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
+        todo!()
+    }
 }
 impl Function {
     pub fn new(

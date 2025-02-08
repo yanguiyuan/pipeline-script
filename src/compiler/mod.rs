@@ -49,7 +49,7 @@ impl Compiler {
             self.llvm_module.register_struct(name, field_index, t);
         }
         // 编译函数声明
-        for (name, item) in self.module.get_functions() {
+        for (name, item) in self.module.get_functions().iter() {
             if item.is_template {
                 continue;
             }
@@ -87,7 +87,7 @@ impl Compiler {
         let ctx = Context::with_builder(&ctx, builder);
 
         // 编译函数实现
-        for (name, item) in self.module.get_functions() {
+        for (name, item) in self.module.get_functions().iter() {
             if item.is_extern || item.is_template {
                 continue;
             }
@@ -110,7 +110,7 @@ impl Compiler {
         }
         // 编译主函数
         let main = self.llvm_module.register_function(
-            "$main.__main__",
+            "$Module.main",
             Global::function_type(Global::unit_type(), vec![]),
             vec![],
         );
@@ -122,7 +122,7 @@ impl Compiler {
         let ctx = Context::with_function(&ctx, main);
         let ctx = Context::with_scope(&ctx, Scope::new());
         let ctx = Context::with_flag(&ctx, "return", false);
-        for stmt in block {
+        for stmt in block.iter() {
             self.compile_stmt(stmt, &ctx);
         }
         let flag = ctx.get_flag("return");

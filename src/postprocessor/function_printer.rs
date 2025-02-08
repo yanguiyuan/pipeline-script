@@ -22,8 +22,9 @@ impl Visitor for FunctionPrinter{
         }
     }
 
-    fn visit(&mut self, node:&mut (impl NodeTrait + ?Sized)) -> VisitResult {
-        let name = node.get_data("name").unwrap().as_str().unwrap();
+    fn visit(&self, node:&mut (impl NodeTrait + ?Sized)) -> VisitResult {
+        let data = node.get_data("name").unwrap();
+        let name = data.as_str().unwrap();
         if name.starts_with(self.name.as_str()) {
             println!("{:#?}",node.get_id());
             return VisitResult::Break;

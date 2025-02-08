@@ -1,12 +1,10 @@
 import core
 extern fn call(f:Pointer<Unit>)
-struct Object{}
 
-fn Object.test() {
-    println("Hello from Rust!")
-    return 2
+module std {
+    import core
+    fn hello() {
+        println("Hello from Rust!")
+    }
 }
-
-val a = Object{}
-
-a.test()
+std.hello()

@@ -1,12 +1,16 @@
 use std::any::Any;
+use std::cell::RefCell;
 use crate::parser::class::Class;
 use crate::parser::function::Function;
 use crate::parser::r#struct;
 use crate::parser::stmt::StmtNode;
 use std::collections::HashMap;
+use std::rc::Rc;
+use slotmap::DefaultKey;
 use crate::ast::data::Data;
 use crate::ast::node::Node;
 use crate::ast::NodeTrait;
+use crate::context::Context;
 
 #[derive(Clone, Debug)]
 pub struct Module {
@@ -15,14 +19,14 @@ pub struct Module {
     classes: HashMap<String, Class>,
     structs: HashMap<String, r#struct::Struct>,
     global_block: Vec<StmtNode>,
-    submodules: HashMap<String, Box<Module>>,
+    submodules: HashMap<String, DefaultKey>,
 }
 impl NodeTrait for Module{
     fn get_id(&self) -> &str {
         "Module"
     }
 
-    fn get_data(&self, key: &str) -> Option<&Data> {
+    fn get_data(&self, key: &str) -> Option<Data> {
         None
     }
 
@@ -35,7 +39,11 @@ impl NodeTrait for Module{
     }
 
     fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
-        vec![]
+        let mut r = vec![];
+        for f in self.functions.values_mut() {
+            r.push(f as &mut dyn NodeTrait)
+        }
+        r
     }
 
     fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
@@ -81,11 +89,17 @@ impl Module {
     pub fn get_class(&self, class_name: &str) -> Option<&Class> {
         return self.classes.get(class_name);
     }
-    pub fn get_functions_ref(&self) -> &HashMap<String, Function> {
-        &self.functions
-    }
+    // pub fn get_functions_ref(&self) -> &HashMap<String, Function> {
+    //     &self.functions
+    // }
     pub fn get_functions(&self) -> HashMap<String, Function> {
         self.functions.clone()
+    }
+    pub fn get_submodules(&self)->&HashMap<String,DefaultKey> {
+        &self.submodules
+    }
+    pub fn get_mut_functions(&mut self) -> &mut HashMap<String, Function> {
+        &mut self.functions
     }
     pub fn register_function(&mut self, name: &str, f: Function) {
         self.functions.insert(name.into(), f);
@@ -97,9 +111,9 @@ impl Module {
     pub fn get_global_block(&self) -> &Vec<StmtNode> {
         &self.global_block
     }
-    pub fn get_mut_global_block(&mut self) -> &mut Vec<StmtNode> {
-        &mut self.global_block
-    }
+    // pub fn get_mut_global_block(&mut self) -> &mut Vec<StmtNode> {
+    //     &mut self.global_block
+    // }
     pub fn get_classes(&self) -> &HashMap<String, Class> {
         &self.classes
     }
@@ -140,24 +154,26 @@ impl Module {
 
         self.functions.extend(new_functions);
     }
-    pub fn get_submodule(&self, name: &str) -> &Module {
+    pub fn get_submodule(&self, name: &str) ->&DefaultKey {
         let m = self.submodules.get(name).unwrap();
         m
     }
-    pub fn merge_into_main(&mut self, name: &str) -> bool {
+    pub fn merge_into_main(&mut self, ctx:&Context,name: &str) -> bool {
         let m = self.submodules.get(name);
         match m {
             Some(m) => {
-                let m = m.clone();
-                self.merge(&m);
+                let module_slot_map = ctx.get_module_slot_map();
+                let module_slot_map = module_slot_map.read().unwrap();
+                let module = module_slot_map.get(*m).unwrap();
+                self.merge(module);
                 true
             }
             None => false,
         }
     }
 
-    pub fn register_submodule(&mut self, name: impl Into<String>, module: Module) {
-        self.submodules.insert(name.into(), Box::new(module));
+    pub fn register_submodule(&mut self,name:&str,module: DefaultKey) {
+        self.submodules.insert(name.into(), module);
     }
 
     pub fn get_function(&self, name: impl Into<String>) -> Option<Function> {

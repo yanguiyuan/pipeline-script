@@ -9,7 +9,7 @@ impl Visitor for Printer {
         true
     }
 
-    fn visit(&mut self, node:&mut (impl NodeTrait + ?Sized)) -> VisitResult {
+    fn visit(&self, node:&mut (impl NodeTrait + ?Sized)) -> VisitResult {
         dbg!(node.get_id());
         VisitResult::Break
     }

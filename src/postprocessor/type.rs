@@ -24,9 +24,20 @@ impl TypePostprocessor {
             module: Module::new("unknown"),
         }
     }
-    pub fn process_module(&mut self, module: &Module) -> Module {
+    pub fn process(&mut self, module: &Module,ctx:&Context) -> Module {
         self.module.set_name(module.get_name());
-        let ctx = Context::background();
+        let submodule = module.get_submodules();
+        for (name, module) in submodule.iter() {
+            let module_slot_map = ctx.get_module_slot_map();
+            let module_slot_map = module_slot_map.read().unwrap();
+            let module = module_slot_map.get(*module).unwrap();
+            self.process_module(module,ctx);
+        }
+        self.process_module(module,ctx);
+        self.module.clone()
+    }
+    fn process_module(&mut self, module: &Module,ctx:&Context){
+
         let mut symbols = HashMap::new();
         let ctx = Context::with_value(
             &ctx,
@@ -39,6 +50,9 @@ impl TypePostprocessor {
             ContextKey::AliasType,
             ContextValue::AliasType(Arc::new(RwLock::new(alias))),
         );
+        for module_name in module.get_submodules().keys(){
+            ctx.set_symbol_type(module_name.into(),Type::Module)
+        }
         for (name, st) in module.get_structs() {
             ctx.set_alias_type(name.clone(), st.get_type())
         }
@@ -47,7 +61,7 @@ impl TypePostprocessor {
             self.module.register_struct(name, st.clone());
         }
         let mut functions = module.get_functions();
-        for (_, f) in &mut functions {
+        for (_, f) in &mut functions.iter_mut() {
             if f.has_binding() {
                 f.insert_arg(
                     0,
@@ -56,7 +70,7 @@ impl TypePostprocessor {
                 )
             }
         }
-        for (name, f) in &functions {
+        for (name, f) in functions.iter() {
             let mut ty = f.get_type();
             let return_type = ty.get_function_return_type().unwrap();
             if return_type.is_alias() {
@@ -66,7 +80,7 @@ impl TypePostprocessor {
             }
             ctx.set_symbol_type(name.clone(), ty)
         }
-        for (name, f) in &functions {
+        for (name, f) in functions.iter() {
             let mut new_f;
             if f.is_extern {
                 new_f = f.clone();
@@ -102,11 +116,10 @@ impl TypePostprocessor {
             symbols.insert(name.clone(), f.get_type());
         }
         let ctx = Context::with_local(&ctx, vec![]);
-        for stmt in module.get_global_block().clone() {
+        for stmt in module.get_global_block().iter() {
             let stmt = self.process_stmt(&stmt, &ctx);
             self.module.add_stmt(stmt);
         }
-        self.module.clone()
     }
 
     fn process_struct(&self, s: &Struct, ctx: &Context) -> Struct {
@@ -255,8 +268,21 @@ impl TypePostprocessor {
             }
             Expr::FnCall(fc) => {
                 let mut fc_name = fc.name.clone();
+                if fc.is_method {
+                    let this = fc.args.first().unwrap();
+                    let this = self.process_expr(&this.value, ctx);
+                    let this_type = this.get_type().unwrap();
+                    dbg!(&this_type);
+                    if this_type.is_module(){
+                        fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
+                    }else{
+                        let this_type_name = this_type.get_struct_name().unwrap();
+                        fc_name = format!("{}.{}", this_type_name, fc_name);
+                    }
+                }
                 let mut new_fc = fc.clone();
                 let mut args = vec![];
+                dbg!(&fc_name);
                 let fc_type = ctx.get_symbol_type(&fc_name).unwrap();
                 let mut new_generics = vec![];
                 for i in &fc.generics {
@@ -347,8 +373,9 @@ impl TypePostprocessor {
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
+                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name).unwrap();
-                if !ctx.is_local_variable(&name) && !ty.is_function() {
+                if !ctx.is_local_variable(&name) && !ty.is_function() &&!ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
                 ExprNode::new(Expr::Variable(name)).with_type(ty)

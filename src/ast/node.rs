@@ -19,8 +19,8 @@ impl NodeTrait for Node{
         &self.id
     }
 
-    fn get_data(&self, key: &str) -> Option<&Data> {
-        self.data.get(key)
+    fn get_data(&self, key: &str) -> Option<Data> {
+        self.data.get(key).cloned()
     }
 
     fn set_data(&mut self, key: &str, value: Data) {

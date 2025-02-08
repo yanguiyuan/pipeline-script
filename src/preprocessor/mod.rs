@@ -8,7 +8,7 @@ pub trait Preprocessor {
 pub struct FormatStringPreprocessor;
 impl Preprocessor for FormatStringPreprocessor {
     fn process(&mut self, script: &str) -> String {
-        let re = Regex::new(r#"r"(.*?)""#).unwrap();
+        let re = Regex::new(r#"f"(.*?)""#).unwrap();
         let replace = re.replace_all(script, |cap: &regex::Captures| {
             let mat = cap.get(1).unwrap();
             let s = mat.as_str();

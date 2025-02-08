@@ -6,8 +6,10 @@ use crate::llvm::types::LLVMType;
 use crate::parser::r#type::Type;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use slotmap::DefaultKey;
 use crate::llvm::context::LLVMContext;
 use crate::llvm::module::LLVMModule;
+use crate::parser::module::Module;
 
 #[derive(Debug, Clone)]
 pub enum ContextValue {
@@ -18,6 +20,7 @@ pub enum ContextValue {
     SymbolTable(Arc<RwLock<HashMap<String, Value>>>),
     LLVMContext(Arc<RwLock<LLVMContext>>),
     LLVMModule(Arc<RwLock<LLVMModule>>),
+    ModuleSlotMap(Arc<RwLock<slotmap::SlotMap<DefaultKey,Module>>>),
     // 编译阶段使用
     Scope(Scope),
     Flag(Arc<RwLock<bool>>),

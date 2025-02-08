@@ -24,7 +24,7 @@ fn main() {
         .set_entry_file("main.ppl")
         .add_plugin(BuiltinPlugin)
         .add_plugin(FormatStringPlugin)
-        .add_plugin(MethodPlugin)
+        // .add_plugin(MethodPlugin)
         // .register_visitor(Printer{})
         .register_visitor(FunctionPrinter::new("Object.test"))
         .run();

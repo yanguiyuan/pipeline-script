@@ -7,20 +7,22 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat：添加Node.build_llvm函数">
-      <change afterPath="$PROJECT_DIR$/src/ast/compile.rs" afterDir="false" />
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat：添加NodeTrait">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/data.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/data.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ast/node.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/node.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/module.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/plugin/method.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/method.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocessor/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -207,7 +209,8 @@
       <workItem from="1738856017682" duration="3134000" />
       <workItem from="1738909057380" duration="2044000" />
       <workItem from="1738915306033" duration="9482000" />
-      <workItem from="1738933075840" duration="1969000" />
+      <workItem from="1738933075840" duration="8206000" />
+      <workItem from="1738987001457" duration="12447000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -273,7 +276,15 @@
       <option name="project" value="LOCAL" />
       <updated>1738342412810</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="feat：添加NodeTrait">
+      <option name="closed" value="true" />
+      <created>1738936660335</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1738936660336</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -299,14 +310,15 @@
     <MESSAGE value="fix：修改visitor链式执行逻辑" />
     <MESSAGE value="feat：补齐ast中expr的Type" />
     <MESSAGE value="feat：添加Node.build_llvm函数" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat：添加Node.build_llvm函数" />
+    <MESSAGE value="feat：添加NodeTrait" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat：添加NodeTrait" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
-          <line>446</line>
+          <line>476</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>

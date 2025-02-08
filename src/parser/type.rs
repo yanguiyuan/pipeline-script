@@ -26,6 +26,7 @@ pub enum Type {
     Unit,
     ArrayVarArg(Box<Type>),
     VarArg,
+    Module
 }
 impl From<&str> for Type {
     fn from(s: &str) -> Self {
@@ -129,6 +130,12 @@ impl Type {
     pub fn is_function(&self) -> bool {
         match self {
             Type::Function(_, _) => true,
+            _ => false,
+        }
+    }
+    pub fn is_module(&self) -> bool {
+        match self {
+            Type::Module => true,
             _ => false,
         }
     }

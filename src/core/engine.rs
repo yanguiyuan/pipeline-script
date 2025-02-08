@@ -62,13 +62,19 @@ impl Engine {
         // 分词
         let lexer = Lexer::from_script("main", s);
         // 解析
-        let mut parser = Parser::new(lexer);
-        let module = parser.parse().unwrap();
+        let ctx = Context::background();
+        let ctx = Context::with_module_slot_map(&ctx, Default::default());
+        let mut parser = Parser::new(lexer,&ctx);
+        let module = parser.parse(&ctx).unwrap();
+        let module_slot_map = ctx.get_module_slot_map();
+        let module_slot_map = module_slot_map.read().unwrap();
+        let module = module_slot_map.get(module).unwrap();
+        dbg!(&module);
         let mut type_preprocessor = TypePostprocessor::new();
-        let mut module = type_preprocessor.process_module(&module);
+        let mut module = type_preprocessor.process(&module,&ctx);
         // dbg!(&module);
         // let mut ast = module.to_ast();
-        for i in self.visitors.iter_mut() {
+        for i in self.visitors.iter() {
             let mut queue:VecDeque<&mut dyn NodeTrait> = VecDeque::new();
             queue.push_back(&mut module);
             while !queue.is_empty() {
@@ -98,6 +104,7 @@ impl Engine {
         // ast.build_llvm(&ctx);
         // let module = ctx.get(ContextKey::LLVMModule).unwrap().as_module();
         // module.read().unwrap().dump();
+        dbg!(&module);
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();
         llvm_module.dump();
@@ -106,7 +113,9 @@ impl Engine {
             let func = llvm_module.get_function(name).unwrap();
             executor.add_global_mapping(func.as_ref(), *f);
         }
-        executor.run_function("$main.__main__", &mut []);
+        executor.run_function("$Module.main", &mut []);
+        // let module = ctx.get_module(module);
+
     }
 }
 

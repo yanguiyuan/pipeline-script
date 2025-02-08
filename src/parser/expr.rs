@@ -121,6 +121,12 @@ impl ExprNode {
             _ => panic!("not closure expr"),
         }
     }
+    pub fn get_variable_name(&self) -> Option<String> {
+        match &self.expr {
+            Expr::Variable(name) => Some(name.clone()),
+            _ => None,
+        }
+    }
     pub fn get_closure_captures(&self) -> Vec<(String, Type)> {
         match &self.expr {
             Expr::Closure(_, _, captures) => captures.clone(),

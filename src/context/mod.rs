@@ -8,8 +8,10 @@ use crate::llvm::types::LLVMType;
 use crate::parser::r#type::Type;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use slotmap::DefaultKey;
 use crate::llvm::context::LLVMContext;
 use crate::llvm::module::LLVMModule;
+use crate::parser::module::Module;
 
 pub mod key;
 pub mod scope;
@@ -35,6 +37,54 @@ impl Context {
             parent: Some(Box::new(parent.clone())),
             key: ContextKey::Builder,
             value: ContextValue::Builder(Arc::new(builder)),
+        }
+    }
+    pub fn with_module_slot_map(parent: &Context, t: slotmap::SlotMap<DefaultKey, Module>) -> Self {
+        Self::with_value(
+            parent,
+            ContextKey::ModuleSlotMap,
+            ContextValue::ModuleSlotMap(Arc::new(RwLock::new(t))),
+        )
+    }
+    // pub fn apply_mut_module(&self,key:DefaultKey,apply:impl Fn(&mut Module)){
+    //     let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
+    //     match slot_map{
+    //         ContextValue::ModuleSlotMap(slot_map)=>{
+    //             let mut slot_map = slot_map.write().unwrap();
+    //             let module = slot_map.get_mut(key).unwrap();
+    //             apply(module)
+    //         }
+    //         _=>panic!("not a module slot map")
+    //     }
+    // }
+    pub fn get_module_slot_map(&self)->Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>>{
+        let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
+        match slot_map{
+            ContextValue::ModuleSlotMap(slot_map)=>{
+                slot_map.clone()
+            }
+            _=>panic!("not a module slot map")
+        }
+    }
+    // pub fn apply_module(&self,key:DefaultKey,mut apply:impl FnMut(&Module)){
+    //     let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
+    //     match slot_map{
+    //         ContextValue::ModuleSlotMap(slot_map)=>{
+    //             let slot_map = slot_map.read().unwrap();
+    //             let module = slot_map.get(key).unwrap();
+    //             apply(module)
+    //         }
+    //         _=>panic!("not a module slot map")
+    //     }
+    // }
+    pub fn register_module(&self,module:Module)->DefaultKey{
+        let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
+        match slot_map{
+            ContextValue::ModuleSlotMap(slot_map)=>{
+                let mut slot_map = slot_map.write().unwrap();
+                slot_map.insert(module)
+            }
+            _=>panic!("not a module slot map")
         }
     }
     pub fn with_type(parent: &Context, name: String, ty: Type) -> Self {

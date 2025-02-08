@@ -6,6 +6,7 @@ pub enum ContextKey {
     LLVMContext,
     LLVMModule,
     SymbolType,
+    ModuleSlotMap,
     /// 预处理阶段闭包捕获变量分析
     LocalVariable,
     CaptureVariable,
@@ -81,6 +82,10 @@ impl PartialEq for ContextKey {
             },
             ContextKey::LLVMModule => match other {
                 ContextKey::LLVMModule => true,
+                _ => false,
+            },
+            ContextKey::ModuleSlotMap => match other {
+                ContextKey::ModuleSlotMap => true,
                 _ => false,
             },
         }
