@@ -1,10 +1,11 @@
 import core
-extern fn call(f:Pointer<Unit>)
-
 module std {
-    import core
     fn hello() {
-        println("Hello from Rust!")
+        println("Hello world from module!")
     }
 }
+fn hello() {
+    println("Hello world from main!")
+}
 std.hello()
+hello()

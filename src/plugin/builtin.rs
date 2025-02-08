@@ -2,6 +2,7 @@ use std::ffi::c_void;
 use crate::core::buidin::{call, cmd, println};
 use crate::core::engine::Engine;
 use crate::plugin::Plugin;
+use crate::preprocessor::ImportPreprocessor;
 
 pub struct BuiltinPlugin;
 impl Plugin for BuiltinPlugin {

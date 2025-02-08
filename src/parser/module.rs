@@ -144,8 +144,11 @@ impl Module {
             .functions
             .iter()
             .filter_map(|(k, v)| {
-                if !self.functions.contains_key(k) {
-                    Some((k.clone(), v.clone()))
+                let name = format!("{}:{}", module.name, k);
+                if !self.functions.contains_key(name.as_str()) {
+                    let mut new_function = v.clone();
+                    new_function.set_name(name.clone());
+                    Some((name, new_function))
                 } else {
                     None
                 }

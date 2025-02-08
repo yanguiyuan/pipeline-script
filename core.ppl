@@ -1,2 +1,3 @@
 extern fn println(obj:..Any)
 extern fn cmd(command:String)
+extern fn call(f:Pointer<Unit>)

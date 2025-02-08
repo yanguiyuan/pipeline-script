@@ -14,6 +14,7 @@ use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
 use crate::postprocessor::id::id;
 use std::sync::{Arc, RwLock};
+use slotmap::DefaultKey;
 
 pub struct TypePostprocessor {
     module: Module,
@@ -24,16 +25,21 @@ impl TypePostprocessor {
             module: Module::new("unknown"),
         }
     }
-    pub fn process(&mut self, module: &Module,ctx:&Context) -> Module {
+    pub fn process(&mut self, module: DefaultKey,ctx:&Context) -> Module {
+        let module_slot_map = ctx.get_module_slot_map();
+        let mut module_slot_map = module_slot_map.write().unwrap();
+        let mut module = module_slot_map.get_mut(module).unwrap().clone();
+        drop(module_slot_map);
         self.module.set_name(module.get_name());
         let submodule = module.get_submodules();
-        for (name, module) in submodule.iter() {
-            let module_slot_map = ctx.get_module_slot_map();
-            let module_slot_map = module_slot_map.read().unwrap();
-            let module = module_slot_map.get(*module).unwrap();
-            self.process_module(module,ctx);
+        let mut names = vec![];
+        for (name, _) in submodule {
+            names.push(name.clone());
         }
-        self.process_module(module,ctx);
+        for name in names {
+            module.merge_into_main(ctx, &name);
+        }
+        self.process_module(&module,ctx);
         self.module.clone()
     }
     fn process_module(&mut self, module: &Module,ctx:&Context){
@@ -268,12 +274,13 @@ impl TypePostprocessor {
             }
             Expr::FnCall(fc) => {
                 let mut fc_name = fc.name.clone();
+                let mut fc_args = fc.args.clone();
                 if fc.is_method {
                     let this = fc.args.first().unwrap();
                     let this = self.process_expr(&this.value, ctx);
                     let this_type = this.get_type().unwrap();
-                    dbg!(&this_type);
                     if this_type.is_module(){
+                        fc_args.remove(0);
                         fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
                     }else{
                         let this_type_name = this_type.get_struct_name().unwrap();
@@ -282,7 +289,6 @@ impl TypePostprocessor {
                 }
                 let mut new_fc = fc.clone();
                 let mut args = vec![];
-                dbg!(&fc_name);
                 let fc_type = ctx.get_symbol_type(&fc_name).unwrap();
                 let mut new_generics = vec![];
                 for i in &fc.generics {
@@ -333,12 +339,12 @@ impl TypePostprocessor {
                     self.module.register_function(&fc_name, template);
                 }
                 let arg_count = fc_type.get_function_arg_count();
-                for (idx, arg) in fc.args.iter().enumerate() {
+                for (idx, arg) in fc_args.iter().enumerate() {
                     if idx == arg_count - 1 {
                         let ty0 = fc_type.get_function_arg_type(idx).unwrap();
                         if ty0.is_array_vararg() {
                             let mut array_vararg_args = vec![];
-                            for arg0 in fc.args.iter().skip(idx) {
+                            for arg0 in fc_args.iter().skip(idx) {
                                 let arg0 = self.process_expr(&arg0.value, ctx);
                                 array_vararg_args.push(arg0);
                             }
@@ -373,7 +379,6 @@ impl TypePostprocessor {
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
-                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name).unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() &&!ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())

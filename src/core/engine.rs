@@ -66,12 +66,9 @@ impl Engine {
         let ctx = Context::with_module_slot_map(&ctx, Default::default());
         let mut parser = Parser::new(lexer,&ctx);
         let module = parser.parse(&ctx).unwrap();
-        let module_slot_map = ctx.get_module_slot_map();
-        let module_slot_map = module_slot_map.read().unwrap();
-        let module = module_slot_map.get(module).unwrap();
-        dbg!(&module);
+
         let mut type_preprocessor = TypePostprocessor::new();
-        let mut module = type_preprocessor.process(&module,&ctx);
+        let mut module = type_preprocessor.process(module,&ctx);
         // dbg!(&module);
         // let mut ast = module.to_ast();
         for i in self.visitors.iter() {
@@ -104,10 +101,9 @@ impl Engine {
         // ast.build_llvm(&ctx);
         // let module = ctx.get(ContextKey::LLVMModule).unwrap().as_module();
         // module.read().unwrap().dump();
-        dbg!(&module);
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();
-        llvm_module.dump();
+        // llvm_module.dump();
         let executor = llvm_module.create_executor().unwrap();
         for (name, f) in &self.function_map {
             let func = llvm_module.get_function(name).unwrap();

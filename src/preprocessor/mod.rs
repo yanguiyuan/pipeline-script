@@ -24,6 +24,7 @@ pub struct ImportPreprocessor;
 
 impl ImportPreprocessor {
     fn helper(imports: &mut Vec<String>, script: impl AsRef<str>) -> (String, bool) {
+
         let origin = script.as_ref();
         let re = Regex::new(r"\bimport\b\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+").unwrap();
         let replace = re.replace_all(origin, |cap: &regex::Captures| {
