@@ -1,11 +1,8 @@
-use std::sync::{Arc, RwLock};
 use crate::ast::helper::{build_function_declaration, build_type};
 use crate::ast::node::Node;
 use crate::context::Context;
 use crate::core::value::Value;
-use crate::llvm::builder::Builder;
 use crate::llvm::global::Global;
-use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
 use crate::parser::r#type::Type;
 
@@ -115,7 +112,7 @@ impl Node{
         }
         return None
     }
-    fn build_fn_call(&self,ctx:&Context,builder:Arc<Builder>,llvm_module:Arc<RwLock<LLVMModule>>) {
-        let name = self.data.get("name").unwrap().as_str().unwrap();
-    }
+    // fn build_fn_call(&self,ctx:&Context,builder:Arc<Builder>,llvm_module:Arc<RwLock<LLVMModule>>) {
+    //     let name = self.data.get("name").unwrap().as_str().unwrap();
+    // }
 }

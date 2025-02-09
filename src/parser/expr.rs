@@ -86,7 +86,7 @@ impl ExprNode {
                 let node = expr.to_ast();
                 Node::new("Expr:Address").with_children(vec![node])
             }
-            Expr::Closure(params, body, captures) => {
+            Expr::Closure(_, body, _) => {
                 let mut children = vec![];
                 for stmt in body.iter() {
                     children.push(stmt.to_ast())
@@ -95,12 +95,12 @@ impl ExprNode {
             }
             Expr::Struct(s) => {
                 let mut children = vec![];
-                for (k, v) in s.props.iter() {
+                for (_, v) in s.props.iter() {
                     children.push(v.to_ast());
                 }
                 Node::new("Expr:Struct").with_children(children)
             }
-            Expr::Member(root, name) => {
+            Expr::Member(root, _) => {
                 let node = root.to_ast();
                 Node::new("Expr:Member").with_children(vec![node])
             }
@@ -113,6 +113,12 @@ impl ExprNode {
         match &self.expr {
             Expr::Closure(_, body, _) => body.clone(),
             _ => panic!("not closure expr"),
+        }
+    }
+    pub fn is_fn_call(&self) -> bool {
+        match &self.expr {
+            Expr::FnCall(_) => true,
+            _ => false,
         }
     }
     pub fn get_closure_params(&self) -> Vec<VariableDeclaration> {
@@ -132,6 +138,9 @@ impl ExprNode {
             Expr::Closure(_, _, captures) => captures.clone(),
             _ => panic!("not closure expr"),
         }
+    }
+    pub fn get_expr_mut(&mut self)->&mut Expr{
+        &mut self.expr
     }
 }
 

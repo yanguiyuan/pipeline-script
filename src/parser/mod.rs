@@ -12,8 +12,7 @@ use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, IfStmt, Stmt};
 use std::collections::HashMap;
-use std::rc::Rc;
-use std::sync::Arc;
+
 use std::vec;
 use slotmap::DefaultKey;
 use crate::context::Context;

@@ -1,11 +1,11 @@
-use crate::ast::node::Node;
+
 use crate::ast::NodeTrait;
 use crate::postprocessor::{VisitResult, Visitor};
 
 pub struct Printer {}
 
 impl Visitor for Printer {
-    fn match_id(&self, id: &str) -> bool {
+    fn match_id(&self, _: &str) -> bool {
         true
     }
 

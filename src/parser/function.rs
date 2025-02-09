@@ -109,6 +109,9 @@ impl Function {
     pub fn body(&self) -> &Vec<StmtNode> {
         &self.body
     }
+    pub fn mut_body(&mut self) -> &mut Vec<StmtNode> {
+        &mut self.body
+    }
     pub fn args(&self) -> &Vec<VariableDeclaration> {
         &self.args
     }

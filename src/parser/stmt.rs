@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use crate::ast::data::Data;
 use crate::ast::node::Node;
-use super::expr::ExprNode;
+use super::expr::{Expr, ExprNode};
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
 
@@ -77,6 +77,12 @@ impl Stmt {
     pub fn is_noop(&self) -> bool {
         matches!(self, Stmt::Noop)
     }
+    pub fn is_fn_call(&self) -> bool {
+        match self {
+            Stmt::EvalExpr(expr) => expr.is_fn_call(),
+            _ => false,
+        }
+    }
 }
 
 impl StmtNode {
@@ -89,6 +95,33 @@ impl StmtNode {
     }
     pub fn is_noop(&self) -> bool {
         self.stmt.is_noop()
+    }
+    pub fn is_fn_call(&self) -> bool {
+        self.stmt.is_fn_call()
+    }
+    pub fn get_fn_call_name(&self)->Option<String>{
+        match &self.stmt {
+            Stmt::EvalExpr(expr) => {
+                match expr.get_expr() {
+                    Expr::FnCall(fn_call) => Some(fn_call.name.clone()),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
+    }
+    pub fn set_fn_call_name(&mut self,name:String){
+        match &mut self.stmt {
+            Stmt::EvalExpr(expr) => {
+                match expr.get_expr_mut() {
+                    Expr::FnCall(ref mut fn_call) => {
+                        fn_call.name = name;
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
     }
     pub fn to_ast(&self) -> Node {
         match &self.stmt {

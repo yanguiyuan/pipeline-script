@@ -1,11 +1,11 @@
 use std::any::Any;
-use std::cell::RefCell;
+
 use crate::parser::class::Class;
 use crate::parser::function::Function;
 use crate::parser::r#struct;
 use crate::parser::stmt::StmtNode;
 use std::collections::HashMap;
-use std::rc::Rc;
+
 use slotmap::DefaultKey;
 use crate::ast::data::Data;
 use crate::ast::node::Node;
@@ -26,11 +26,11 @@ impl NodeTrait for Module{
         "Module"
     }
 
-    fn get_data(&self, key: &str) -> Option<Data> {
+    fn get_data(&self, _: &str) -> Option<Data> {
         None
     }
 
-    fn set_data(&mut self, key: &str, value: Data) {
+    fn set_data(&mut self, _: &str, _: Data) {
         todo!()
     }
 
@@ -147,6 +147,14 @@ impl Module {
                 let name = format!("{}:{}", module.name, k);
                 if !self.functions.contains_key(name.as_str()) {
                     let mut new_function = v.clone();
+                    for stmt in new_function. mut_body(){
+                        if stmt.is_fn_call() {
+                            let name = stmt.get_fn_call_name().unwrap();
+                            if module.functions.contains_key(name.as_str()) {
+                                stmt.set_fn_call_name(format!("{}:{}", module.name, name));
+                            }
+                        }
+                    }
                     new_function.set_name(name.clone());
                     Some((name, new_function))
                 } else {

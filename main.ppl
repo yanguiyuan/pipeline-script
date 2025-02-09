@@ -1,6 +1,10 @@
 import core
 module std {
+    fn foo() {
+        println("Hello world from std!")
+    }
     fn hello() {
+        foo()
         println("Hello world from module!")
     }
 }

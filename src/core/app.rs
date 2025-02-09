@@ -15,6 +15,7 @@ impl App {
             path: PathBuf::default(),
         }
     }
+    #[allow(unused)]
     pub fn register_external_function(mut self, name: &str, func: *mut c_void) -> Self {
         self.engine.register_external_function(name, func);
         self

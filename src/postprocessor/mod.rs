@@ -1,22 +1,18 @@
-use crate::ast::node::Node;
+
 use crate::ast::NodeTrait;
 
 mod id;
 pub mod r#type;
-mod method;
-mod manage;
 pub mod function_printer;
 pub mod printer;
 
-pub enum VisitOrder{
-    PreOrder,
-    PostOrder,
-}
+
 pub enum VisitResult{
     Continue,
     // 停止遍历
     Break,
     // 跳过该Node的Children
+    #[allow(unused)]
     Skip
 }
 pub trait Visitor{

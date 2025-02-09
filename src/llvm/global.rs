@@ -13,6 +13,7 @@ use std::ffi::{c_uint, CString};
 pub struct Global;
 
 impl Global {
+    #[allow(unused)]
     pub fn const_array(array: &[LLVMValue]) -> LLVMValue {
         // 获取类型
         let ty = array[0].get_type();
@@ -98,10 +99,12 @@ impl Global {
         let t = unsafe { LLVMVoidType() };
         LLVMType::Unit(t)
     }
+    #[allow(unused)]
     pub fn float_type() -> LLVMType {
         let t = unsafe { LLVMFloatType() };
         LLVMType::Float(t)
     }
+    #[allow(unused)]
     pub fn double_type() -> LLVMType {
         let t = unsafe { LLVMDoubleType() };
         LLVMType::Double(t)
@@ -143,6 +146,7 @@ impl Global {
         let t = unsafe { LLVMPointerType(element_type.as_llvm_type_ref(), 0) };
         LLVMType::Pointer(Box::new(element_type), t)
     }
+    #[allow(unused)]
     pub fn const_string(str: impl AsRef<str>) -> LLVMValue {
         let str0 = str.as_ref();
         let str = CString::new(str0).unwrap();
@@ -153,6 +157,7 @@ impl Global {
         let builder = unsafe { LLVMCreateBuilder() };
         Builder::new(builder)
     }
+    #[allow(unused)]
     pub fn type_of_string(s: &str) -> LLVMType {
         match s {
             "Int32" => Global::i32_type(),
