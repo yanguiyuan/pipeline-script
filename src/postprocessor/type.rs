@@ -29,6 +29,7 @@ impl TypePostprocessor {
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let mut module = module_slot_map.get_mut(module).unwrap().clone();
+
         drop(module_slot_map);
         self.module.set_name(module.get_name());
         let submodule = module.get_submodules();
@@ -39,6 +40,7 @@ impl TypePostprocessor {
         for name in names {
             module.merge_into_main(ctx, &name);
         }
+        dbg!(&module);
         self.process_module(&module,ctx);
         self.module.clone()
     }
@@ -237,7 +239,7 @@ impl TypePostprocessor {
                 let closure_var_name = format!("Closure{}", id());
                 let lambda_function =
                     Function::new(closure_var_name.clone(), Type::Unit, l, new_body, false);
-
+                dbg!(&lambda_function);
                 self.module
                     .register_function(&closure_var_name, lambda_function);
                 let mut closure_struct = HashMap::new();
@@ -289,6 +291,7 @@ impl TypePostprocessor {
                 }
                 let mut new_fc = fc.clone();
                 let mut args = vec![];
+                dbg!(&fc_name);
                 let fc_type = ctx.get_symbol_type(&fc_name).unwrap();
                 let mut new_generics = vec![];
                 for i in &fc.generics {
@@ -379,6 +382,7 @@ impl TypePostprocessor {
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
+                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name).unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() &&!ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())
@@ -418,6 +422,11 @@ impl TypePostprocessor {
             Expr::Member(target, name) => {
                 let target = self.process_expr(&target, ctx);
                 let ty = target.get_type().unwrap();
+                if ty.is_module(){
+                    let name = format!("{}:{}",target.get_variable_name().unwrap(),name);
+                    let variable = ExprNode::new(Expr::Variable(name));
+                    return self.process_expr(&variable,ctx)
+                }
                 let (_, ty) = ty.get_struct_field(name.clone()).unwrap();
                 ExprNode::new(Expr::Member(Box::new(target), name)).with_type(ty.clone())
             }

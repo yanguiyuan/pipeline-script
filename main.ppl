@@ -1,15 +1,8 @@
 import core
-module std {
-    fn foo() {
-        println("Hello world from std!")
-    }
-    fn hello() {
-        foo()
-        println("Hello world from module!")
-    }
+
+
+val name = "std"
+val foo = || {
+    println(f"Hello world from std! {name}")
 }
-fn hello() {
-    println("Hello world from main!")
-}
-std.hello()
-hello()
+foo()

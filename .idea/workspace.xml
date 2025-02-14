@@ -7,27 +7,13 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat：添加Module">
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 模块内函数调用">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/compile.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/compile.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/node.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/node.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/app.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/app.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/buidin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/buidin.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/global.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/global.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/declaration.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/declaration.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/module.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/builtin.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/manage.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/method.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -216,7 +202,9 @@
       <workItem from="1738915306033" duration="9482000" />
       <workItem from="1738933075840" duration="8206000" />
       <workItem from="1738987001457" duration="25783000" />
-      <workItem from="1739070311725" duration="2289000" />
+      <workItem from="1739070311725" duration="5136000" />
+      <workItem from="1739100516334" duration="3024000" />
+      <workItem from="1739354398608" duration="2055000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -306,7 +294,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739031268717</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="fix: 模块内函数调用">
+      <option name="closed" value="true" />
+      <created>1739094734187</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1739094734187</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -334,19 +330,20 @@
     <MESSAGE value="feat：添加Node.build_llvm函数" />
     <MESSAGE value="feat：添加NodeTrait" />
     <MESSAGE value="feat：添加Module" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat：添加Module" />
+    <MESSAGE value="fix: 模块内函数调用" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 模块内函数调用" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
-          <line>518</line>
+          <line>517</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/llvm/global.rs</url>
-          <line>158</line>
+          <line>163</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
       </breakpoints>

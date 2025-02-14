@@ -110,6 +110,9 @@ impl StmtNode {
             _ => None,
         }
     }
+    pub fn get_mut_stmt(&mut self) -> &mut Stmt {
+        &mut self.stmt
+    }
     pub fn set_fn_call_name(&mut self,name:String){
         match &mut self.stmt {
             Stmt::EvalExpr(expr) => {
@@ -121,6 +124,12 @@ impl StmtNode {
                 }
             },
             _ => {}
+        }
+    }
+    pub fn is_val_decl(&self) -> bool {
+        match &self.stmt {
+            Stmt::ValDecl(_) => true,
+            _ => false,
         }
     }
     pub fn to_ast(&self) -> Node {

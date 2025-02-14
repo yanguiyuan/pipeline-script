@@ -3,7 +3,7 @@ use std::any::Any;
 use crate::parser::class::Class;
 use crate::parser::function::Function;
 use crate::parser::r#struct;
-use crate::parser::stmt::StmtNode;
+use crate::parser::stmt::{Stmt, StmtNode};
 use std::collections::HashMap;
 
 use slotmap::DefaultKey;
@@ -162,7 +162,24 @@ impl Module {
                 }
             })
             .collect();
-
+        let mut new_block = module.global_block.clone();
+        for i in new_block.iter_mut() {
+            if i.is_fn_call() {
+                let name = i.get_fn_call_name().unwrap();
+                if module.functions.contains_key(name.as_str()) {
+                    i.set_fn_call_name(format!("{}:{}", module.name, name));
+                }
+            }
+            if i.is_val_decl() {
+                let stmt = i.get_mut_stmt();
+                if let Stmt::ValDecl(val_decl) = stmt {
+                    let name = val_decl.name();
+                    val_decl.set_name(format!("{}:{}", module.name, name));
+                }
+            }
+        }
+        new_block.extend(self.global_block.clone());
+        self.global_block = new_block;
         self.functions.extend(new_functions);
     }
     pub fn get_submodule(&self, name: &str) ->&DefaultKey {

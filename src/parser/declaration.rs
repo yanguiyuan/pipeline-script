@@ -20,6 +20,9 @@ impl VariableDeclaration {
             is_var_arg: false,
         }
     }
+    pub fn set_name(&mut self, name: impl Into<String>) {
+        self.name = name.into();
+    }
     pub fn to_ast(&self) -> Node {
         let mut data = HashMap::new();
         data.insert("name".into(),Data::String(self.name.clone()));
