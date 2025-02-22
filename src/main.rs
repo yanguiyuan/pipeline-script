@@ -4,6 +4,7 @@ use crate::core::app::App;
 use crate::plugin::builtin::BuiltinPlugin;
 use crate::postprocessor::function_printer::FunctionPrinter;
 
+mod ast;
 pub mod compiler;
 mod context;
 mod core;
@@ -13,7 +14,6 @@ pub mod parser;
 mod plugin;
 mod postprocessor;
 mod preprocessor;
-mod ast;
 
 fn main() {
     App::new()

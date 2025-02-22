@@ -1,16 +1,16 @@
-
-use std::collections::HashMap;
 use crate::ast::data::Data;
-use crate::ast::node::Node;
-use crate::parser::r#type::Type;
+
 use super::expr::ExprNode;
+use crate::parser::r#type::Type;
 #[derive(Clone, Debug)]
 pub struct VariableDeclaration {
     pub name: String,
     pub default: Option<ExprNode>,
     pub declaration_type: Option<Type>,
     pub is_var_arg: bool,
+    pub is_closure: bool,
 }
+
 impl VariableDeclaration {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
@@ -18,28 +18,19 @@ impl VariableDeclaration {
             default: None,
             declaration_type: None,
             is_var_arg: false,
+            is_closure: false,
         }
     }
     pub fn set_name(&mut self, name: impl Into<String>) {
         self.name = name.into();
     }
-    pub fn to_ast(&self) -> Node {
-        let mut data = HashMap::new();
-        data.insert("name".into(),Data::String(self.name.clone()));
-        data.insert("is_var_arg".into(),Data::Boolean(self.is_var_arg));
-        if self.declaration_type.is_some() {
-            data.insert("type".into(),Data::Type(self.declaration_type.as_ref().unwrap().clone()));
-        }
-        let mut children = vec![];
-        if self.default.is_some() {
-            let default = self.default.as_ref().unwrap();
-            children.push(default.to_ast())
-        }
-        Node::new("Declaration:Variable").with_data(data).with_children(children)
-    }
 
     pub fn with_type(mut self, dec: Type) -> Self {
         self.declaration_type = Some(dec);
+        self
+    }
+    pub fn with_closure(mut self, is_closure: bool) -> Self {
+        self.is_closure = is_closure;
         self
     }
     pub fn with_var_arg(mut self, is_var_arg: bool) -> Self {
@@ -62,6 +53,23 @@ impl VariableDeclaration {
         match &self.default {
             None => None,
             Some(s) => Some(s),
+        }
+    }
+    pub fn get_mut_default(&mut self) -> Option<&mut ExprNode> {
+        match &mut self.default {
+            None => None,
+            Some(s) => Some(s),
+        }
+    }
+    pub fn get_data(&self, key: &str) -> Option<Data> {
+        match key {
+            "name" => Some(Data::String(self.name.clone())),
+            "type" => self
+                .declaration_type
+                .as_ref()
+                .map(|s| Data::Type(s.clone())),
+            "is_var_arg" => Some(Data::Boolean(self.is_var_arg)),
+            _ => None,
         }
     }
     pub fn set_type(&mut self, ty: Type) {

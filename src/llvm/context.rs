@@ -19,6 +19,11 @@ use std::ptr;
 pub struct LLVMContext {
     llvm_ref: LLVMContextRef,
 }
+impl Default for LLVMContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl LLVMContext {
     pub fn new() -> Self {
@@ -72,16 +77,15 @@ impl LLVMContext {
         if result == 0 {
             return Ok(LLVMModule::from_raw(module));
         }
-        let s;
-        if !(*error_msg).is_null() {
+        let s = if !(*error_msg).is_null() {
             // 将 C 字符串指针转换为 Rust 字符串
             let error_string = unsafe { CStr::from_ptr(*error_msg) };
 
             // 将 CStr 转换为 Rust String
-            s = error_string.to_string_lossy().into_owned();
+            error_string.to_string_lossy().into_owned()
         } else {
-            s = String::new();
-        }
+            String::new()
+        };
         Err(s)
     }
     pub fn create_module(&self, name: impl AsRef<str>) -> LLVMModule {
@@ -144,10 +148,7 @@ impl LLVMContext {
     pub fn const_string(&self, str: impl AsRef<str>) -> LLVMValueRef {
         let str0 = str.as_ref();
         let str = CString::new(str0).unwrap();
-        let c = unsafe {
-            LLVMConstStringInContext(self.llvm_ref, str.as_ptr(), str0.len() as c_uint, 0)
-        };
-        c
+        unsafe { LLVMConstStringInContext(self.llvm_ref, str.as_ptr(), str0.len() as c_uint, 0) }
     }
     pub fn create_named_struct_type(
         &self,

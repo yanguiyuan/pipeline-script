@@ -19,6 +19,7 @@ pub enum Type {
     Array(Box<Type>),
     Map(Box<Type>, Box<Type>),
     Closure {
+        name: Option<String>,
         ptr: (Box<Type>, Vec<Type>),
         env: Vec<(String, Type)>,
     },
@@ -26,7 +27,7 @@ pub enum Type {
     Unit,
     ArrayVarArg(Box<Type>),
     VarArg,
-    Module
+    Module,
 }
 impl From<&str> for Type {
     fn from(s: &str) -> Self {
@@ -120,36 +121,28 @@ impl Type {
         }
     }
     pub fn is_primitive(&self) -> bool {
+        matches!(
+            self,
+            Type::Int32 | Type::Int64 | Type::Float | Type::Double | Type::String | Type::Bool
+        )
+    }
+    pub fn as_struct(&self) -> Option<&Vec<(String, Type)>> {
         match self {
-            Type::Int32 | Type::Int64 | Type::Float | Type::Double | Type::String | Type::Bool => {
-                true
-            }
-            _ => false,
+            Type::Struct(_, m) => Some(m),
+            _ => None,
         }
     }
     pub fn is_function(&self) -> bool {
-        match self {
-            Type::Function(_, _) => true,
-            _ => false,
-        }
+        matches!(self, Type::Function(_, _))
     }
     pub fn is_module(&self) -> bool {
-        match self {
-            Type::Module => true,
-            _ => false,
-        }
+        matches!(self, Type::Module)
     }
     pub fn is_pointer(&self) -> bool {
-        match self {
-            Type::Pointer(_) => true,
-            _ => false,
-        }
+        matches!(self, Type::Pointer(_))
     }
     pub fn is_array_vararg(&self) -> bool {
-        match self {
-            Type::ArrayVarArg(_) => true,
-            _ => false,
-        }
+        matches!(self, Type::ArrayVarArg(_))
     }
     pub fn with_return_type(&self, return_type: Type) -> Type {
         match self {
@@ -183,52 +176,28 @@ impl Type {
         }
     }
     pub fn is_i8(&self) -> bool {
-        match self {
-            Type::Int8 => true,
-            _ => false,
-        }
+        matches!(self, Type::Int8)
     }
     pub fn is_any(&self) -> bool {
-        match self {
-            Type::Any => true,
-            _ => false,
-        }
+        matches!(self, Type::Any)
     }
     pub fn is_string(&self) -> bool {
-        match self {
-            Type::String => true,
-            _ => false,
-        }
+        matches!(self, Type::String)
     }
     pub fn is_i16(&self) -> bool {
-        match self {
-            Type::Int16 => true,
-            _ => false,
-        }
+        matches!(self, Type::Int16)
     }
     pub fn is_i32(&self) -> bool {
-        match self {
-            Type::Int32 => true,
-            _ => false,
-        }
+        matches!(self, Type::Int32)
     }
     pub fn is_i64(&self) -> bool {
-        match self {
-            Type::Int64 => true,
-            _ => false,
-        }
+        matches!(self, Type::Int64)
     }
     pub fn is_struct(&self) -> bool {
-        match self {
-            Type::Struct(_, _) => true,
-            _ => false,
-        }
+        matches!(self, Type::Struct(_, _))
     }
     pub fn is_array(&self) -> bool {
-        match self {
-            Type::Array(_) => true,
-            _ => false,
-        }
+        matches!(self, Type::Array(_))
     }
 
     pub fn as_llvm_type(&self) -> LLVMType {
@@ -275,11 +244,11 @@ impl Type {
             _ => None,
         }
     }
+    pub fn is_closure(&self) -> bool {
+        matches!(self, Type::Closure { .. })
+    }
     pub fn is_alias(&self) -> bool {
-        match self {
-            Type::Alias(_) => true,
-            _ => false,
-        }
+        matches!(self, Type::Alias(_))
     }
     pub fn get_function_return_type(&self) -> Option<Type> {
         match self {
@@ -297,15 +266,27 @@ impl Type {
     }
     pub fn get_env_type(&self) -> Option<Type> {
         match self {
-            Type::Closure { ptr: _, env } => {
-                Some(Type::Pointer(Box::new(Type::Struct(None, env.clone()))))
-            }
+            Type::Closure {
+                name: _,
+                ptr: _,
+                env,
+            } => Some(Type::Pointer(Box::new(Type::Struct(None, env.clone())))),
+            _ => None,
+        }
+    }
+    pub fn get_closure_name(&self) -> Option<String> {
+        match self {
+            Type::Closure {
+                name,
+                ptr: _,
+                env: _,
+            } => name.clone(),
             _ => None,
         }
     }
     pub fn get_closure_fn_gen_type(&self) -> Option<Type> {
         match self {
-            Type::Closure { ptr, env } => {
+            Type::Closure { name: _, ptr, env } => {
                 let mut gen_fn_params_type = ptr.1.clone();
                 gen_fn_params_type.push(Type::Pointer(Box::new(Type::Struct(None, env.clone()))));
                 Some(Type::Function(ptr.0.clone(), gen_fn_params_type))

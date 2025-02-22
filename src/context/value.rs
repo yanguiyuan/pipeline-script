@@ -1,15 +1,16 @@
 use crate::context::scope::Scope;
 use crate::core::value::Value;
 use crate::llvm::builder::Builder;
-use crate::llvm::function::Function;
-use crate::llvm::types::LLVMType;
-use crate::parser::r#type::Type;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use slotmap::DefaultKey;
 use crate::llvm::context::LLVMContext;
+use crate::llvm::function::Function;
 use crate::llvm::module::LLVMModule;
+use crate::llvm::types::LLVMType;
 use crate::parser::module::Module;
+use crate::parser::r#type::Type;
+use slotmap::DefaultKey;
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug, Clone)]
 pub enum ContextValue {
@@ -17,10 +18,10 @@ pub enum ContextValue {
     Builder(Arc<Builder>),
     SymbolType(Arc<RwLock<HashMap<String, Type>>>),
     AliasType(Arc<RwLock<HashMap<String, Type>>>),
-    SymbolTable(Arc<RwLock<HashMap<String, Value>>>),
-    LLVMContext(Arc<RwLock<LLVMContext>>),
-    LLVMModule(Arc<RwLock<LLVMModule>>),
-    ModuleSlotMap(Arc<RwLock<slotmap::SlotMap<DefaultKey,Module>>>),
+    SymbolTable(Rc<Mutex<HashMap<String, Value>>>),
+    LLVMContext(Rc<Mutex<LLVMContext>>),
+    LLVMModule(Rc<RwLock<LLVMModule>>),
+    ModuleSlotMap(Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>>),
     // 编译阶段使用
     Scope(Scope),
     Flag(Arc<RwLock<bool>>),
@@ -30,7 +31,7 @@ pub enum ContextValue {
     // 预处理阶段分析闭包捕获的变量
     LocalVariable(Arc<RwLock<Vec<String>>>),
     CaptureVariable(Arc<RwLock<Vec<(String, Type)>>>),
-    TypeTable(Arc<RwLock<HashMap<Type, LLVMType>>>),
+    TypeTable(Rc<RwLock<HashMap<Type, LLVMType>>>),
 }
 
 impl Default for ContextValue {
@@ -46,20 +47,20 @@ impl ContextValue {
             _ => panic!("not a builder"),
         }
     }
-    pub fn as_module(&self) -> Arc<RwLock<LLVMModule>> {
+    pub fn as_module(&self) -> Rc<RwLock<LLVMModule>> {
         match self {
             ContextValue::LLVMModule(m) => m.clone(),
             _ => panic!("not a module"),
         }
     }
     #[allow(unused)]
-    pub fn as_type_table(&self) -> Arc<RwLock<HashMap<Type, LLVMType>>> {
+    pub fn as_type_table(&self) -> Rc<RwLock<HashMap<Type, LLVMType>>> {
         match self {
             ContextValue::TypeTable(t) => t.clone(),
             _ => panic!("not a type"),
         }
     }
-    pub fn as_symbol_table(&self) -> Arc<RwLock<HashMap<String, Value>>> {
+    pub fn as_symbol_table(&self) -> Rc<Mutex<HashMap<String, Value>>> {
         match self {
             ContextValue::SymbolTable(t) => t.clone(),
             _ => panic!("not a symbol table"),

@@ -2,7 +2,7 @@ use crate::lexer::position::Position;
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    TypeError(String, Position),
+    Type(String, Position),
     FunctionUndefined(String, Position),
     ClassUndefined(String, Position),
     StaticFunctionUndefined(String, String, Position),

@@ -1,11 +1,14 @@
 use crate::ast::NodeTrait;
 use crate::core::engine::Engine;
 use crate::plugin::Plugin;
-use crate::postprocessor::Visitor;
+use crate::postprocessor::{Stage, Visitor};
 
 pub struct MethodPlugin;
 struct MethodVisitor;
 impl Visitor for MethodVisitor {
+    fn stage(&self) -> Stage {
+        Stage::AfterTypeInfer
+    }
     fn match_id(&self, id: &str) -> bool {
         id == "Expr:FnCall" || id == "Function"
     }
@@ -20,14 +23,20 @@ impl Visitor for MethodVisitor {
             return match binding {
                 None => crate::postprocessor::VisitResult::Continue,
                 Some(binding) => {
-                    if binding== ""{
+                    if binding.is_empty() {
                         return crate::postprocessor::VisitResult::Continue;
                     }
-                    node.set_data("name", format!("{binding}.{}", node.get_data("name").unwrap().as_str().unwrap()).into());
+                    node.set_data(
+                        "name",
+                        format!(
+                            "{binding}.{}",
+                            node.get_data("name").unwrap().as_str().unwrap()
+                        )
+                        .into(),
+                    );
                     crate::postprocessor::VisitResult::Continue
                 }
-            }
-
+            };
         }
         let is_method = node.get_data("is_method").unwrap().as_bool();
         match is_method {
@@ -49,7 +58,7 @@ impl Visitor for MethodVisitor {
     }
 }
 impl Plugin for MethodPlugin {
-    fn apply(self: Self, e: &mut Engine) {
+    fn apply(self, e: &mut Engine) {
         e.register_visitor(MethodVisitor)
     }
 }

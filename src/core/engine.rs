@@ -1,30 +1,27 @@
 use crate::compiler::Compiler;
+use crate::context::Context;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::postprocessor::r#type::TypePostprocessor;
-use crate::preprocessor::{ ImportPreprocessor, Preprocessor};
-use std::collections::{HashMap, VecDeque};
+use crate::preprocessor::{ImportPreprocessor, Preprocessor};
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::fs;
 use std::path::Path;
-use crate::ast::NodeTrait;
-use crate::context::Context;
 
-use crate::postprocessor::{DynVisitor, VisitResult, Visitor};
+use crate::postprocessor::{run_visitor, DynVisitor, Stage, Visitor};
 
 pub struct Engine {
     prelude_scripts: Vec<String>,
     preprocessors: Vec<Box<dyn Preprocessor>>,
     function_map: HashMap<String, *mut c_void>,
-    visitors: Vec<Box<dyn DynVisitor>>
+    visitors: Vec<Box<dyn DynVisitor>>,
 }
 impl Default for Engine {
     fn default() -> Self {
         Self {
             prelude_scripts: vec![],
-            preprocessors: vec![
-                Box::new(ImportPreprocessor::default()),
-            ],
+            preprocessors: vec![Box::new(ImportPreprocessor)],
             visitors: vec![],
             function_map: HashMap::new(),
         }
@@ -39,7 +36,7 @@ impl Engine {
     pub fn register_external_function(&mut self, name: impl Into<String>, f: *mut c_void) {
         self.function_map.insert(name.into(), f);
     }
-    pub fn register_visitor(&mut self, visitor: impl Visitor +'static) {
+    pub fn register_visitor(&mut self, visitor: impl Visitor + 'static) {
         self.visitors.push(Box::new(visitor));
     }
     pub fn register_preprocessor(&mut self, preprocessor: impl Preprocessor + 'static) {
@@ -63,54 +60,39 @@ impl Engine {
         // 解析
         let ctx = Context::background();
         let ctx = Context::with_module_slot_map(&ctx, Default::default());
-        let mut parser = Parser::new(lexer,&ctx);
-        let module = parser.parse(&ctx).unwrap();
+        let mut parser = Parser::new(lexer, &ctx);
+        let module_key = parser.parse(&ctx).unwrap();
+        let module_slot_map = ctx.get_module_slot_map();
+        let mut module_slot_map = module_slot_map.write().unwrap();
+        let module = module_slot_map.get_mut(module_key).unwrap();
+        for i in self
+            .visitors
+            .iter()
+            .filter(|i| i.stage() == Stage::BeforeTypeInfer)
+        {
+            run_visitor(module, &**i)
+        }
 
+        drop(module_slot_map);
         let mut type_preprocessor = TypePostprocessor::new();
-        let mut module = type_preprocessor.process(module,&ctx);
-        // dbg!(&module);
-        // let mut ast = module.to_ast();
-        for i in self.visitors.iter() {
-            let mut queue:VecDeque<&mut dyn NodeTrait> = VecDeque::new();
-            queue.push_back(&mut module);
-            while !queue.is_empty() {
-                let mut skip = false;
-                let node = queue.pop_front().unwrap();
-                if i.match_id(node.get_id()){
-                    let result =i.dyn_visit(node);
-                    if let VisitResult::Break = result {
-                        break;
-                    }
-                    if let VisitResult::Skip = result {
-                        skip = true;
-                    }
-                }
-                if skip {
-                    continue;
-                }
-                for i in node.get_mut_children() {
-                    queue.push_back(i);
-                }
-            }
+        let mut module = type_preprocessor.process(module_key, &ctx);
+        for i in self
+            .visitors
+            .iter()
+            .filter(|i| i.stage() == Stage::AfterTypeInfer)
+        {
+            run_visitor(&mut module, &**i)
         }
         //编译
-        // let ctx = Context::create_llvm_context();
-        // let builder = Global::create_builder();
-        // let ctx = Context::with_builder(&ctx, builder);
-        // ast.build_llvm(&ctx);
-        // let module = ctx.get(ContextKey::LLVMModule).unwrap().as_module();
-        // module.read().unwrap().dump();
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();
-        // llvm_module.dump();
+        llvm_module.dump();
         let executor = llvm_module.create_executor().unwrap();
         for (name, f) in &self.function_map {
             let func = llvm_module.get_function(name).unwrap();
             executor.add_global_mapping(func.as_ref(), *f);
         }
+        println!("\n>>>Output>>>:");
         executor.run_function("$Module.main", &mut []);
-        // let module = ctx.get_module(module);
-
     }
 }
-

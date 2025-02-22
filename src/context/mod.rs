@@ -3,15 +3,16 @@ use crate::context::scope::Scope;
 use crate::context::value::ContextValue;
 use crate::core::value::Value;
 use crate::llvm::builder::Builder;
-use crate::llvm::function::Function;
-use crate::llvm::types::LLVMType;
-use crate::parser::r#type::Type;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-use slotmap::DefaultKey;
 use crate::llvm::context::LLVMContext;
+use crate::llvm::function::Function;
 use crate::llvm::module::LLVMModule;
+use crate::llvm::types::LLVMType;
 use crate::parser::module::Module;
+use crate::parser::r#type::Type;
+use slotmap::DefaultKey;
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex, RwLock};
 
 pub mod key;
 pub mod scope;
@@ -29,7 +30,7 @@ impl Context {
         Self {
             parent: None,
             key: ContextKey::SymbolTable,
-            value: ContextValue::SymbolTable(Arc::new(RwLock::new(HashMap::new()))),
+            value: ContextValue::SymbolTable(Rc::new(Mutex::new(HashMap::new()))),
         }
     }
     pub fn with_builder(parent: &Context, builder: Builder) -> Self {
@@ -57,13 +58,11 @@ impl Context {
     //         _=>panic!("not a module slot map")
     //     }
     // }
-    pub fn get_module_slot_map(&self)->Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>>{
+    pub fn get_module_slot_map(&self) -> Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>> {
         let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
-        match slot_map{
-            ContextValue::ModuleSlotMap(slot_map)=>{
-                slot_map.clone()
-            }
-            _=>panic!("not a module slot map")
+        match slot_map {
+            ContextValue::ModuleSlotMap(slot_map) => slot_map.clone(),
+            _ => panic!("not a module slot map"),
         }
     }
     // pub fn apply_module(&self,key:DefaultKey,mut apply:impl FnMut(&Module)){
@@ -77,14 +76,14 @@ impl Context {
     //         _=>panic!("not a module slot map")
     //     }
     // }
-    pub fn register_module(&self,module:Module)->DefaultKey{
+    pub fn register_module(&self, module: Module) -> DefaultKey {
         let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
-        match slot_map{
-            ContextValue::ModuleSlotMap(slot_map)=>{
+        match slot_map {
+            ContextValue::ModuleSlotMap(slot_map) => {
                 let mut slot_map = slot_map.write().unwrap();
                 slot_map.insert(module)
             }
-            _=>panic!("not a module slot map")
+            _ => panic!("not a module slot map"),
         }
     }
     pub fn with_type(parent: &Context, name: String, ty: Type) -> Self {
@@ -115,23 +114,22 @@ impl Context {
         Self::with_value(
             parent,
             ContextKey::TypeTable,
-            ContextValue::TypeTable(Arc::new(RwLock::new(t))),
+            ContextValue::TypeTable(Rc::new(RwLock::new(t))),
         )
     }
-    pub fn create_llvm_context() -> Self{
+    pub fn create_llvm_context() -> Self {
         let llvm_ctx = LLVMContext::new();
         let module = llvm_ctx.create_module("main");
-        let ctx = Context{
+        let ctx = Context {
             parent: None,
             key: ContextKey::LLVMContext,
-            value: ContextValue::LLVMContext(Arc::new(RwLock::new(LLVMContext::new()))),
+            value: ContextValue::LLVMContext(Rc::new(Mutex::new(LLVMContext::new()))),
         };
-        Self{
+        Self {
             parent: Some(Box::new(ctx)),
             key: ContextKey::LLVMModule,
-            value: ContextValue::LLVMModule(Arc::new(RwLock::new(module))),
+            value: ContextValue::LLVMModule(Rc::new(RwLock::new(module))),
         }
-
     }
     pub fn with_function(parent: &Context, f: Function) -> Self {
         Self::with_value(parent, ContextKey::Function, ContextValue::Function(f))
@@ -143,13 +141,13 @@ impl Context {
             ContextValue::Flag(Arc::new(RwLock::new(flag))),
         )
     }
-    pub fn get_llvm_module(&self) -> Arc<RwLock<LLVMModule>> {
+    pub fn get_llvm_module(&self) -> Rc<RwLock<LLVMModule>> {
         match self.get(ContextKey::LLVMModule) {
             Some(ContextValue::LLVMModule(m)) => m.clone(),
             _ => panic!("not a llvm module"),
         }
     }
-    pub fn get_llvm_context(&self) -> Arc<RwLock<LLVMContext>> {
+    pub fn get_llvm_context(&self) -> Rc<Mutex<LLVMContext>> {
         match self.get(ContextKey::LLVMContext) {
             Some(ContextValue::LLVMContext(c)) => c.clone(),
             _ => panic!("not a llvm context"),
@@ -214,12 +212,12 @@ impl Context {
     }
     pub fn set_symbol(&self, name: String, v: Value) {
         let symbol_table = self.get(ContextKey::SymbolTable).unwrap().as_symbol_table();
-        let mut symbol_table = symbol_table.write().unwrap();
+        let mut symbol_table = symbol_table.lock().unwrap();
         symbol_table.insert(name, v);
     }
     pub fn get_symbol(&self, name: impl AsRef<str>) -> Option<Value> {
         let symbol_table = self.get(ContextKey::SymbolTable).unwrap().as_symbol_table();
-        let symbol_table = symbol_table.read().unwrap();
+        let symbol_table = symbol_table.lock().unwrap();
         symbol_table.get(name.as_ref()).cloned()
     }
     pub fn get_type(&self, t: &Type) -> Option<LLVMType> {
@@ -269,16 +267,13 @@ impl Context {
                     Some(s) => Some(s.clone()),
                 }
             }
-            _ => panic!("not a symbol type"),
+            _ => None,
         }
     }
     pub fn try_add_local(&self, name: String) {
-        match self.get(ContextKey::LocalVariable) {
-            Some(ContextValue::LocalVariable(local)) => {
-                let mut local = local.write().unwrap();
-                local.push(name);
-            }
-            _ => {}
+        if let Some(ContextValue::LocalVariable(local)) = self.get(ContextKey::LocalVariable) {
+            let mut local = local.write().unwrap();
+            local.push(name);
         }
     }
     pub fn add_capture(&self, name: String, ty: Type) {

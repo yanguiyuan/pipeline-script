@@ -12,10 +12,10 @@ use llvm_sys::prelude::{LLVMModuleRef, LLVMValueRef};
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
-use std::sync::Arc;
+use std::rc::Rc;
 #[derive(Debug)]
 pub struct LLVMModule {
-    module_ref: Arc<LLVMModuleRef>,
+    module_ref: Rc<LLVMModuleRef>,
     function_map: HashMap<String, Function>,
     struct_map: HashMap<String, (HashMap<String, usize>, LLVMType)>,
     global_map: HashMap<String, (LLVMType, LLVMValue)>,
@@ -27,7 +27,7 @@ impl LLVMModule {
         let name = CString::new(name).unwrap();
         let module_ref = unsafe { LLVMModuleCreateWithName(name.as_ptr()) };
         LLVMModule {
-            module_ref: Arc::new(module_ref),
+            module_ref: Rc::new(module_ref),
             function_map: HashMap::new(),
             global_map: HashMap::new(),
             struct_map: HashMap::new(),
@@ -35,7 +35,7 @@ impl LLVMModule {
     }
     pub fn from_raw(module_ref: LLVMModuleRef) -> Self {
         LLVMModule {
-            module_ref: Arc::new(module_ref),
+            module_ref: Rc::new(module_ref),
             function_map: HashMap::new(),
             global_map: HashMap::new(),
             struct_map: HashMap::new(),
@@ -158,7 +158,7 @@ impl LLVMModule {
 
 impl Drop for LLVMModule {
     fn drop(&mut self) {
-        if Arc::strong_count(&self.module_ref) == 1 {
+        if Rc::strong_count(&self.module_ref) == 1 {
             // 只有一个引用，安全释放 LLVMModuleRef
             unsafe {
                 // 这里需要调用相应的 LLVM API 函数释放 LLVMModuleRef
@@ -166,7 +166,7 @@ impl Drop for LLVMModule {
                 // LLVMDisposeModule(self.module);
                 // 释放 Arc 的引用
                 // 注意：Arc 会自动处理引用计数和内存释放
-                let module_ptr = Arc::get_mut(&mut self.module_ref).unwrap();
+                let module_ptr = Rc::get_mut(&mut self.module_ref).unwrap();
                 if !module_ptr.is_null() {
                     // 释放模块
                     LLVMDisposeModule(*module_ptr);

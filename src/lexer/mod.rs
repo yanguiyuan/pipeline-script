@@ -37,7 +37,8 @@ impl Lexer {
             file_name: file_name.into(),
             keywords: vec![
                 "let", "fn", "fun", "return", "if", "while", "import", "else", "val", "var",
-                "break", "continue", "for", "in", "class", "static", "trait", "struct", "extern","module"
+                "break", "continue", "for", "in", "class", "static", "trait", "struct", "extern",
+                "module",
             ],
         }
     }

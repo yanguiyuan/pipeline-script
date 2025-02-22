@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
 use crate::ast::data::Data;
-use crate::ast::node::Node;
+use crate::ast::NodeTrait;
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
 use crate::parser::stmt::StmtNode;
+use std::any::Any;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct ExprNode {
@@ -13,101 +14,150 @@ pub struct ExprNode {
     pos: Position,
     ty: Option<Type>,
 }
-
-impl ExprNode {
-    pub fn to_ast(&self) -> Node {
-        let mut data = HashMap::new();
-        data.insert("type".into(),Data::Type(self.ty.as_ref().unwrap().clone()));
-        match &self.expr {
-            Expr::String(s) => {
-                data.insert("value".to_string(), Data::String(s.clone()));
-                Node::new("Expr:String").with_data(data)
-            },
-            Expr::Int(i) => {
-                data.insert("value".to_string(), Data::Int64(*i));
-                Node::new("Expr:Int").with_data(data)
-            },
-
-            Expr::Float(f) => {
-                data.insert("value".to_string(), Data::Float64(*f));
-                Node::new("Expr:Float").with_data(data)
-            },
-            Expr::Boolean(b) => {
-                data.insert("value".to_string(), Data::Boolean(*b));
-                Node::new("Expr:Boolean").with_data(data)
-            },
-            Expr::BraceExpr(expr) => expr.to_ast(),
-            Expr::FnCall(call) => {
-                let mut children = vec![];
-                for arg in call.args.iter() {
-                    children.push(arg.value.to_ast())
-                }
-                data.insert("name".into(),Data::String(call.name.clone()));
-                data.insert("is_method".into(),Data::Boolean(call.is_method));
-                Node::new("Expr:FnCall").with_data(data).with_children(children)
-            }
-            Expr::Variable(v) => {
-                data.insert("name".into(),Data::String(v.clone()));
-                Node::new("Expr:Variable").with_data(data)
-            },
-            Expr::Binary(op, left, right) => {
-                data.insert("op".into(),op.to_string().into());
-                let l = left.to_ast();
-                let r = right.to_ast();
-                Node::new("Expr:Binary").with_data(data).with_children(vec![l,r])
-            }
-            Expr::Unary(op, expr) => {
-                data.insert("op".into(),op.to_string().into());
-                let node = expr.to_ast();
-                Node::new("Expr:Unary").with_data(data).with_children(vec![node])
-            }
-            Expr::Array(exprs) => {
-                let mut children = vec![];
-                data.insert("type".into(),Data::Type(self.ty.as_ref().unwrap().clone()));
-                for expr in exprs.iter() {
-                    children.push(expr.to_ast())
-                }
-                Node::new("Expr:Array").with_children(children).with_data(data)
-            }
-            Expr::Map(exprs) => {
-                let mut children = vec![];
-                for (k, v) in exprs.iter() {
-                    children.push(k.to_ast());
-                    children.push(v.to_ast());
-                }
-                Node::new("Expr:Map").with_children(children)
-            }
-            Expr::Index(left, right) => {
-                let left = left.to_ast();
-                let right = right.to_ast();
-                Node::new("Expr:Index").with_children(vec![left, right])
-            }
-            Expr::Address(expr) => {
-                let node = expr.to_ast();
-                Node::new("Expr:Address").with_children(vec![node])
-            }
-            Expr::Closure(_, body, _) => {
-                let mut children = vec![];
-                for stmt in body.iter() {
-                    children.push(stmt.to_ast())
-                }
-                Node::new("Expr:Closure").with_children(children)
-            }
-            Expr::Struct(s) => {
-                let mut children = vec![];
-                for (_, v) in s.props.iter() {
-                    children.push(v.to_ast());
-                }
-                Node::new("Expr:Struct").with_children(children)
-            }
-            Expr::Member(root, _) => {
-                let node = root.to_ast();
-                Node::new("Expr:Member").with_children(vec![node])
-            }
-            Expr::None => Node::new("None"),
+// impl NodeTrait for Box<ExprNode> {
+//     fn get_id(&self) -> &str {
+//         self.get_id()
+//     }
+//
+//     fn get_data(&self, key: &str) -> Option<Data> {
+//         self.get_data(key)
+//     }
+//
+//     fn set_data(&mut self, key: &str, value: Data) {
+//         self.set_data(key, value)
+//     }
+//
+//     fn get_children(&self) -> Vec<&dyn NodeTrait> {
+//         self.get_children()
+//     }
+//
+//     fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
+//         self.get_mut_children()
+//     }
+//
+//     fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
+//         self.get_extra()
+//     }
+// }
+impl NodeTrait for ExprNode {
+    fn get_id(&self) -> &str {
+        match self.expr {
+            Expr::String(_) => "Expr:String",
+            Expr::Int(_) => "Expr:Int",
+            Expr::Float(_) => "Expr:Float",
+            Expr::Boolean(_) => "Expr:Boolean",
+            Expr::BraceExpr(_) => "Expr:BraceExpr",
+            Expr::FnCall(_) => "Expr:FnCall",
+            Expr::Variable(_) => "Expr:Variable",
+            Expr::Binary(_, _, _) => "Expr:Binary",
+            Expr::Unary(_, _) => "Expr:Unary",
+            Expr::Array(_) => "Expr:Array",
+            Expr::Map(_) => "Expr:Map",
+            Expr::Index(_, _) => "Expr:Index",
+            Expr::Address(_) => "Expr:Address",
+            Expr::Closure(_, _, _) => "Expr:Closure",
+            Expr::Struct(_) => "Expr:Struct",
+            Expr::Member(_, _) => "Expr:Member",
+            Expr::None => "Expr:None",
         }
     }
 
+    fn get_data(&self, key: &str) -> Option<Data> {
+        match &self.expr {
+            Expr::Variable(name) => {
+                if key == "name" {
+                    return Some(Data::String(name.clone()));
+                }
+                todo!()
+            }
+            Expr::FnCall(call) => {
+                if key == "name" {
+                    return Some(Data::String(call.name.clone()));
+                }
+                todo!()
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn set_data(&mut self, key: &str, value: Data) {
+        match &mut self.expr {
+            Expr::Variable(name) => {
+                if key == "name" {
+                    *name = value.as_str().unwrap().to_string()
+                }
+            }
+            Expr::FnCall(call) => {
+                if key == "name" {
+                    call.name = value.as_str().unwrap().to_string()
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn get_children(&self) -> Vec<&dyn NodeTrait> {
+        todo!()
+    }
+
+    fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
+        match &mut self.expr {
+            Expr::String(_) => vec![],
+            Expr::Int(_) => vec![],
+            Expr::Float(_) => vec![],
+            Expr::Boolean(_) => vec![],
+            Expr::BraceExpr(expr) => vec![&mut **expr],
+            Expr::FnCall(call) => {
+                let mut children: Vec<&mut dyn NodeTrait> = vec![];
+                for arg in call.args.iter_mut() {
+                    children.push(&mut arg.value)
+                }
+                children
+            }
+            Expr::Variable(_) => vec![],
+            Expr::Binary(_, left, right) => vec![&mut **left, &mut **right],
+            Expr::Unary(_, expr) => vec![&mut **expr],
+            Expr::Array(exprs) => {
+                let mut children: Vec<&mut dyn NodeTrait> = vec![];
+                for expr in exprs.iter_mut() {
+                    children.push(expr)
+                }
+                children
+            }
+            Expr::Map(exprs) => {
+                let mut children = vec![];
+                for (k, v) in exprs.iter_mut() {
+                    children.push(k as &mut dyn NodeTrait);
+                    children.push(v)
+                }
+                children
+            }
+            Expr::Index(left, right) => vec![&mut **left, &mut **right],
+            Expr::Address(expr) => vec![&mut **expr as &mut dyn NodeTrait],
+            Expr::Closure(vd, body, _) => {
+                let mut children: Vec<&mut dyn NodeTrait> = vec![];
+                for arg in vd.iter_mut() {
+                    if let Some(expr) = &mut arg.default {
+                        children.push(expr as &mut dyn NodeTrait);
+                    }
+                }
+
+                for stmt in body.iter_mut() {
+                    children.push(stmt as &mut dyn NodeTrait)
+                }
+                children
+            }
+            Expr::Struct(_) => vec![],
+            Expr::Member(_, _) => vec![],
+            Expr::None => vec![],
+        }
+    }
+
+    fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
+        todo!()
+    }
+}
+impl ExprNode {
     #[allow(unused)]
     pub(crate) fn get_closure_body(&self) -> Vec<StmtNode> {
         match &self.expr {
@@ -116,10 +166,7 @@ impl ExprNode {
         }
     }
     pub fn is_fn_call(&self) -> bool {
-        match &self.expr {
-            Expr::FnCall(_) => true,
-            _ => false,
-        }
+        matches!(&self.expr, Expr::FnCall(_))
     }
     pub fn get_closure_params(&self) -> Vec<VariableDeclaration> {
         match &self.expr {
@@ -139,7 +186,7 @@ impl ExprNode {
             _ => panic!("not closure expr"),
         }
     }
-    pub fn get_expr_mut(&mut self)->&mut Expr{
+    pub fn get_expr_mut(&mut self) -> &mut Expr {
         &mut self.expr
     }
 }
@@ -213,7 +260,6 @@ impl Display for Op {
             Op::Or => write!(f, "||"),
         }
     }
-
 }
 #[derive(Debug, Clone)]
 pub struct FnCallExpr {
@@ -259,10 +305,7 @@ impl ExprNode {
         }
     }
     pub fn is_closure(&self) -> bool {
-        match &self.expr {
-            Expr::Closure(..) => true,
-            _ => false,
-        }
+        matches!(&self.expr, Expr::Closure(..))
     }
     pub fn with_position(mut self, pos: Position) -> Self {
         self.pos = pos;

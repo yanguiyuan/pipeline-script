@@ -123,32 +123,20 @@ impl LLVMType {
         }
     }
     pub fn is_array(&self) -> bool {
-        match self {
-            LLVMType::Array(_, _) => true,
-            _ => false,
-        }
+        matches!(self, LLVMType::Array(_, _))
     }
     pub fn is_struct(&self) -> bool {
-        match self {
-            LLVMType::Struct(_, _) => true,
-            _ => false,
-        }
+        matches!(self, LLVMType::Struct(_, _))
     }
     pub fn i32() -> Self {
         let t = unsafe { LLVMInt32Type() };
         LLVMType::Int32(t)
     }
     pub fn is_pointer(&self) -> bool {
-        match self {
-            LLVMType::Pointer(_, _) => true,
-            _ => false,
-        }
+        matches!(self, LLVMType::Pointer(_, _))
     }
     pub fn is_i32(&self) -> bool {
-        match self {
-            LLVMType::Int32(_) => true,
-            _ => false,
-        }
+        matches!(self, LLVMType::Int32(_))
     }
 }
 

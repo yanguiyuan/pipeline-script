@@ -7,13 +7,48 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 模块内函数调用">
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix:">
+      <change afterPath="$PROJECT_DIR$/src/postprocessor/module_merger.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/compile.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/data.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/data.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/helper.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/node.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/key.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/key.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/scope.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/scope.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/value.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/app.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/app.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/buidin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/buidin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/error.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/context.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/context.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/executor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/executor.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/function.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/module.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/declaration.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/declaration.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/module.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plugin/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/builtin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plugin/format_string.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/format_string.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plugin/method.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/method.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plugin/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/printer.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/preprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocessor/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,9 +97,11 @@
   &quot;keyToString&quot;: {
     &quot;Cargo.Run pipeline-script.executor&quot;: &quot;Run&quot;,
     &quot;Cargo.Test preprocessor::test_regex.executor&quot;: &quot;Run&quot;,
+    &quot;Cargo.Test tests::test.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.rust.reset.selective.auto.import&quot;: &quot;true&quot;,
+    &quot;ToolWindow.Build.ShowToolbar&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
     &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
@@ -105,9 +142,7 @@
       <option name="backtrace" value="SHORT" />
       <option name="isRedirectInput" value="false" />
       <option name="redirectInputPath" value="" />
-      <method v="2">
-        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
+      <method v="2" />
     </configuration>
     <configuration name="Test pipeline-script" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
       <option name="command" value="test --workspace" />
@@ -144,8 +179,33 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration name="Test tests::test" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="buildProfileId" value="test" />
+      <option name="command" value="test --package pipeline-script --bin pipeline-script tests::test -- --exact" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+      <envs />
+      <option name="emulateTerminal" value="true" />
+      <option name="channel" value="DEFAULT" />
+      <option name="requiredFeatures" value="true" />
+      <option name="allFeatures" value="false" />
+      <option name="withSudo" value="false" />
+      <option name="buildTarget" value="REMOTE" />
+      <option name="backtrace" value="SHORT" />
+      <option name="isRedirectInput" value="false" />
+      <option name="redirectInputPath" value="" />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Cargo.Run pipeline-script" />
+      <item itemvalue="Cargo.Test pipeline-script" />
+      <item itemvalue="Cargo.Test preprocessor::test_regex" />
+      <item itemvalue="Cargo.Test tests::test" />
+    </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Cargo.Test tests::test" />
         <item itemvalue="Cargo.Test preprocessor::test_regex" />
       </list>
     </recent_temporary>
@@ -205,6 +265,12 @@
       <workItem from="1739070311725" duration="5136000" />
       <workItem from="1739100516334" duration="3024000" />
       <workItem from="1739354398608" duration="2055000" />
+      <workItem from="1739512115004" duration="56000" />
+      <workItem from="1739699889236" duration="11009000" />
+      <workItem from="1740053479019" duration="5399000" />
+      <workItem from="1740059904740" duration="7413000" />
+      <workItem from="1740067417792" duration="3000" />
+      <workItem from="1740199011222" duration="22794000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -302,7 +368,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739094734187</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="fix: 闭包相关初次提交">
+      <option name="closed" value="true" />
+      <created>1739512137874</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1739512137874</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -331,20 +405,21 @@
     <MESSAGE value="feat：添加NodeTrait" />
     <MESSAGE value="feat：添加Module" />
     <MESSAGE value="fix: 模块内函数调用" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: 模块内函数调用" />
+    <MESSAGE value="fix: 闭包相关初次提交" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 闭包相关初次提交" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
-          <line>517</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/llvm/global.rs</url>
           <line>163</line>
           <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/parser/module.rs</url>
+          <line>48</line>
+          <option name="timeStamp" value="6" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

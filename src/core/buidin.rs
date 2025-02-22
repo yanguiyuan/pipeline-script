@@ -17,7 +17,7 @@ pub extern "C" fn len(target: Array) -> i64 {
 }
 pub extern "C" fn println(obj: Array) {
     for i in 0..obj.len {
-        let obj = unsafe { (obj.ptr as *mut Any).offset(i as isize) };
+        let obj = unsafe { (obj.ptr).offset(i as isize) };
         unsafe {
             match (*obj).id {
                 0 => {
@@ -44,7 +44,7 @@ pub extern "C" fn println(obj: Array) {
 #[allow(unused)]
 pub extern "C" fn print(obj: Array) {
     for i in 0..obj.len {
-        let obj = unsafe { (obj.ptr as *mut Any).offset(i as isize) };
+        let obj = unsafe { (obj.ptr).offset(i as isize) };
         unsafe {
             match (*obj).id {
                 0 => {
@@ -70,7 +70,7 @@ pub extern "C" fn print(obj: Array) {
 pub extern "C" fn append(obj: Array) -> *mut c_char {
     let mut s = String::new();
     for i in 0..obj.len {
-        let obj = unsafe { (obj.ptr as *mut Any).offset(i as isize) };
+        let obj = unsafe { (obj.ptr).offset(i as isize) };
         unsafe {
             match (*obj).id {
                 0 => {
@@ -126,6 +126,6 @@ pub extern "C" fn set_env(key: *mut c_char, value: *mut c_char) {
     std::env::set_var(key, value);
 }
 #[allow(improper_ctypes_definitions)]
-pub extern "C" fn call(f : fn(i32) ) {
-   f(4)
+pub extern "C" fn call(f: fn(i32)) {
+    f(4)
 }

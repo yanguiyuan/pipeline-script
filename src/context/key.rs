@@ -28,66 +28,27 @@ impl Default for ContextKey {
 impl PartialEq for ContextKey {
     fn eq(&self, other: &Self) -> bool {
         match self {
-            ContextKey::Background => match other {
-                ContextKey::Background => true,
-                _ => false,
-            },
-            ContextKey::Builder => match other {
-                ContextKey::Builder => true,
-                _ => false,
-            },
-            ContextKey::TypeTable => match other {
-                ContextKey::TypeTable => true,
-                _ => false,
-            },
-            ContextKey::SymbolTable => match other {
-                ContextKey::SymbolTable => true,
-                _ => false,
-            },
-            ContextKey::Function => match other {
-                ContextKey::Function => true,
-                _ => false,
-            },
-            ContextKey::Scope => match other {
-                ContextKey::Scope => true,
-                _ => false,
-            },
+            ContextKey::Background => matches!(other, ContextKey::Background),
+            ContextKey::Builder => matches!(other, ContextKey::Builder),
+            ContextKey::TypeTable => matches!(other, ContextKey::TypeTable),
+            ContextKey::SymbolTable => matches!(other, ContextKey::SymbolTable),
+            ContextKey::Function => matches!(other, ContextKey::Function),
+            ContextKey::Scope => matches!(other, ContextKey::Scope),
             ContextKey::Flag(f) => match other {
                 ContextKey::Flag(o) => f == o,
                 _ => false,
             },
-            ContextKey::SymbolType => match other {
-                ContextKey::SymbolType => true,
-                _ => false,
-            },
-            ContextKey::AliasType => match other {
-                ContextKey::AliasType => true,
-                _ => false,
-            },
-            ContextKey::LocalVariable => match other {
-                ContextKey::LocalVariable => true,
-                _ => false,
-            },
-            ContextKey::CaptureVariable => match other {
-                ContextKey::CaptureVariable => true,
-                _ => false,
-            },
+            ContextKey::SymbolType => matches!(other, ContextKey::SymbolType),
+            ContextKey::AliasType => matches!(other, ContextKey::AliasType),
+            ContextKey::LocalVariable => matches!(other, ContextKey::LocalVariable),
+            ContextKey::CaptureVariable => matches!(other, ContextKey::CaptureVariable),
             ContextKey::Type(t) => match other {
                 ContextKey::Type(o) => t == o,
                 _ => false,
             },
-            ContextKey::LLVMContext => match other {
-                ContextKey::LLVMContext => true,
-                _ => false,
-            },
-            ContextKey::LLVMModule => match other {
-                ContextKey::LLVMModule => true,
-                _ => false,
-            },
-            ContextKey::ModuleSlotMap => match other {
-                ContextKey::ModuleSlotMap => true,
-                _ => false,
-            },
+            ContextKey::LLVMContext => matches!(other, ContextKey::LLVMContext),
+            ContextKey::LLVMModule => matches!(other, ContextKey::LLVMModule),
+            ContextKey::ModuleSlotMap => matches!(other, ContextKey::ModuleSlotMap),
         }
     }
 }

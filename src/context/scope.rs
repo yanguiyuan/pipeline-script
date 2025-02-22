@@ -1,15 +1,22 @@
 use crate::core::value::Value;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::rc::Rc;
+use std::sync::{ RwLock};
 
 #[derive(Clone, Debug)]
 pub struct Scope {
-    symbol_table: Arc<RwLock<HashMap<String, Value>>>,
+    symbol_table: Rc<RwLock<HashMap<String, Value>>>,
 }
+impl Default for Scope {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Scope {
     pub fn new() -> Self {
         Self {
-            symbol_table: Arc::new(RwLock::new(HashMap::new())),
+            symbol_table: Rc::new(RwLock::new(HashMap::new())),
         }
     }
     pub fn set(&self, name: impl Into<String>, value: Value) {

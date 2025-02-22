@@ -1,11 +1,10 @@
-use std::any::Any;
-use std::collections::HashMap;
-use std::vec;
 use crate::ast::data::Data;
-use crate::ast::node::Node;
 use crate::ast::NodeTrait;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::r#type::Type;
+use std::any::Any;
+use std::collections::HashMap;
+use std::vec;
 
 use super::stmt::StmtNode;
 #[derive(Clone, Debug)]
@@ -24,7 +23,7 @@ pub struct Function {
     #[allow(unused)]
     pub(crate) is_extern: bool,
 }
-impl NodeTrait for Function{
+impl NodeTrait for Function {
     fn get_id(&self) -> &str {
         "Function"
     }
@@ -32,24 +31,18 @@ impl NodeTrait for Function{
     fn get_data(&self, key: &str) -> Option<Data> {
         match key {
             "name" => Some(Data::String(self.name.clone())),
-            "binding_struct" => {
-                match &self.binding_struct {
-                    Some(s) => Some(Data::String(s.clone())),
-                    None => None,
-                }
-            },
+            "binding_struct" => self
+                .binding_struct
+                .as_ref()
+                .map(|s| Data::String(s.clone())),
             _ => None,
         }
     }
 
     fn set_data(&mut self, key: &str, value: Data) {
-        dbg!(key,&value);
-        match key {
-            "name"=>{
-                self.name = value.as_str().unwrap().into();
-                dbg!(&self.name);
-            }
-            _=>{}
+        dbg!(key, &value);
+        if key == "name" {
+            self.name = value.as_str().unwrap().into();
         }
     }
 
@@ -58,7 +51,7 @@ impl NodeTrait for Function{
     }
 
     fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
-       vec![]
+        vec![]
     }
 
     fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
@@ -85,24 +78,6 @@ impl Function {
             is_extern,
         }
     }
-    pub fn to_ast(&self) -> Node {
-        let mut data =HashMap::new();
-        data.insert("name".into(),Data::String(self.name.clone()));
-        data.insert("is_template".into(),Data::Boolean(self.is_template));
-        data.insert("is_extern".into(),Data::Boolean(self.is_extern));
-        data.insert("type".into(),Data::Type(self.return_type.clone()));
-        data.insert("params_count".into(),Data::Int64(self.args.len() as i64));
-        data.insert("binding_struct".into(),Data::String(self.binding_struct.clone().unwrap_or("".into())));
-        let mut children = vec![];
-        for i in &self.args {
-            children.push(i.to_ast())
-        }
-        for i in &self.body {
-            children.push(i.to_ast())
-        }
-        Node::new("Function").with_data(data).with_children(children)
-    }
-
     pub fn name(&self) -> String {
         self.name.clone()
     }
@@ -137,10 +112,7 @@ impl Function {
         self.args.len()
     }
     pub fn has_binding(&self) -> bool {
-        match self.binding_struct {
-            None => false,
-            Some(_) => true,
-        }
+        self.binding_struct.is_some()
     }
     pub fn get_binding(&self) -> String {
         self.binding_struct.clone().unwrap()

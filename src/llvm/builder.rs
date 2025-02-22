@@ -2,7 +2,6 @@ use crate::llvm::function::Function;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
-use std::cell::RefCell;
 use llvm_sys::core::{
     LLVMArrayType2, LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr,
     LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
@@ -12,6 +11,7 @@ use llvm_sys::core::{
 };
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::{c_uint, CString};
 
@@ -27,7 +27,10 @@ unsafe impl Send for Builder {}
 unsafe impl Sync for Builder {}
 impl Builder {
     pub(crate) fn new(builder: LLVMBuilderRef) -> Self {
-        Self { inner: builder ,strings:HashMap::new().into()}
+        Self {
+            inner: builder,
+            strings: HashMap::new().into(),
+        }
     }
     pub fn build_return_void(&self) {
         unsafe {
@@ -60,8 +63,8 @@ impl Builder {
         let name0 = name.as_ref();
         let name = CString::new(name0).unwrap();
         let str0 = value.as_ref();
-        if self.strings.borrow().contains_key(str0){
-            return self.strings.borrow().get(str0).unwrap().clone();
+        if self.strings.borrow().contains_key(str0) {
+            return *self.strings.borrow().get(str0).unwrap();
         }
         let str = CString::new(str0).unwrap();
         let r = unsafe { LLVMBuildGlobalString(self.inner, str.as_ptr(), name.as_ptr()) };
@@ -79,9 +82,9 @@ impl Builder {
         let arr_ty = unsafe { LLVMArrayType2(el_ty.as_llvm_type_ref(), arr.len() as u64) };
         let name = CString::new("").unwrap();
         let arr0 = unsafe { LLVMBuildAlloca(self.inner, arr_ty, name.as_ptr()) };
-        for i in 0..arr.len() {
+        for (i, _) in arr.iter().enumerate() {
             let index = Global::const_i32(i as i32);
-            let value = arr[i].clone();
+            let value = arr[i];
             let gep = unsafe {
                 LLVMBuildGEP2(
                     self.inner,
@@ -99,13 +102,12 @@ impl Builder {
     pub fn build_struct_get(&self, val: LLVMValue, idx: usize) -> LLVMValue {
         let name = CString::new("").unwrap();
         unsafe {
-            let v = LLVMBuildExtractValue(
+            LLVMBuildExtractValue(
                 self.inner,
                 val.as_llvm_value_ref(),
                 idx as c_uint,
                 name.as_ptr(),
-            );
-            v
+            )
         }
         .into()
     }

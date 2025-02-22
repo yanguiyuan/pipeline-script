@@ -48,10 +48,7 @@ impl Function {
     }
     pub fn get_param(&self, name: &str) -> Option<LLVMValue> {
         let index = self.get_param_index(name);
-        match index {
-            None => None,
-            Some(index) => Some(unsafe { LLVMGetParam(self.function_ref, index as u32) }.into()),
-        }
+        index.map(|index| unsafe { LLVMGetParam(self.function_ref, index as u32) }.into())
     }
     pub fn get_function_ref(&self) -> LLVMValueRef {
         self.function_ref

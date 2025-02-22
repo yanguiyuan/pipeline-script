@@ -13,8 +13,8 @@ use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
 use crate::postprocessor::id::id;
-use std::sync::{Arc, RwLock};
 use slotmap::DefaultKey;
+use std::sync::{Arc, RwLock};
 
 pub struct TypePostprocessor {
     module: Module,
@@ -25,7 +25,7 @@ impl TypePostprocessor {
             module: Module::new("unknown"),
         }
     }
-    pub fn process(&mut self, module: DefaultKey,ctx:&Context) -> Module {
+    pub fn process(&mut self, module: DefaultKey, ctx: &Context) -> Module {
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let mut module = module_slot_map.get_mut(module).unwrap().clone();
@@ -34,21 +34,20 @@ impl TypePostprocessor {
         self.module.set_name(module.get_name());
         let submodule = module.get_submodules();
         let mut names = vec![];
-        for (name, _) in submodule {
+        for name in submodule.keys() {
             names.push(name.clone());
         }
         for name in names {
             module.merge_into_main(ctx, &name);
         }
-        dbg!(&module);
-        self.process_module(&module,ctx);
+        module.sort_global_block();
+        self.process_module(&module, ctx);
         self.module.clone()
     }
-    fn process_module(&mut self, module: &Module,ctx:&Context){
-
+    fn process_module(&mut self, module: &Module, ctx: &Context) {
         let mut symbols = HashMap::new();
         let ctx = Context::with_value(
-            &ctx,
+            ctx,
             ContextKey::SymbolType,
             ContextValue::SymbolType(Arc::new(RwLock::new(symbols.clone()))),
         );
@@ -58,8 +57,8 @@ impl TypePostprocessor {
             ContextKey::AliasType,
             ContextValue::AliasType(Arc::new(RwLock::new(alias))),
         );
-        for module_name in module.get_submodules().keys(){
-            ctx.set_symbol_type(module_name.into(),Type::Module)
+        for module_name in module.get_submodules().keys() {
+            ctx.set_symbol_type(module_name.into(), Type::Module)
         }
         for (name, st) in module.get_structs() {
             ctx.set_alias_type(name.clone(), st.get_type())
@@ -125,7 +124,7 @@ impl TypePostprocessor {
         }
         let ctx = Context::with_local(&ctx, vec![]);
         for stmt in module.get_global_block().iter() {
-            let stmt = self.process_stmt(&stmt, &ctx);
+            let stmt = self.process_stmt(stmt, &ctx);
             self.module.add_stmt(stmt);
         }
     }
@@ -133,27 +132,27 @@ impl TypePostprocessor {
     fn process_struct(&self, s: &Struct, ctx: &Context) -> Struct {
         let mut fields = vec![];
         for i in s.get_fields() {
-            let ty = self.process_type(&i.field_type, ctx);
+            let ty = Self::process_type(&i.field_type, ctx);
             fields.push(StructField::new(i.name.clone(), ty));
         }
         Struct::new(s.name.clone(), fields)
     }
-    fn process_type(&self, ty: &Type, ctx: &Context) -> Type {
+    fn process_type(ty: &Type, ctx: &Context) -> Type {
         match ty {
             Type::Alias(name) => {
                 let ty = ctx.get_alias_type(name).unwrap();
-                self.process_type(&ty, ctx)
+                Self::process_type(&ty, ctx)
             }
             Type::Struct(name, s) => {
                 let mut fields = vec![];
                 for (name, v) in s.iter() {
-                    let ty = self.process_type(v, ctx);
+                    let ty = Self::process_type(v, ctx);
                     fields.push((name.clone(), ty.clone()))
                 }
                 Type::Struct(name.clone(), fields)
             }
             Type::Array(ty) => {
-                let ty = self.process_type(ty, ctx);
+                let ty = Self::process_type(ty, ctx);
                 Type::Array(Box::new(ty))
             }
             _ => ty.clone(),
@@ -177,9 +176,11 @@ impl TypePostprocessor {
                     new_body.push(stmt)
                 }
                 let captures = ctx.get_captures().unwrap();
+                let closure_var_name = format!("Closure{}", id());
                 let actual =
                     ExprNode::new(Expr::Closure(l.clone(), new_body.clone(), captures.clone()))
                         .with_type(Type::Closure {
+                            name: Some(closure_var_name.clone()),
                             ptr: (Box::new(Type::Unit), param_type),
                             env: captures.clone(),
                         });
@@ -236,10 +237,9 @@ impl TypePostprocessor {
                         ),
                     );
                 }
-                let closure_var_name = format!("Closure{}", id());
+
                 let lambda_function =
                     Function::new(closure_var_name.clone(), Type::Unit, l, new_body, false);
-                dbg!(&lambda_function);
                 self.module
                     .register_function(&closure_var_name, lambda_function);
                 let mut closure_struct = HashMap::new();
@@ -250,13 +250,10 @@ impl TypePostprocessor {
                         .with_type(closure_fn_gen_type.clone()),
                 );
                 closure_struct.insert("env".into(), env_node);
-                let mut closure_struct_type0 = vec![];
-                closure_struct_type0.push(("ptr".into(), closure_fn_gen_type.clone()));
-                closure_struct_type0.push(("env".into(), env_ty.clone()));
-
-                let mut closure_fields = vec![];
-                closure_fields.push(StructField::new("ptr".into(), closure_fn_gen_type));
-                closure_fields.push(StructField::new("env".into(), env_ty));
+                let closure_fields = vec![
+                    StructField::new("ptr".into(), closure_fn_gen_type),
+                    StructField::new("env".into(), env_ty),
+                ];
                 self.module.register_struct(
                     &closure_var_name,
                     Struct {
@@ -264,15 +261,12 @@ impl TypePostprocessor {
                         fields: closure_fields,
                     },
                 );
-                let closure_sturct_type =
-                    Type::Struct(Some(closure_var_name.clone()), closure_struct_type0);
-
-                ctx.set_symbol_type(closure_var_name.clone(), closure_sturct_type.clone());
+                ctx.set_symbol_type(closure_var_name.clone(), actual.get_type().unwrap());
                 ExprNode::new(Expr::Struct(StructExpr {
                     name: closure_var_name,
                     props: closure_struct,
                 }))
-                .with_type(closure_sturct_type.clone())
+                .with_type(actual.get_type().unwrap())
             }
             Expr::FnCall(fc) => {
                 let mut fc_name = fc.name.clone();
@@ -281,18 +275,17 @@ impl TypePostprocessor {
                     let this = fc.args.first().unwrap();
                     let this = self.process_expr(&this.value, ctx);
                     let this_type = this.get_type().unwrap();
-                    if this_type.is_module(){
+                    if this_type.is_module() {
                         fc_args.remove(0);
                         fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
-                    }else{
+                    } else {
                         let this_type_name = this_type.get_struct_name().unwrap();
                         fc_name = format!("{}.{}", this_type_name, fc_name);
                     }
                 }
                 let mut new_fc = fc.clone();
                 let mut args = vec![];
-                dbg!(&fc_name);
-                let fc_type = ctx.get_symbol_type(&fc_name).unwrap();
+                let mut fc_type = ctx.get_symbol_type(&fc_name).unwrap();
                 let mut new_generics = vec![];
                 for i in &fc.generics {
                     if i.is_alias() {
@@ -304,6 +297,12 @@ impl TypePostprocessor {
                     } else {
                         new_generics.push(i.clone())
                     }
+                }
+                if fc_type.is_closure() {
+                    if !ctx.is_local_variable(&fc_name) {
+                        ctx.add_capture(fc_name.clone(), fc_type.clone());
+                    }
+                    fc_type = fc_type.get_closure_fn_gen_type().unwrap();
                 }
                 let mut fc_return_type = fc_type.get_function_return_type().unwrap();
                 if !fc.generics.is_empty() && &fc.name != "sizeof" {
@@ -321,7 +320,7 @@ impl TypePostprocessor {
                         locals.push(i.name());
                     }
                     let ctx = Context::with_value(
-                        &ctx,
+                        ctx,
                         ContextKey::SymbolType,
                         ContextValue::SymbolType(Arc::new(RwLock::new(symbol_types))),
                     );
@@ -333,7 +332,7 @@ impl TypePostprocessor {
                         let new_stmt = self.process_stmt(stmt, &ctx);
                         new_body.push(new_stmt)
                     }
-                    fc_return_type = self.process_type(template.return_type(), &ctx);
+                    fc_return_type = Self::process_type(template.return_type(), &ctx);
                     template.set_name(fc_name.clone());
                     template.is_template = false;
                     template.generic_list = vec![];
@@ -382,9 +381,9 @@ impl TypePostprocessor {
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => ExprNode::new(Expr::Int(i)).with_type(Type::Int64),
             Expr::Variable(name) => {
-                dbg!(&name);
-                let ty = ctx.get_symbol_type(&name).unwrap();
-                if !ctx.is_local_variable(&name) && !ty.is_function() &&!ty.is_module() {
+                let ty = ctx.get_symbol_type(&name);
+                let ty = ty.unwrap();
+                if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
                 ExprNode::new(Expr::Variable(name)).with_type(ty)
@@ -396,7 +395,7 @@ impl TypePostprocessor {
                     fields.insert(name.clone(), i);
                 }
                 let ty = self.module.get_struct(&se.name).unwrap().get_type();
-                let ty = self.process_type(&ty, ctx);
+                let ty = Self::process_type(&ty, ctx);
                 ExprNode::new(Expr::Struct(StructExpr {
                     name: se.name.clone(),
                     props: fields,
@@ -422,10 +421,10 @@ impl TypePostprocessor {
             Expr::Member(target, name) => {
                 let target = self.process_expr(&target, ctx);
                 let ty = target.get_type().unwrap();
-                if ty.is_module(){
-                    let name = format!("{}:{}",target.get_variable_name().unwrap(),name);
+                if ty.is_module() {
+                    let name = format!("{}:{}", target.get_variable_name().unwrap(), name);
                     let variable = ExprNode::new(Expr::Variable(name));
-                    return self.process_expr(&variable,ctx)
+                    return self.process_expr(&variable, ctx);
                 }
                 let (_, ty) = ty.get_struct_field(name.clone()).unwrap();
                 ExprNode::new(Expr::Member(Box::new(target), name)).with_type(ty.clone())
@@ -441,21 +440,20 @@ impl TypePostprocessor {
                 let actual = decl.get_default().unwrap();
                 let actual = self.process_expr(actual, ctx);
                 let actual_type = actual.get_type().unwrap();
-                if expect == None {
-                    ctx.set_symbol_type(decl.name.clone(), actual_type.clone());
-                    let mut new_decl = decl.clone();
-                    new_decl.set_default(actual);
-                    new_decl.set_type(actual_type);
-                    return StmtNode::new(Stmt::ValDecl(new_decl), stmt.position());
-                }
-                if expect == Some(actual_type.clone()) {
-                    let mut new_decl = decl.clone();
-                    ctx.set_symbol_type(decl.name.clone(), expect.unwrap());
-                    new_decl.set_default(actual);
-                    StmtNode::new(Stmt::ValDecl(new_decl), stmt.position())
-                } else {
-                    dbg!(actual_type, expect);
-                    panic!("type mismatch")
+                match expect {
+                    None => {
+                        ctx.set_symbol_type(decl.name.clone(), actual_type.clone());
+                        let mut new_decl = decl.clone();
+                        new_decl.set_default(actual);
+                        new_decl.set_type(actual_type);
+                        StmtNode::new(Stmt::ValDecl(new_decl), stmt.position())
+                    }
+                    Some(ty) => {
+                        let mut new_decl = decl.clone();
+                        ctx.set_symbol_type(decl.name.clone(), ty);
+                        new_decl.set_default(actual);
+                        StmtNode::new(Stmt::ValDecl(new_decl), stmt.position())
+                    }
                 }
             }
 
@@ -479,16 +477,12 @@ impl TypePostprocessor {
                     let new_branch = IfBranchStmt::new(condition, body);
                     branches.push(new_branch)
                 }
-                let else_body = if let Some(else_body) = if_stmt.get_else_body() {
-                    Some(
-                        else_body
-                            .iter()
-                            .map(|x| self.process_stmt(x, ctx))
-                            .collect::<Vec<_>>(),
-                    )
-                } else {
-                    None
-                };
+                let else_body = if_stmt.get_else_body().map(|else_body| {
+                    else_body
+                        .iter()
+                        .map(|x| self.process_stmt(x, ctx))
+                        .collect::<Vec<_>>()
+                });
                 let mut new_if_stmt = if_stmt.clone();
                 new_if_stmt.set_branches(branches);
                 new_if_stmt.set_else_body(else_body);
