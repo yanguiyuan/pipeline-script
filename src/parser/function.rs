@@ -8,7 +8,6 @@ use std::vec;
 
 use super::stmt::StmtNode;
 #[derive(Clone, Debug)]
-
 pub struct Function {
     name: String,
     return_type: Type,
@@ -22,6 +21,7 @@ pub struct Function {
     binding_struct: Option<String>,
     #[allow(unused)]
     pub(crate) is_extern: bool,
+    struct_generics: Vec<Type>,
 }
 impl NodeTrait for Function {
     fn get_id(&self) -> &str {
@@ -76,6 +76,7 @@ impl Function {
             binding_struct: None,
             is_generic: false,
             is_extern,
+            struct_generics: vec![],
         }
     }
     pub fn name(&self) -> String {
@@ -158,6 +159,9 @@ impl Function {
         }
         Type::Function(Box::new(self.return_type.clone()), args)
     }
+    pub fn set_binding_struct_generics(&mut self, struct_generics: Vec<Type>) {
+        self.struct_generics = struct_generics;
+    }
 }
 
 impl Default for Function {
@@ -172,6 +176,7 @@ impl Default for Function {
             body: vec![],
             is_extern: false,
             is_template: false,
+            struct_generics: vec![],
         }
     }
 }

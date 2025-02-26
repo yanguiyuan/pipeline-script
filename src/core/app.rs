@@ -20,6 +20,8 @@ impl App {
         self.engine.register_external_function(name, func);
         self
     }
+
+    #[allow(unused)]
     pub fn register_visitor(mut self, visitor: impl Visitor + 'static) -> Self {
         self.engine.register_visitor(visitor);
         self

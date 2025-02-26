@@ -91,6 +91,7 @@ impl Global {
         let t = unsafe { LLVMGetUndef(ty.as_llvm_type_ref()) };
         LLVMValue::Undef(t)
     }
+    #[allow(unused)]
     pub fn array_type(element_type: LLVMType) -> LLVMType {
         let t = unsafe { LLVMArrayType2(element_type.as_llvm_type_ref(), 2) };
         LLVMType::Array(Box::new(element_type), t)

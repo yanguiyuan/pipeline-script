@@ -1,14 +1,2 @@
 import core
-val name = "std"
-module std {
-    val bar = || {
-        println("bar")
-    }
-    val foo = || {
-       println(f"Hello from {name}!")
-       bar()
-    }
-
-}
-
-std.foo()
+println(8)

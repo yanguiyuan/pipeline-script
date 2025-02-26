@@ -68,16 +68,15 @@ impl NodeTrait for ExprNode {
                 if key == "name" {
                     return Some(Data::String(name.clone()));
                 }
-                todo!()
             }
             Expr::FnCall(call) => {
                 if key == "name" {
                     return Some(Data::String(call.name.clone()));
                 }
-                todo!()
             }
             _ => todo!(),
         }
+        None
     }
 
     fn set_data(&mut self, key: &str, value: Data) {

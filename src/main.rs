@@ -2,7 +2,6 @@ use plugin::format_string::FormatStringPlugin;
 
 use crate::core::app::App;
 use crate::plugin::builtin::BuiltinPlugin;
-use crate::postprocessor::function_printer::FunctionPrinter;
 
 mod ast;
 pub mod compiler;
@@ -20,8 +19,6 @@ fn main() {
         .set_entry_file("main.ppl")
         .add_plugin(BuiltinPlugin)
         .add_plugin(FormatStringPlugin)
-        // .add_plugin(MethodPlugin)
-        // .register_visitor(Printer{})
-        .register_visitor(FunctionPrinter::new("Object.test"))
         .run();
+
 }

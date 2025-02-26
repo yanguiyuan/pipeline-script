@@ -82,12 +82,15 @@ impl TypePostprocessor {
             let return_type = ty.get_function_return_type().unwrap();
             if return_type.is_alias() {
                 let alias = return_type.get_alias_name().unwrap();
-                let new_return_ty = ctx.get_alias_type(alias).unwrap();
+                let new_return_ty = ctx.get_alias_type(&alias).expect(format!("alias {alias} not found").as_str());
                 ty = ty.with_return_type(new_return_ty)
             }
             ctx.set_symbol_type(name.clone(), ty)
         }
         for (name, f) in functions.iter() {
+            if f.is_template {
+                continue;
+            }
             let mut new_f;
             if f.is_extern {
                 new_f = f.clone();
@@ -135,7 +138,7 @@ impl TypePostprocessor {
             let ty = Self::process_type(&i.field_type, ctx);
             fields.push(StructField::new(i.name.clone(), ty));
         }
-        Struct::new(s.name.clone(), fields)
+        Struct::new(s.name.clone(), fields, s.generics.clone())
     }
     fn process_type(ty: &Type, ctx: &Context) -> Type {
         match ty {
@@ -196,10 +199,7 @@ impl TypePostprocessor {
                 let env_var_name = format!("Env{}", id());
                 self.module.register_struct(
                     &env_var_name,
-                    Struct {
-                        name: env_var_name.clone(),
-                        fields,
-                    },
+                    Struct::new(env_var_name.clone(), fields, vec![])
                 );
                 // t0 是闭包的类型
                 let t0 = actual.get_type().unwrap();
@@ -256,10 +256,7 @@ impl TypePostprocessor {
                 ];
                 self.module.register_struct(
                     &closure_var_name,
-                    Struct {
-                        name: closure_var_name.clone(),
-                        fields: closure_fields,
-                    },
+                    Struct::new(closure_var_name.clone(), closure_fields, vec![])
                 );
                 ctx.set_symbol_type(closure_var_name.clone(), actual.get_type().unwrap());
                 ExprNode::new(Expr::Struct(StructExpr {
@@ -279,6 +276,7 @@ impl TypePostprocessor {
                         fc_args.remove(0);
                         fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
                     } else {
+                        dbg!(&this_type);
                         let this_type_name = this_type.get_struct_name().unwrap();
                         fc_name = format!("{}.{}", this_type_name, fc_name);
                     }
@@ -408,7 +406,7 @@ impl TypePostprocessor {
                     let i = self.process_expr(i, ctx);
                     v.push(i)
                 }
-                ExprNode::new(Expr::Array(v)).with_type(Type::Array(Box::new(Type::Int32)))
+                ExprNode::new(Expr::Array(v)).with_type(Type::Array(Box::new(Type::Int64)))
             }
             Expr::Index(target, index) => {
                 let target = self.process_expr(&target, ctx);
@@ -426,8 +424,12 @@ impl TypePostprocessor {
                     let variable = ExprNode::new(Expr::Variable(name));
                     return self.process_expr(&variable, ctx);
                 }
-                let (_, ty) = ty.get_struct_field(name.clone()).unwrap();
-                ExprNode::new(Expr::Member(Box::new(target), name)).with_type(ty.clone())
+                let ty = if ty.is_array() &&  name=="length" {
+                    Type::Int64
+                }else{
+                    ty.get_struct_field(name.clone()).unwrap().1.clone()
+                };
+                ExprNode::new(Expr::Member(Box::new(target), name)).with_type(ty)
             }
             _ => expr.clone(),
         }
@@ -493,6 +495,22 @@ impl TypePostprocessor {
                 let expr = self.process_expr(&expr, ctx);
                 StmtNode::new(
                     Stmt::Assign(Box::new(target), Box::new(expr)),
+                    stmt.position(),
+                )
+            }
+            Stmt::ForIn(var, expr, body) => {
+                let expr = self.process_expr(&expr, ctx);
+                let ty = expr.get_type().unwrap();
+                let element_type = ty.get_element_type().unwrap();
+                dbg!(element_type);
+                ctx.try_add_local(var.clone());
+                ctx.set_symbol_type(var.clone(), element_type.clone());
+                let body = body
+                   .iter()
+                   .map(|x| self.process_stmt(x, ctx))
+                   .collect::<Vec<_>>();
+                StmtNode::new(
+                    Stmt::ForIn(var.clone(), Box::new(expr), body),
                     stmt.position(),
                 )
             }

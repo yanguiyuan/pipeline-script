@@ -163,7 +163,6 @@ impl Module {
         let merger = ModuleMerger::new();
         let mut new_module = module.clone();
         run_visitor(&mut new_module, &merger);
-        // todo!();
         // Merge functions with namespace
         let new_functions: HashMap<_, _> = module
             .functions

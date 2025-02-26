@@ -7,46 +7,22 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix:">
-      <change afterPath="$PROJECT_DIR$/src/postprocessor/module_merger.rs" afterDir="false" />
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 模块中闭包引用问题">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/rust.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/rust.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/core.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/compile.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/data.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/data.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/helper.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/node.rs" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/key.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/key.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/scope.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/scope.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/app.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/app.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/buidin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/buidin.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/context.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/context.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/executor.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/executor.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/function.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/module.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/types.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/declaration.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/declaration.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/module.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/struct.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/struct.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/type.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/builtin.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/format_string.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/format_string.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/method.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/method.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/function_printer.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/printer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/printer.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/preprocessor/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/preprocessor/mod.rs" afterDir="false" />
     </list>
@@ -271,6 +247,10 @@
       <workItem from="1740059904740" duration="7413000" />
       <workItem from="1740067417792" duration="3000" />
       <workItem from="1740199011222" duration="22794000" />
+      <workItem from="1740241841936" duration="418000" />
+      <workItem from="1740317133728" duration="1132000" />
+      <workItem from="1740406501666" duration="7663000" />
+      <workItem from="1740484838540" duration="10729000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -376,7 +356,15 @@
       <option name="project" value="LOCAL" />
       <updated>1739512137874</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="fix: 模块中闭包引用问题">
+      <option name="closed" value="true" />
+      <created>1740241870461</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1740241870461</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -406,7 +394,8 @@
     <MESSAGE value="feat：添加Module" />
     <MESSAGE value="fix: 模块内函数调用" />
     <MESSAGE value="fix: 闭包相关初次提交" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: 闭包相关初次提交" />
+    <MESSAGE value="fix: 模块中闭包引用问题" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix: 模块中闭包引用问题" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -420,6 +409,26 @@
           <url>file://$PROJECT_DIR$/src/parser/module.rs</url>
           <line>48</line>
           <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
+          <line>589</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
+          <line>366</line>
+          <option name="timeStamp" value="10" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
+          <line>437</line>
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
+          <line>494</line>
+          <option name="timeStamp" value="12" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

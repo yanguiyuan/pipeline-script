@@ -15,30 +15,30 @@ pub struct Any {
 pub extern "C" fn len(target: Array) -> i64 {
     target.len
 }
-pub extern "C" fn println(obj: Array) {
-    for i in 0..obj.len {
-        let obj = unsafe { (obj.ptr).offset(i as isize) };
+pub extern "C" fn println(obj: Any) {
+    // for i in 0..obj.len {
+    //     let obj = unsafe { (obj.ptr).offset(i as isize) };
         unsafe {
-            match (*obj).id {
+            match obj.id {
                 0 => {
                     print!("Unit")
                 }
                 3 => {
-                    let value = (*obj).ptr as i32;
+                    let value = obj.ptr as i32;
                     print!("{}", value);
                 }
                 4 => {
-                    let v = (*obj).ptr as i64;
-                    print!("{}", v);
+                    let v = obj.ptr as *mut i64;
+                    print!("{}", *v);
                 }
                 7 => {
-                    let s = CStr::from_ptr((*obj).ptr as *const c_char);
+                    let s = CStr::from_ptr(obj.ptr as *const c_char);
                     print!("{}", s.to_str().unwrap());
                 }
                 t => todo!("{t}"),
             }
         }
-    }
+    // }
     println!()
 }
 #[allow(unused)]

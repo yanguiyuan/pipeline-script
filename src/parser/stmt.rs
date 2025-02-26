@@ -20,7 +20,7 @@ pub enum Stmt {
     Return(Box<ExprNode>),
     If(Box<IfStmt>),
     While(Box<ExprNode>, Vec<StmtNode>),
-    ForIn(String, Option<String>, Box<ExprNode>, Vec<StmtNode>),
+    ForIn(String, Box<ExprNode>, Vec<StmtNode>),
     /// 第一个Expr表示的是获取Array或者Map的表达式
     /// 第二个Expr表示的是获取索引的表达式
     /// 第三个Expr表示的是对索引处的赋值
@@ -101,7 +101,7 @@ impl NodeTrait for StmtNode {
             Stmt::Return(_) => "Return",
             Stmt::If(_) => "If",
             Stmt::While(_, _) => "While",
-            Stmt::ForIn(_, _, _, _) => "ForIn",
+            Stmt::ForIn( _, _, _) => "ForIn",
             Stmt::IndexAssign(_, _, _) => "IndexAssign",
             Stmt::Break => "Break",
             Stmt::Continue => "Continue",
@@ -152,7 +152,19 @@ impl NodeTrait for StmtNode {
                 }
             }
             Stmt::EvalExpr(e) => e.get_mut_children(),
+            Stmt::ForIn(_,target,block) => {
+                let mut children = vec![];
+                children.push(&mut **target as &mut dyn NodeTrait);
+                for stmt in block.iter_mut() {
+                    children.push(stmt as &mut dyn NodeTrait)
+                }
+                children
+            }
+            Stmt::Assign(target,value)=>{
+                vec![&mut **target,&mut **value]
+            },
             t => {
+
                 dbg!(t);
                 todo!()
             }

@@ -61,24 +61,16 @@ impl Parser {
             if stmt.is_noop() {
                 break;
             }
-            // ctx.apply_mut_module(self.current_module,|m|{
-            //     m.add_stmt(stmt.clone());
-            // });
             let module_slot_map = ctx.get_module_slot_map();
             let mut module_slot_map = module_slot_map.write().unwrap();
             let module = module_slot_map.get_mut(self.current_module).unwrap();
             module.add_stmt(stmt);
-            // ctx.get_mut_module(self.current_module).add_stmt(stmt);
         }
         self.parse_special_token(Token::ParenRight)?;
-        // ctx.apply_mut_module(self.parent_module,|m|{
-        //     m.register_submodule(&name,self.current_module);
-        // });
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let module = module_slot_map.get_mut(self.parent_module).unwrap();
         module.register_submodule(&name, self.current_module);
-        // ctx.get_mut_module(self.parent_module).register_submodule(&name,self.current_module);
         self.current_module = self.parent_module;
         Ok(())
     }
@@ -88,10 +80,6 @@ impl Parser {
             if stmt.is_noop() {
                 break;
             }
-            // ctx.get_mut_module(self.module).add_stmt(stmt);
-            // ctx.apply_mut_module(self.module,|m|{
-            //     m.add_stmt(stmt);
-            // })
             let module_slot_map = ctx.get_module_slot_map();
             let mut module_slot_map = module_slot_map.write().unwrap();
             let module = module_slot_map.get_mut(self.module).unwrap();
@@ -108,6 +96,7 @@ impl Parser {
                     "val" => self.parse_val_stmt(ctx).unwrap(),
                     "if" => self.parse_if_stmt(ctx).unwrap(),
                     "while" => self.parse_while_stmt(ctx)?,
+                    "for" => self.parse_for_stmt(ctx)?,
                     "return" => self.parse_return_stmt(ctx)?,
                     "break" => self.parse_break_stmt()?,
                     "continue" => self.parse_continue_stmt()?,
@@ -131,6 +120,7 @@ impl Parser {
                         self.parse_module(ctx)?;
                         continue;
                     }
+
                     t => {
                         if t == self.function_keyword.as_str() {
                             self.parse_function(ctx).unwrap();
@@ -159,18 +149,27 @@ impl Parser {
             });
         }
     }
+    pub fn parse_for_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
+        self.parse_keyword("for")?;
+        self.parse_special_token(Token::BraceLeft)?;
+        let (var_name, _) = self.parse_identifier()?;
+        let _ = self.parse_keyword("in");
+        let e0 = self.parse_expr(ctx)?;
+        self.parse_special_token(Token::BraceRight)?;
+        let body = self.parse_block(ctx)?;
+        Ok(StmtNode::new(
+            Stmt::ForIn(var_name, Box::new(e0), body),
+            Position::none(),
+        ))
+    }
     fn parse_extern_function_declaration(&mut self, ctx: &Context) -> Result<()> {
         self.parse_keyword("extern")?;
         let fun = self.parse_function_declaration()?;
         let fun = fun.with_extern(true);
-        // ctx.apply_mut_module(self.current_module,|m|{
-        //     m.register_function(&fun.name(), fun);
-        // });
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let module = module_slot_map.get_mut(self.current_module).unwrap();
         module.register_function(&fun.name(), fun);
-        // ctx.get_mut_module(self.current_module).register_function(&fun.name(), fun);
         Ok(())
     }
     fn parse_param_list(&mut self) -> Result<Vec<VariableDeclaration>> {
@@ -203,9 +202,16 @@ impl Parser {
     fn parse_break_stmt(&mut self) -> Result<StmtNode> {
         todo!()
     }
+    pub fn next_is(&mut self, token: Token) -> bool {
+        self.token_stream.peek().0 == token
+    }
     fn parse_struct(&mut self, ctx: &Context) -> Result<()> {
         let _ = self.parse_keyword("struct")?;
         let (struct_name, _) = self.parse_identifier()?;
+        let mut generic = vec![];
+        if self.next_is(Token::Less) {
+            generic = self.parse_generic_list().unwrap();
+        }
         let _ = self.parse_special_token(Token::ParenLeft)?;
         let mut fields = vec![];
         loop {
@@ -214,8 +220,8 @@ impl Parser {
                 Token::Identifier(id) => {
                     let _ = self.parse_identifier()?;
                     let _ = self.parse_special_token(Token::Colon)?;
-                    let (type_name, _) = self.parse_type_name()?;
-                    fields.push(StructField::new(id, type_name.into()));
+                    let ty = self.parse_type()?;
+                    fields.push(StructField::new(id, ty));
                     continue;
                 }
                 Token::Comma => {
@@ -229,11 +235,7 @@ impl Parser {
                 _ => break,
             }
         }
-        let struct_declaration = Struct::new(struct_name.clone(), fields);
-        // ctx.get_mut_module(self.current_module).register_struct(&struct_name, struct_declaration);
-        // ctx.apply_mut_module(self.current_module,|m|{
-        //     m.register_struct(&struct_name, struct_declaration);
-        // });
+        let struct_declaration = Struct::new(struct_name.clone(), fields, generic.clone());
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let module = module_slot_map.get_mut(self.current_module).unwrap();
@@ -246,10 +248,6 @@ impl Parser {
         let mut fun = self.parse_function_declaration().unwrap();
         let block = self.parse_block(ctx).unwrap();
         fun.set_body(block);
-        // ctx.get_mut_module(self.current_module).register_function(&fun.name(), fun);
-        // ctx.apply_mut_module(self.current_module,|m|{
-        //     m.register_function(&fun.name(), fun);
-        // });
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let module = module_slot_map.get_mut(self.current_module).unwrap();
@@ -269,20 +267,39 @@ impl Parser {
         let fun_name = self.function_keyword.clone();
         let _ = self.parse_keyword(&fun_name)?;
         let (mut name, _) = self.parse_identifier()?;
+        // 解析结构体泛型参数
+        let mut struct_generics = vec![];
+        if self.try_parse_token(Token::Less) {
+            loop {
+                let ty = self.parse_type()?;
+                struct_generics.push(ty);
+                if !self.try_parse_token(Token::Comma) {
+                    break;
+                }
+            }
+            self.parse_special_token(Token::Greater)?;
+        }
+
         if self.try_parse_token(Token::Dot) {
             let (name0, _) = self.parse_identifier()?;
             fun.set_binding_struct(&name);
+            fun.set_binding_struct_generics(struct_generics.clone());
             name = format!("{}.{}", name, name0);
         }
         // 解析泛型
         let mut list = vec![];
         if self.try_parse_token(Token::Less) {
-            let ty = self.parse_type()?;
-            list.push(ty);
+            loop {
+                let ty = self.parse_type()?;
+                list.push(ty);
+                if !self.try_parse_token(Token::Comma) {
+                    break;
+                }
+            }
             self.parse_special_token(Token::Greater)?;
         }
         let mut is_template = false;
-        if !list.is_empty() {
+        if !list.is_empty() || !struct_generics.is_empty() {
             is_template = true;
         }
         fun = fun.with_template(is_template);

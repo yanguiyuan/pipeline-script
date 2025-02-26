@@ -102,6 +102,7 @@ impl Type {
     pub fn get_struct_name(&self) -> Option<&str> {
         match self {
             Type::Struct(name, _) => name.as_deref(),
+            Type::Array(_)=>Some("Array"),
             _ => None,
         }
     }
@@ -212,7 +213,12 @@ impl Type {
                 Global::i32_type(),
                 Global::pointer_type(Global::i8_type()),
             ]),
-            Type::Array(t) => Global::array_type(t.as_llvm_type()),
+            Type::Array(t) => Global::struct_type(vec![
+                Global::i64_type(),
+                Global::pointer_type(
+                    t.as_llvm_type()
+                )
+            ]),
             Type::String => Global::pointer_type(Global::i8_type()),
             Type::Struct(_, s) => {
                 let mut v = vec![];

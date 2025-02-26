@@ -5,6 +5,7 @@ pub struct FunctionPrinter {
     name: String,
 }
 impl FunctionPrinter {
+    #[allow(unused)]
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }

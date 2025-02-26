@@ -32,7 +32,8 @@ impl ImportPreprocessor {
                 return String::new();
             }
             imports.push(s.clone());
-            read_to_string(format!("{s}.ppl")).unwrap()
+            let s = read_to_string(format!("{s}.ppl")).unwrap();
+            format!("{s}\n")
         });
         (replace.to_string(), re.is_match(origin))
     }

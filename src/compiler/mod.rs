@@ -36,6 +36,9 @@ impl Compiler {
         let ctx = Context::with_type_table(&background, HashMap::new());
         // 编译结构体
         for (name, item) in self.module.get_structs() {
+            if !item.generics.is_empty(){
+                continue
+            }
             let fields = item.get_fields();
             let mut struct_type = vec![];
             let mut field_index: HashMap<String, usize> = HashMap::new();
@@ -143,10 +146,7 @@ impl Compiler {
                 let v = vec![Global::i32_type(), Global::pointer_type(Global::i8_type())];
                 self.ctx.create_named_struct_type("Any", v)
             }
-            Type::Array(t) => Global::struct_type(vec![
-                Global::i64_type(),
-                Global::pointer_type(t.as_llvm_type()),
-            ]),
+            Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
             Type::String => Global::pointer_type(Global::i8_type()),
             Type::Struct(name, s) => match name {
                 None => {
@@ -271,12 +271,28 @@ impl Compiler {
                 let while_cond_bb = current_function.append_basic_block("while_cond");
                 let while_body_bb = current_function.append_basic_block("while_body");
                 let while_exit_bb = current_function.append_basic_block("while_exit");
-                let builder = ctx.get_builder();
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_cond_bb);
                 let cond = self.compile_expr(&condition, ctx);
                 builder.build_cond_br(cond.value, while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
+                for i in body {
+                    self.compile_stmt(&i, ctx);
+                }
+                builder.build_br(while_cond_bb);
+                builder.position_at_end(while_exit_bb)
+            }
+            Stmt::ForIn(_, expr, body) => {
+                let current_function = ctx.get_current_function();
+                let while_cond_bb = current_function.append_basic_block("while_cond");
+                let while_body_bb = current_function.append_basic_block("while_body");
+                let while_exit_bb = current_function.append_basic_block("while_exit");
+                builder.build_br(while_cond_bb);
+                builder.position_at_end(while_cond_bb);
+                let cond = self.compile_expr(&expr, ctx);
+                builder.build_cond_br(cond.value, while_body_bb, while_exit_bb);
+                builder.position_at_end(while_body_bb);
+                // let var = self.compile_expr_with_ptr(var, ctx);
                 for i in body {
                     self.compile_stmt(&i, ctx);
                 }
@@ -323,7 +339,7 @@ impl Compiler {
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr_with_ptr(&target, ctx);
                 let ty = v.get_type();
-                let (idx, _) = ty.get_struct_field(field_name).unwrap();
+                let (idx, _) = ty.get_struct_field(&field_name).expect(format!("未定义的字段{field_name}").as_str());
                 Value::new(
                     builder.build_struct_gep(
                         target.get_type().unwrap().as_llvm_type(),
@@ -353,7 +369,6 @@ impl Compiler {
                 let args = &fc.args;
                 let mut llvm_args = vec![];
                 let function_decl;
-                let is_extern;
                 let is_fn_param;
 
                 let symbol_type = ctx.get_symbol(&name);
@@ -365,7 +380,7 @@ impl Compiler {
                 }
                 if let Some(function) = self.module.get_function(&name) {
                     function_decl = function.get_type();
-                    is_extern = function.is_extern;
+                
                     is_fn_param = false;
                 } else {
                     let current_function = ctx.get_current_function();
@@ -374,22 +389,22 @@ impl Compiler {
                         .get_current_function_type()
                         .get_function_arg_type(function_index)
                         .unwrap();
-                    is_extern = false;
+        
                     is_fn_param = true;
                 }
                 // 处理传入的参数
                 for (index, arg) in args.iter().enumerate() {
                     let t = function_decl.get_function_arg_type(index).unwrap();
                     let mut v = self.compile_expr(&arg.value, ctx);
-                    if is_extern
-                        && !t.is_pointer()
-                        && (t.is_struct() || t.is_array() || t.is_array_vararg())
-                    {
-                        let ty = self.get_type(ctx, &t);
-                        let v0 = builder.build_alloca("", &ty);
-                        builder.build_store(v0, v.value);
-                        v = Value::new(v0, Type::Pointer(Box::new(t.clone())))
-                    }
+                    // if is_extern
+                    //     && !t.is_pointer()
+                    //     && (t.is_struct() || t.is_array() || t.is_array_vararg())
+                    // {
+                    //     let ty = self.get_type(ctx, &t);
+                    //     let v0 = builder.build_alloca("", &ty);
+                    //     builder.build_store(v0, v.value);
+                    //     v = Value::new(v0, Type::Pointer(Box::new(t.clone())))
+                    // }
                     if t.is_any() {
                         let mut val = v.get_value();
                         if !(v.ty.is_pointer() || v.ty.is_string()) {
@@ -517,7 +532,6 @@ impl Compiler {
                 ptr
             }
             Expr::Array(v) => {
-                let l = v.len();
                 let mut llvm_args = vec![];
                 let t = ty0.get_element_type().unwrap();
                 let ty = self.get_type(ctx, t);
@@ -525,12 +539,14 @@ impl Compiler {
                     let mut v = self.compile_expr(&arg, ctx);
                     if t.is_any() {
                         let val = v.get_value();
-
                         let temp = builder.build_struct_insert(
                             Global::undef(ty.clone()),
                             0,
                             Global::const_i32(v.get_type().id()),
                         );
+                        // if v.get_type().is_i64(){
+                        //     val = builder.build_i64_to_ptr(val);
+                        // }
                         let r = builder.build_struct_insert(temp, 1, val);
                         v = Value::new(r, t.clone());
                     }
@@ -538,11 +554,7 @@ impl Compiler {
                 }
 
                 let v1 = builder.build_array(ty, llvm_args);
-                let ty = self.get_type(ctx, &ty0);
-                let tmp =
-                    builder.build_struct_insert(Global::undef(ty), 0, Global::const_i64(l as i64));
-                let v = builder.build_struct_insert(tmp, 1, v1);
-                Value::new(v, ty0)
+                Value::new(v1, ty0)
             }
             Expr::Index(target, index) => {
                 let v = self.compile_expr_with_ptr(&target, ctx);
@@ -577,16 +589,15 @@ impl Compiler {
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr(&target, ctx);
                 let ty = v.get_type();
-                if ty.is_pointer() {
+                let mut val  = v.get_value();
+                if ty.is_pointer(){
                     let ty = ty.get_element_type().unwrap();
-                    let val = builder.build_load(self.compile_type(ty), v.get_value());
-                    let (idx, _) = ty.get_struct_field(field_name).unwrap();
-                    let v = builder.build_struct_get(val, idx);
-                    let v = Value::new(v, ty0);
-                    return v;
+                    val = builder.build_load(self.compile_type(ty), v.get_value());
                 }
+
                 let (idx, _) = ty.get_struct_field(field_name).unwrap();
-                let v = builder.build_struct_get(v.get_value(), idx);
+                dbg!(&val);
+                let v = builder.build_struct_get(val, idx);
                 Value::new(v, ty0)
             }
             Expr::Address(target) => self.compile_expr_with_ptr(&target, ctx),
