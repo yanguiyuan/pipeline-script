@@ -214,17 +214,28 @@ pub enum Expr {
 pub struct StructExpr {
     pub(crate) name: String,
     pub(crate) props: HashMap<String, ExprNode>,
+    generics: Vec<Type>,
 }
 
 impl StructExpr {
     pub fn new(name: String, props: HashMap<String, ExprNode>) -> Self {
-        Self { name, props }
+        Self { name, props,generics: vec![] }
     }
     pub fn get_name(&self) -> &str {
         &self.name
     }
     pub fn get_props(&self) -> &HashMap<String, ExprNode> {
         &self.props
+    }
+    pub fn has_generic(&self) -> bool {
+        !self.generics.is_empty()
+    }
+    pub fn get_generics(&self) -> &Vec<Type> {
+        &self.generics
+    }
+    pub fn with_generics(mut self, generics: Vec<Type>) -> Self {
+        self.generics = generics;
+        self
     }
 }
 #[derive(Debug, Clone)]

@@ -17,6 +17,8 @@ mod preprocessor;
 fn main() {
     App::new()
         .set_entry_file("main.ppl")
+        .set_test_llvm(false)
+        .add_test_llvm_file("test.ll")
         .add_plugin(BuiltinPlugin)
         .add_plugin(FormatStringPlugin)
         .run();

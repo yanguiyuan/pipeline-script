@@ -53,6 +53,12 @@ impl ContextValue {
             _ => panic!("not a module"),
         }
     }
+    pub fn as_type(&self) -> Type {
+        match self {
+            ContextValue::Type(t) => t.clone(),
+            _ => panic!("not a type"),
+        }
+    }
     #[allow(unused)]
     pub fn as_type_table(&self) -> Rc<RwLock<HashMap<Type, LLVMType>>> {
         match self {

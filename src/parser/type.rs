@@ -1,5 +1,6 @@
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
+use std::collections::HashMap;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type {
     Int8,
@@ -104,6 +105,12 @@ impl Type {
             Type::Struct(name, _) => name.as_deref(),
             Type::Array(_)=>Some("Array"),
             _ => None,
+        }
+    }
+    pub fn is_integer(&self) -> bool {
+        match self {
+            Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64 => true,
+            _ => false,
         }
     }
     pub fn id(&self) -> i32 {
@@ -298,6 +305,179 @@ impl Type {
                 Some(Type::Function(ptr.0.clone(), gen_fn_params_type))
             }
             _ => None,
+        }
+    }
+    pub fn try_replace_alias(&mut self, alias_map: &HashMap<String, Type>) {
+        match self {
+            Type::Alias(s) => {
+                let t = alias_map.get(s).unwrap();
+                *self = t.clone();
+            }
+            Type::Struct(_, s) => {
+                for (_, t) in s.iter_mut() {
+                    t.try_replace_alias(alias_map);
+                }
+            }
+            Type::Function(_, args) => {
+                for t in args.iter_mut() {
+                    t.try_replace_alias(alias_map);
+                }
+            }
+            Type::Array(t) => {
+                t.try_replace_alias(alias_map);
+            }
+            Type::Pointer(t) => {
+                t.try_replace_alias(alias_map);
+            }
+            Type::ArrayVarArg(t) => {
+                t.try_replace_alias(alias_map);
+            }
+            Type::Closure { ptr, env, .. } => {
+                ptr.0.try_replace_alias(alias_map);
+                ptr.1.iter_mut().for_each(|t| t.try_replace_alias(alias_map));
+                env.iter_mut().for_each(|(_, t)| t.try_replace_alias(alias_map));
+            }
+            Type::Generic(t, _) => {
+                t.try_replace_alias(alias_map);
+            }
+            Type::Map(k, v) => {
+                k.try_replace_alias(alias_map);
+                v.try_replace_alias(alias_map);
+            }
+            _ => {}
+        }
+    }
+    pub fn has_alias(&self) -> bool {
+        // 递归判断是否存在Alias
+        match self {
+            Type::Alias(_) => true,
+            Type::Struct(_, s) => {
+                for (_, t) in s.iter() {
+                    if t.has_alias() {
+                        return true;
+                    }
+                }
+                false
+            }
+            Type::Function(_, args) => {
+                for t in args.iter() {
+                    if t.has_alias() {
+                        return true;
+                    }
+                }
+                false
+            }
+            Type::Array(t) => {
+                if t.has_alias() {
+                    return true;
+                }
+                false
+            }
+            Type::Pointer(t) => {
+                if t.has_alias() {
+                    return true;
+                }
+                false
+            }
+            Type::ArrayVarArg(t) => {
+                if t.has_alias() {
+                    return true;
+                }
+                false
+            }
+            Type::Closure { ptr, env, .. } => {
+                if ptr.0.has_alias() || ptr.1.iter().any(|t| t.has_alias()) || env.iter().any(|(_, t)| t.has_alias()) {
+                    return true;
+                }
+                false
+            }
+            Type::Generic(t, _) => {
+                if t.has_alias() {
+                    return true;
+                }
+                false
+            }
+            Type::Map(k, v) => {
+                if k.has_alias() || v.has_alias() {
+                    return true;
+                }
+                false
+            }       
+            _ => false,
+        }
+    }
+    pub fn as_str(&self) -> String {
+        match self {
+            Type::Alias(s) => s.clone(),
+            Type::Struct(_, s) => {
+                let mut v = vec![];
+                for (_, t) in s.iter() {
+                    v.push(t.as_str());
+                }
+                v.join(".")
+            }
+            Type::Function(_, args) => {
+                let mut v = vec![];
+                for t in args.iter() {
+                    v.push(t.as_str());
+                }
+                v.join(".")
+            }
+            Type::Array(t) => {
+                format!("[]{}", t.as_str())
+            }
+            Type::Pointer(t) => {
+                format!("*{}", t.as_str())
+            }
+            Type::ArrayVarArg(t) => {
+                format!("..{}", t.as_str())
+            }
+            Type::Closure { name, ptr:_, env:_ } => {
+                format!("{}", name.as_deref().unwrap_or(""))
+            }
+            Type::VarArg => {
+                "..".to_string()
+            }
+            Type::Generic(t, _) => {
+                format!("{}", t.as_str())
+            }
+            Type::Map(k, v) => {
+                format!("Map<{},{}>", k.as_str(), v.as_str())
+            }
+            
+            Type::Module => {
+                "Module".to_string()
+            }
+            Type::Int8 => {
+                "Int8".to_string()
+            }
+            Type::Int16 => {
+                "Int16".to_string()
+            }   
+            Type::Int32 => {
+                "Int32".to_string()
+            }
+            Type::Int64 => {
+                "Int64".to_string()
+            }   
+            Type::Float => {
+                "Float".to_string()
+            }
+            Type::Double => {
+                "Double".to_string()
+            }   
+            Type::String => {
+                "String".to_string()
+            }
+            Type::Bool => {
+                "Bool".to_string()
+            }
+            Type::Any => {
+                "Any".to_string()
+            }
+            Type::Unit => {
+                "Unit".to_string()
+            }
         }
     }
 }

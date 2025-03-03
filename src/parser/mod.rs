@@ -92,7 +92,7 @@ impl Parser {
             let (token, _) = self.token_stream.peek();
             return Ok(match token {
                 Token::Keyword(k) => match k.as_str() {
-                    "var" => self.parse_var_stmt(ctx)?,
+                    "var" => self.parse_var_stmt(ctx).unwrap(),
                     "val" => self.parse_val_stmt(ctx).unwrap(),
                     "if" => self.parse_if_stmt(ctx).unwrap(),
                     "while" => self.parse_while_stmt(ctx)?,
@@ -401,40 +401,40 @@ impl Parser {
         let branch = IfBranchStmt::new(e, block);
         Ok((branch, p0 + p1 + p2 + p3))
     }
-    pub fn parse_var_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
-        let p0 = self.parse_keyword("var")?;
-        let (name, _) = self.parse_identifier()?;
-        let p2 = self.parse_special_token(Token::Colon)?;
-        let (type_name, p3) = self.parse_type_name()?;
+    fn parse_decl_stmt(
+        &mut self,
+        ctx: &Context,
+        keyword: &str,
+        builder: fn(VariableDeclaration, ExprNode) -> Stmt,
+    ) -> Result<StmtNode> {
+        let p0 = self.parse_keyword(keyword)?;
+        let (name, mut p1) = self.parse_identifier()?;
+        let mut vd = VariableDeclaration::new(name);
+
+        // 处理类型注解
+        if let Token::Colon = self.token_stream.peek().0 {
+            p1 += self.parse_special_token(Token::Colon)?;
+            let ty = self.parse_type()?;
+            vd = vd.with_type(ty);
+        }
+
+        // 处理赋值表达式
         let p4 = self.parse_special_token(Token::Assign)?;
         let expr = self.parse_expr(ctx)?;
         let p5 = expr.position();
+
         Ok(StmtNode::new(
-            Stmt::VarDecl(
-                VariableDeclaration::new(name)
-                    .with_type(type_name.into())
-                    .with_default(expr),
-            ),
-            p0 + p2 + p3 + p4 + p5,
-        ))
-    }
-    pub fn parse_val_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
-        let p0 = self.parse_keyword("val")?;
-        let (name, mut p1) = self.parse_identifier()?;
-        let mut vd = VariableDeclaration::new(name);
-        if self.token_stream.peek().0 == Token::Colon {
-            p1 += self.parse_special_token(Token::Colon).unwrap();
-            let (type_name, p3) = self.parse_type_name().unwrap();
-            p1 += p3;
-            vd = vd.with_type(type_name.into())
-        }
-        let p4 = self.parse_special_token(Token::Assign).unwrap();
-        let expr = self.parse_expr(ctx).unwrap();
-        let p5 = expr.position();
-        Ok(StmtNode::new(
-            Stmt::ValDecl(vd.with_default(expr)),
+            builder(vd.with_default(expr.clone()), expr),
             p0 + p1 + p4 + p5,
         ))
+    }
+
+    pub fn parse_var_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
+        self.parse_decl_stmt(ctx, "var", |vd, _| Stmt::VarDecl(vd))
+    }
+
+    pub fn parse_val_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
+        self.parse_decl_stmt(ctx, "val", |vd, _| Stmt::ValDecl(vd))
     }
     pub fn parse_chain_expr(&mut self, ctx: &Context) -> Result<ExprNode> {
         let mut expr = self.parse_primary_expr(ctx).unwrap();
@@ -537,66 +537,73 @@ impl Parser {
                 Ok(ExprNode::from(Expr::Closure(l, block, vec![])).with_position(p1 + pos))
             }
             Token::Identifier(id) => {
-                let (peek, _) = self.token_stream.peek();
-                match peek {
-                    Token::ScopeSymbol => {
-                        let _ = self.parse_special_token(Token::ScopeSymbol)?;
-                        let list = self.parse_generic_list().unwrap();
-                        let (args, _) = self.parse_fn_args(ctx).unwrap();
-                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
-                            name: id,
-                            args,
-                            is_method: false,
-                            generics: list,
-                        }))
-                        .with_position(pos))
-                    }
-                    Token::BraceLeft => {
-                        let (args, p0) = self.parse_fn_args(ctx).unwrap();
-                        pos += p0;
-                        Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
-                            name: id,
-                            args,
-                            is_method: false,
-                            generics: vec![],
-                        }))
-                        .with_position(pos))
-                    }
-                    Token::ParenLeft => {
-                        // 解析结构体构造
-                        let p0 = self.parse_special_token(Token::ParenLeft)?;
-                        let mut fields = HashMap::new();
-                        loop {
-                            let (peek, p1) = self.token_stream.peek();
-                            pos += p1;
-                            match peek {
-                                Token::ParenRight => {
-                                    let p2 = self.parse_special_token(Token::ParenRight)?;
-                                    pos += p2;
-                                    break;
-                                }
-                                Token::Comma => {
-                                    let p2 = self.parse_special_token(Token::Comma).unwrap();
-                                    pos += p2;
-                                    continue;
-                                }
-                                Token::Identifier(ident) => {
-                                    let (_, _) = self.parse_identifier().unwrap();
-                                    let _ = self.parse_special_token(Token::Colon).unwrap();
-                                    let expr = self.parse_expr(ctx).unwrap();
-                                    let _ = expr.position();
-                                    fields.insert(ident, expr);
-                                }
-                                _ => todo!("parse primary expr"),
-                            }
+                let mut generics = vec![];
+                loop{
+                    let (peek, _) = self.token_stream.peek();
+                    match peek {
+                        Token::ScopeSymbol => {
+                            let _ = self.parse_special_token(Token::ScopeSymbol)?;
+                            let list = self.parse_generic_list().unwrap();
+                            let (args, _) = self.parse_fn_args(ctx).unwrap();
+                            return Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                                name: id,
+                                args,
+                                is_method: false,
+                                generics: list,
+                            }))
+                                .with_position(pos))
                         }
+                        Token::BraceLeft => {
+                            let (args, p0) = self.parse_fn_args(ctx).unwrap();
+                            pos += p0;
+                            return Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                                name: id,
+                                args,
+                                is_method: false,
+                                generics,
+                            }))
+                                .with_position(pos))
+                        }
+                        Token::Less=>{
+                            generics = self.parse_generic_list().unwrap();
+                        }
+                        Token::ParenLeft => {
+                            // 解析结构体构造
+                            let p0 = self.parse_special_token(Token::ParenLeft)?;
+                            let mut fields = HashMap::new();
+                            loop {
+                                let (peek, p1) = self.token_stream.peek();
+                                pos += p1;
+                                match peek {
+                                    Token::ParenRight => {
+                                        let p2 = self.parse_special_token(Token::ParenRight)?;
+                                        pos += p2;
+                                        break;
+                                    }
+                                    Token::Comma => {
+                                        let p2 = self.parse_special_token(Token::Comma).unwrap();
+                                        pos += p2;
+                                        continue;
+                                    }
+                                    Token::Identifier(ident) => {
+                                        let (_, _) = self.parse_identifier().unwrap();
+                                        let _ = self.parse_special_token(Token::Colon).unwrap();
+                                        let expr = self.parse_expr(ctx).unwrap();
+                                        let _ = expr.position();
+                                        fields.insert(ident, expr);
+                                    }
+                                    _ => todo!("parse primary expr"),
+                                }
+                            }
 
-                        pos += p0;
-                        Ok(ExprNode::from(Expr::Struct(StructExpr::new(id, fields)))
-                            .with_position(pos))
+                            pos += p0;
+                            return Ok(ExprNode::from(Expr::Struct(StructExpr::new(id, fields).with_generics(generics)))
+                                .with_position(pos))
+                        }
+                        _ => return Ok(ExprNode::from(Expr::Variable(id)).with_position(pos)),
                     }
-                    _ => Ok(ExprNode::from(Expr::Variable(id)).with_position(pos)),
                 }
+
             }
             Token::Int(n) => Ok(ExprNode::from(Expr::Int(n)).with_position(pos)),
             Token::String(s) => Ok(ExprNode::from(Expr::String(s)).with_position(pos)),

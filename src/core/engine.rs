@@ -1,13 +1,14 @@
 use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::lexer::Lexer;
+use crate::llvm::context::LLVMContext;
 use crate::parser::Parser;
 use crate::postprocessor::r#type::TypePostprocessor;
 use crate::preprocessor::{ImportPreprocessor, Preprocessor};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::postprocessor::{run_visitor, DynVisitor, Stage, Visitor};
 
@@ -16,6 +17,8 @@ pub struct Engine {
     preprocessors: Vec<Box<dyn Preprocessor>>,
     function_map: HashMap<String, *mut c_void>,
     visitors: Vec<Box<dyn DynVisitor>>,
+    pub test_llvm: bool,
+    pub test_llvm_files: Vec<PathBuf>,
 }
 impl Default for Engine {
     fn default() -> Self {
@@ -24,14 +27,29 @@ impl Default for Engine {
             preprocessors: vec![Box::new(ImportPreprocessor)],
             visitors: vec![],
             function_map: HashMap::new(),
+            test_llvm: false,
+            test_llvm_files: vec![],
         }
     }
 }
 
 impl Engine {
+    pub fn run_llvm_file(&self, path: impl AsRef<Path>) {
+        let r = fs::read_to_string(path.as_ref()).unwrap();
+        let ctx = LLVMContext::with_jit();
+        let module = ctx.parse_ir(&r).unwrap();
+        let executor = module.create_executor().unwrap();
+        executor.run_function("$Module.main", &mut []);
+    }
     pub fn run_file(&mut self, path: impl AsRef<Path>) {
         let r = fs::read_to_string(path.as_ref()).unwrap();
         self.run_script(r);
+    }
+    pub fn set_test_llvm(&mut self, test: bool) {
+        self.test_llvm = test;
+    }
+    pub fn add_test_llvm_file(&mut self, path: impl AsRef<Path>) {
+        self.test_llvm_files.push(path.as_ref().to_path_buf());
     }
     pub fn register_external_function(&mut self, name: impl Into<String>, f: *mut c_void) {
         self.function_map.insert(name.into(), f);
@@ -72,7 +90,7 @@ impl Engine {
         {
             run_visitor(module, &**i)
         }
-
+        dbg!(&module);
         drop(module_slot_map);
         let mut type_preprocessor = TypePostprocessor::new();
         let mut module = type_preprocessor.process(module_key, &ctx);
@@ -83,6 +101,7 @@ impl Engine {
         {
             run_visitor(&mut module, &**i)
         }
+        // dbg!(&module);
         //编译
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();

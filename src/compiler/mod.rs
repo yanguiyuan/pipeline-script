@@ -329,7 +329,15 @@ impl Compiler {
                 ctx.get_symbol(name).unwrap()
             }
             Expr::Index(target, index) => {
-                let v = self.compile_expr_with_ptr(&target, ctx);
+                let v = self.compile_expr(&target, ctx);
+                dbg!(&v);
+                // let ty = v.get_type();
+                // let element_type =ty.get_element_type().unwrap();
+                // let val = if element_type.is_pointer(){
+                //      builder.build_load(element_type.as_llvm_type(),v.get_value())
+                // }else{
+                //     v.get_value()
+                // };
                 let index = self.compile_expr(&index, ctx);
                 Value::new(
                     builder.build_array_gep(ty0.as_llvm_type(), v.get_value(), index.get_value()),
@@ -338,14 +346,20 @@ impl Compiler {
             }
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr_with_ptr(&target, ctx);
+                dbg!(&v);
                 let ty = v.get_type();
-                let (idx, _) = ty.get_struct_field(&field_name).expect(format!("未定义的字段{field_name}").as_str());
+                dbg!(&ty);
+                let (idx,ty) = ty.get_struct_field(&field_name).expect(format!("未定义的字段{field_name}").as_str());
+                let mut val = builder.build_struct_gep(
+                    target.get_type().unwrap().as_llvm_type(),
+                    v.get_value(),
+                    idx,
+                );
+                if ty.is_pointer(){
+                    val = builder.build_load(ty.as_llvm_type(),val);
+                }
                 Value::new(
-                    builder.build_struct_gep(
-                        target.get_type().unwrap().as_llvm_type(),
-                        v.get_value(),
-                        idx,
-                    ),
+                   val,
                     ty0,
                 )
             }
@@ -353,6 +367,15 @@ impl Compiler {
                 let val = self.compile_expr(expr, ctx);
                 let element_ty = ty0.get_element_type().unwrap();
                 let ptr = builder.build_alloca("", &self.compile_type(element_ty));
+                builder.build_store(ptr, val.get_value());
+                Value::new(ptr, ty0)
+            }
+            Expr::FnCall(_) => {
+                let val = self.compile_expr(expr, ctx);
+                if val.get_type().is_pointer(){
+                    return val;
+                }
+                let ptr = builder.build_alloca("", &self.compile_type(&ty0));
                 builder.build_store(ptr, val.get_value());
                 Value::new(ptr, ty0)
             }
@@ -384,6 +407,7 @@ impl Compiler {
                     is_fn_param = false;
                 } else {
                     let current_function = ctx.get_current_function();
+                    dbg!(&name);
                     let function_index = current_function.get_param_index(&name).unwrap();
                     function_decl = ctx
                         .get_current_function_type()
@@ -542,12 +566,12 @@ impl Compiler {
                         let temp = builder.build_struct_insert(
                             Global::undef(ty.clone()),
                             0,
-                            Global::const_i32(v.get_type().id()),
+                            &Global::const_i32(v.get_type().id()),
                         );
                         // if v.get_type().is_i64(){
                         //     val = builder.build_i64_to_ptr(val);
                         // }
-                        let r = builder.build_struct_insert(temp, 1, val);
+                        let r = builder.build_struct_insert(temp, 1, &val);
                         v = Value::new(r, t.clone());
                     }
                     llvm_args.push(v.get_value());
@@ -557,10 +581,11 @@ impl Compiler {
                 Value::new(v1, ty0)
             }
             Expr::Index(target, index) => {
-                let v = self.compile_expr_with_ptr(&target, ctx);
+                dbg!(&target);
+                let v = self.compile_expr(&target, ctx);
                 let index = self.compile_expr(&index, ctx);
                 let v =
-                    builder.build_array_get(ty0.as_llvm_type(), v.get_value(), index.get_value());
+                    builder.build_array_get_in_bounds(ty0.as_llvm_type(), v.get_value(), index.get_value());
                 Value::new(v, ty0)
             }
             Expr::Struct(s) => {
@@ -584,19 +609,24 @@ impl Compiler {
                     .into_iter()
                     .map(|(_, v)| v.get_value())
                     .collect::<Vec<LLVMValue>>();
-                Value::new(Global::const_struct(props), ty0)
+                let mut val = Global::undef(ty0.as_llvm_type());
+                for (idx,v) in props.iter().enumerate() {
+                    val = builder.build_struct_insert(val, idx,v);
+                }
+
+                Value::new(val, ty0)
             }
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr(&target, ctx);
                 let ty = v.get_type();
                 let mut val  = v.get_value();
+
                 if ty.is_pointer(){
                     let ty = ty.get_element_type().unwrap();
                     val = builder.build_load(self.compile_type(ty), v.get_value());
                 }
 
                 let (idx, _) = ty.get_struct_field(field_name).unwrap();
-                dbg!(&val);
                 let v = builder.build_struct_get(val, idx);
                 Value::new(v, ty0)
             }

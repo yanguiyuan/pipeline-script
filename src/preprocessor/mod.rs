@@ -49,6 +49,7 @@ impl Preprocessor for ImportPreprocessor {
                 break;
             }
         }
+        println!("output sources:\n {:}", s);
         s
     }
 }

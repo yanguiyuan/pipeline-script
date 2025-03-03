@@ -20,6 +20,20 @@ impl Struct {
                 .collect(),
         )
     }
+    pub fn get_field_type(&self, field_name: &str) -> Option<Type> {
+        for field in self.fields.clone() {
+            if field.name == field_name {
+                return Some(field.field_type);
+            }
+        }
+        None
+    }
+    pub fn has_generic(&self) -> bool {
+        !self.generics.is_empty()
+    }
+    pub fn get_generics(&self) -> &Vec<Type> {
+        &self.generics
+    }
     pub fn get_type(&self) -> Type {
         let mut m = vec![];
         for field in self.fields.clone() {
