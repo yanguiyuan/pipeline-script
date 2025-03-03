@@ -39,7 +39,7 @@ impl App {
     }
     pub fn run(&mut self) {
         if self.engine.test_llvm {
-            for file in self.engine.test_llvm_files.iter() {            
+            for file in self.engine.test_llvm_files.iter() {
                 self.engine.run_llvm_file(file);
             }
         } else {

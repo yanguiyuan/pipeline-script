@@ -5,12 +5,16 @@ use crate::parser::r#type::Type;
 pub struct Struct {
     pub name: String,
     pub fields: Vec<StructField>,
-    pub generics:Vec<Type>
+    pub generics: Vec<Type>,
 }
 
 impl Struct {
-    pub fn new(name: String, fields: Vec<StructField>,generics:Vec<Type>) -> Self {
-        Self { name, fields, generics }
+    pub fn new(name: String, fields: Vec<StructField>, generics: Vec<Type>) -> Self {
+        Self {
+            name,
+            fields,
+            generics,
+        }
     }
     pub fn get_llvm_type(&self) -> LLVMType {
         Global::struct_type(

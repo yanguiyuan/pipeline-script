@@ -36,8 +36,8 @@ impl Compiler {
         let ctx = Context::with_type_table(&background, HashMap::new());
         // 编译结构体
         for (name, item) in self.module.get_structs() {
-            if !item.generics.is_empty(){
-                continue
+            if !item.generics.is_empty() {
+                continue;
             }
             let fields = item.get_fields();
             let mut struct_type = vec![];
@@ -349,19 +349,18 @@ impl Compiler {
                 dbg!(&v);
                 let ty = v.get_type();
                 dbg!(&ty);
-                let (idx,ty) = ty.get_struct_field(&field_name).expect(format!("未定义的字段{field_name}").as_str());
+                let (idx, ty) = ty
+                    .get_struct_field(&field_name)
+                    .expect(format!("未定义的字段{field_name}").as_str());
                 let mut val = builder.build_struct_gep(
                     target.get_type().unwrap().as_llvm_type(),
                     v.get_value(),
                     idx,
                 );
-                if ty.is_pointer(){
-                    val = builder.build_load(ty.as_llvm_type(),val);
+                if ty.is_pointer() {
+                    val = builder.build_load(ty.as_llvm_type(), val);
                 }
-                Value::new(
-                   val,
-                    ty0,
-                )
+                Value::new(val, ty0)
             }
             Expr::Struct(_) => {
                 let val = self.compile_expr(expr, ctx);
@@ -372,7 +371,7 @@ impl Compiler {
             }
             Expr::FnCall(_) => {
                 let val = self.compile_expr(expr, ctx);
-                if val.get_type().is_pointer(){
+                if val.get_type().is_pointer() {
                     return val;
                 }
                 let ptr = builder.build_alloca("", &self.compile_type(&ty0));
@@ -403,7 +402,7 @@ impl Compiler {
                 }
                 if let Some(function) = self.module.get_function(&name) {
                     function_decl = function.get_type();
-                
+
                     is_fn_param = false;
                 } else {
                     let current_function = ctx.get_current_function();
@@ -413,7 +412,7 @@ impl Compiler {
                         .get_current_function_type()
                         .get_function_arg_type(function_index)
                         .unwrap();
-        
+
                     is_fn_param = true;
                 }
                 // 处理传入的参数
@@ -584,8 +583,11 @@ impl Compiler {
                 dbg!(&target);
                 let v = self.compile_expr(&target, ctx);
                 let index = self.compile_expr(&index, ctx);
-                let v =
-                    builder.build_array_get_in_bounds(ty0.as_llvm_type(), v.get_value(), index.get_value());
+                let v = builder.build_array_get_in_bounds(
+                    ty0.as_llvm_type(),
+                    v.get_value(),
+                    index.get_value(),
+                );
                 Value::new(v, ty0)
             }
             Expr::Struct(s) => {
@@ -610,8 +612,8 @@ impl Compiler {
                     .map(|(_, v)| v.get_value())
                     .collect::<Vec<LLVMValue>>();
                 let mut val = Global::undef(ty0.as_llvm_type());
-                for (idx,v) in props.iter().enumerate() {
-                    val = builder.build_struct_insert(val, idx,v);
+                for (idx, v) in props.iter().enumerate() {
+                    val = builder.build_struct_insert(val, idx, v);
                 }
 
                 Value::new(val, ty0)
@@ -619,9 +621,9 @@ impl Compiler {
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr(&target, ctx);
                 let ty = v.get_type();
-                let mut val  = v.get_value();
+                let mut val = v.get_value();
 
-                if ty.is_pointer(){
+                if ty.is_pointer() {
                     let ty = ty.get_element_type().unwrap();
                     val = builder.build_load(self.compile_type(ty), v.get_value());
                 }

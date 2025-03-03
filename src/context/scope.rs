@@ -1,7 +1,7 @@
 use crate::core::value::Value;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::sync::{ RwLock};
+use std::sync::RwLock;
 
 #[derive(Clone, Debug)]
 pub struct Scope {

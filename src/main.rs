@@ -22,5 +22,4 @@ fn main() {
         .add_plugin(BuiltinPlugin)
         .add_plugin(FormatStringPlugin)
         .run();
-
 }

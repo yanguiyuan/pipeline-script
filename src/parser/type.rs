@@ -103,7 +103,7 @@ impl Type {
     pub fn get_struct_name(&self) -> Option<&str> {
         match self {
             Type::Struct(name, _) => name.as_deref(),
-            Type::Array(_)=>Some("Array"),
+            Type::Array(_) => Some("Array"),
             _ => None,
         }
     }
@@ -222,9 +222,7 @@ impl Type {
             ]),
             Type::Array(t) => Global::struct_type(vec![
                 Global::i64_type(),
-                Global::pointer_type(
-                    t.as_llvm_type()
-                )
+                Global::pointer_type(t.as_llvm_type()),
             ]),
             Type::String => Global::pointer_type(Global::i8_type()),
             Type::Struct(_, s) => {
@@ -334,8 +332,11 @@ impl Type {
             }
             Type::Closure { ptr, env, .. } => {
                 ptr.0.try_replace_alias(alias_map);
-                ptr.1.iter_mut().for_each(|t| t.try_replace_alias(alias_map));
-                env.iter_mut().for_each(|(_, t)| t.try_replace_alias(alias_map));
+                ptr.1
+                    .iter_mut()
+                    .for_each(|t| t.try_replace_alias(alias_map));
+                env.iter_mut()
+                    .for_each(|(_, t)| t.try_replace_alias(alias_map));
             }
             Type::Generic(t, _) => {
                 t.try_replace_alias(alias_map);
@@ -386,7 +387,10 @@ impl Type {
                 false
             }
             Type::Closure { ptr, env, .. } => {
-                if ptr.0.has_alias() || ptr.1.iter().any(|t| t.has_alias()) || env.iter().any(|(_, t)| t.has_alias()) {
+                if ptr.0.has_alias()
+                    || ptr.1.iter().any(|t| t.has_alias())
+                    || env.iter().any(|(_, t)| t.has_alias())
+                {
                     return true;
                 }
                 false
@@ -402,7 +406,7 @@ impl Type {
                     return true;
                 }
                 false
-            }       
+            }
             _ => false,
         }
     }
@@ -432,52 +436,32 @@ impl Type {
             Type::ArrayVarArg(t) => {
                 format!("..{}", t.as_str())
             }
-            Type::Closure { name, ptr:_, env:_ } => {
+            Type::Closure {
+                name,
+                ptr: _,
+                env: _,
+            } => {
                 format!("{}", name.as_deref().unwrap_or(""))
             }
-            Type::VarArg => {
-                "..".to_string()
-            }
+            Type::VarArg => "..".to_string(),
             Type::Generic(t, _) => {
                 format!("{}", t.as_str())
             }
             Type::Map(k, v) => {
                 format!("Map<{},{}>", k.as_str(), v.as_str())
             }
-            
-            Type::Module => {
-                "Module".to_string()
-            }
-            Type::Int8 => {
-                "Int8".to_string()
-            }
-            Type::Int16 => {
-                "Int16".to_string()
-            }   
-            Type::Int32 => {
-                "Int32".to_string()
-            }
-            Type::Int64 => {
-                "Int64".to_string()
-            }   
-            Type::Float => {
-                "Float".to_string()
-            }
-            Type::Double => {
-                "Double".to_string()
-            }   
-            Type::String => {
-                "String".to_string()
-            }
-            Type::Bool => {
-                "Bool".to_string()
-            }
-            Type::Any => {
-                "Any".to_string()
-            }
-            Type::Unit => {
-                "Unit".to_string()
-            }
+
+            Type::Module => "Module".to_string(),
+            Type::Int8 => "Int8".to_string(),
+            Type::Int16 => "Int16".to_string(),
+            Type::Int32 => "Int32".to_string(),
+            Type::Int64 => "Int64".to_string(),
+            Type::Float => "Float".to_string(),
+            Type::Double => "Double".to_string(),
+            Type::String => "String".to_string(),
+            Type::Bool => "Bool".to_string(),
+            Type::Any => "Any".to_string(),
+            Type::Unit => "Unit".to_string(),
         }
     }
 }

@@ -36,7 +36,7 @@ impl JITExecutor {
         args: &mut [LLVMGenericValueRef],
     ) -> LLVMGenericValueRef {
         let f0 = self.function_map.get(name.as_ref());
-        let f = if let Some(function) = f0{
+        let f = if let Some(function) = f0 {
             function.get_function_ref()
         } else {
             let name = CString::new(name.as_ref()).unwrap();

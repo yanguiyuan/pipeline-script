@@ -219,7 +219,11 @@ pub struct StructExpr {
 
 impl StructExpr {
     pub fn new(name: String, props: HashMap<String, ExprNode>) -> Self {
-        Self { name, props,generics: vec![] }
+        Self {
+            name,
+            props,
+            generics: vec![],
+        }
     }
     pub fn get_name(&self) -> &str {
         &self.name

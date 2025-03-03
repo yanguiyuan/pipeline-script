@@ -101,7 +101,7 @@ impl NodeTrait for StmtNode {
             Stmt::Return(_) => "Return",
             Stmt::If(_) => "If",
             Stmt::While(_, _) => "While",
-            Stmt::ForIn( _, _, _) => "ForIn",
+            Stmt::ForIn(_, _, _) => "ForIn",
             Stmt::IndexAssign(_, _, _) => "IndexAssign",
             Stmt::Break => "Break",
             Stmt::Continue => "Continue",
@@ -152,7 +152,7 @@ impl NodeTrait for StmtNode {
                 }
             }
             Stmt::EvalExpr(e) => e.get_mut_children(),
-            Stmt::ForIn(_,target,block) => {
+            Stmt::ForIn(_, target, block) => {
                 let mut children = vec![];
                 children.push(&mut **target as &mut dyn NodeTrait);
                 for stmt in block.iter_mut() {
@@ -160,11 +160,10 @@ impl NodeTrait for StmtNode {
                 }
                 children
             }
-            Stmt::Assign(target,value)=>{
-                vec![&mut **target,&mut **value]
-            },
+            Stmt::Assign(target, value) => {
+                vec![&mut **target, &mut **value]
+            }
             t => {
-
                 dbg!(t);
                 todo!()
             }

@@ -2,7 +2,14 @@ use crate::llvm::function::Function;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
-use llvm_sys::core::{ LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2, LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMConstArray2, LLVMConstIntToPtr, LLVMDisposeBuilder, LLVMInt8Type, LLVMPointerType, LLVMPositionBuilderAtEnd};
+use llvm_sys::core::{
+    LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2,
+    LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
+    LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2, LLVMBuildInsertValue,
+    LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore,
+    LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildZExt, LLVMConstArray2, LLVMConstIntToPtr,
+    LLVMDisposeBuilder, LLVMInt8Type, LLVMPointerType, LLVMPositionBuilderAtEnd,
+};
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
 use std::cell::RefCell;
@@ -74,18 +81,27 @@ impl Builder {
 
     pub fn build_array(&self, el_ty: LLVMType, arr: Vec<LLVMValue>) -> LLVMValue {
         let name = CString::new("").unwrap();
-        let array_address = unsafe { LLVMBuildArrayAlloca(self.inner, el_ty.as_llvm_type_ref(), Global::const_i64(arr.len() as i64).as_llvm_value_ref(),name.as_ptr()) };
+        let array_address = unsafe {
+            LLVMBuildArrayAlloca(
+                self.inner,
+                el_ty.as_llvm_type_ref(),
+                Global::const_i64(arr.len() as i64).as_llvm_value_ref(),
+                name.as_ptr(),
+            )
+        };
         let mut constant_vals = arr
             .iter()
             .map(|v| v.as_llvm_value_ref())
             .collect::<Vec<_>>();
-        let constant_array = unsafe { LLVMConstArray2(el_ty.as_llvm_type_ref(),constant_vals.as_mut_ptr(),arr.len() as u64) };
+        let constant_array = unsafe {
+            LLVMConstArray2(
+                el_ty.as_llvm_type_ref(),
+                constant_vals.as_mut_ptr(),
+                arr.len() as u64,
+            )
+        };
         unsafe {
-            LLVMBuildStore(
-                self.inner,
-                constant_array,
-                array_address,
-            );
+            LLVMBuildStore(self.inner, constant_array, array_address);
         }
         array_address.into()
     }
@@ -114,10 +130,9 @@ impl Builder {
         }
         .into()
     }
-    pub fn build_i64_to_ptr(&self,val: LLVMValue)->LLVMValue{
-        let target = unsafe { LLVMPointerType(LLVMInt8Type(),0) };
+    pub fn build_i64_to_ptr(&self, val: LLVMValue) -> LLVMValue {
+        let target = unsafe { LLVMPointerType(LLVMInt8Type(), 0) };
         unsafe { LLVMConstIntToPtr(val.as_llvm_value_ref(), target) }.into()
-
     }
     pub fn build_struct_gep(&self, ty: LLVMType, val: LLVMValue, idx: usize) -> LLVMValue {
         let name = CString::new("").unwrap();
@@ -169,7 +184,7 @@ impl Builder {
         ty: LLVMType,
         ptr: LLVMValue,
         index: LLVMValue,
-    )-> LLVMValue {
+    ) -> LLVMValue {
         // 获取ptr所指数组的类型
         let name = CString::new("").unwrap();
         let mut indices = [index.as_llvm_value_ref()];

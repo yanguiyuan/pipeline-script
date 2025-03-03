@@ -538,7 +538,7 @@ impl Parser {
             }
             Token::Identifier(id) => {
                 let mut generics = vec![];
-                loop{
+                loop {
                     let (peek, _) = self.token_stream.peek();
                     match peek {
                         Token::ScopeSymbol => {
@@ -551,7 +551,7 @@ impl Parser {
                                 is_method: false,
                                 generics: list,
                             }))
-                                .with_position(pos))
+                            .with_position(pos));
                         }
                         Token::BraceLeft => {
                             let (args, p0) = self.parse_fn_args(ctx).unwrap();
@@ -562,9 +562,9 @@ impl Parser {
                                 is_method: false,
                                 generics,
                             }))
-                                .with_position(pos))
+                            .with_position(pos));
                         }
-                        Token::Less=>{
+                        Token::Less => {
                             generics = self.parse_generic_list().unwrap();
                         }
                         Token::ParenLeft => {
@@ -597,13 +597,14 @@ impl Parser {
                             }
 
                             pos += p0;
-                            return Ok(ExprNode::from(Expr::Struct(StructExpr::new(id, fields).with_generics(generics)))
-                                .with_position(pos))
+                            return Ok(ExprNode::from(Expr::Struct(
+                                StructExpr::new(id, fields).with_generics(generics),
+                            ))
+                            .with_position(pos));
                         }
                         _ => return Ok(ExprNode::from(Expr::Variable(id)).with_position(pos)),
                     }
                 }
-
             }
             Token::Int(n) => Ok(ExprNode::from(Expr::Int(n)).with_position(pos)),
             Token::String(s) => Ok(ExprNode::from(Expr::String(s)).with_position(pos)),
