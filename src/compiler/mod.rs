@@ -330,35 +330,28 @@ impl Compiler {
             }
             Expr::Index(target, index) => {
                 let v = self.compile_expr(&target, ctx);
-                dbg!(&v);
-                // let ty = v.get_type();
-                // let element_type =ty.get_element_type().unwrap();
-                // let val = if element_type.is_pointer(){
-                //      builder.build_load(element_type.as_llvm_type(),v.get_value())
-                // }else{
-                //     v.get_value()
-                // };
                 let index = self.compile_expr(&index, ctx);
-                Value::new(
-                    builder.build_array_gep(ty0.as_llvm_type(), v.get_value(), index.get_value()),
-                    ty0,
-                )
+                let array_ptr = builder.build_array_gep(
+                    ty0.as_llvm_type(), 
+                    v.get_value(), 
+                    index.get_value()
+                );
+                Value::new(array_ptr, ty0)
             }
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr_with_ptr(&target, ctx);
-                dbg!(&v);
                 let ty = v.get_type();
-                dbg!(&ty);
-                let (idx, ty) = ty
+                let (idx, field_ty) = ty
                     .get_struct_field(&field_name)
-                    .expect(format!("未定义的字段{field_name}").as_str());
+                    .unwrap_or_else(|| panic!("未定义的字段: {}", field_name));
+                let target_ty = target.get_type().unwrap().as_llvm_type();
                 let mut val = builder.build_struct_gep(
-                    target.get_type().unwrap().as_llvm_type(),
+                    target_ty,
                     v.get_value(),
                     idx,
                 );
-                if ty.is_pointer() {
-                    val = builder.build_load(ty.as_llvm_type(), val);
+                if field_ty.is_pointer() {
+                    val = builder.build_load(field_ty.as_llvm_type(), val);
                 }
                 Value::new(val, ty0)
             }

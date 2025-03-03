@@ -13,7 +13,7 @@ use crate::postprocessor::id::id;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-
+use crate::parser::function::Function;
 mod helper;
 pub struct TypePostprocessor {
     module: Module,
@@ -44,101 +44,147 @@ impl TypePostprocessor {
         self.module.clone()
     }
     fn process_module(&mut self, module: &Module, ctx: &Context) {
-        let mut symbols = HashMap::new();
+        let ctx = self.create_module_context(ctx);
+        self.process_module_symbols(module, &ctx);
+        self.process_module_structs(module, &ctx);
+        self.process_module_functions(module, &ctx);
+        self.process_global_block(module, &ctx);
+    }
+
+    fn create_module_context(&self, ctx: &Context) -> Context {
+        let symbols = HashMap::new();
         let ctx = Context::with_value(
             ctx,
             ContextKey::SymbolType,
-            ContextValue::SymbolType(Arc::new(RwLock::new(symbols.clone()))),
+            ContextValue::SymbolType(Arc::new(RwLock::new(symbols))),
         );
         let alias = HashMap::new();
-        let ctx = Context::with_value(
+        Context::with_value(
             &ctx,
             ContextKey::AliasType,
             ContextValue::AliasType(Arc::new(RwLock::new(alias))),
-        );
+        )
+    }
+
+    fn process_module_symbols(&self, module: &Module, ctx: &Context) {
+        // 处理子模块
         for module_name in module.get_submodules().keys() {
-            ctx.set_symbol_type(module_name.into(), Type::Module)
+            ctx.set_symbol_type(module_name.into(), Type::Module);
         }
+
+        // 处理结构体类型别名
         for (name, st) in module.get_structs() {
-            ctx.set_alias_type(name.clone(), st.get_type())
+            ctx.set_alias_type(name.clone(), st.get_type());
         }
+    }
+
+    fn process_module_structs(&mut self, module: &Module, ctx: &Context) {
         for (name, st) in module.get_structs() {
-            let st = self.process_struct(st, &ctx);
+            let st = self.process_struct(st, ctx);
             self.module.register_struct(name, st.clone());
         }
+    }
+
+    fn process_module_functions(&mut self, module: &Module, ctx: &Context) {
         let mut functions = module.get_functions();
-        for (_, f) in &mut functions.iter_mut() {
+        self.process_function_bindings(&mut functions, ctx);
+        self.process_function_types(&functions, ctx);
+        self.register_processed_functions(&functions, ctx);
+    }
+
+    fn process_function_bindings(&self, functions: &mut HashMap<String, Function>, ctx: &Context) {
+        for f in functions.values_mut() {
             if f.has_binding() {
                 f.insert_arg(
                     0,
                     VariableDeclaration::new("this")
                         .with_type(ctx.get_alias_type(f.get_binding()).unwrap()),
-                )
+                );
             }
         }
+    }
+
+    fn process_function_types(&self, functions: &HashMap<String, Function>, ctx: &Context) {
         for (name, f) in functions.iter() {
             let mut ty = f.get_type();
-            let return_type = ty.get_function_return_type().unwrap();
-            if return_type.is_alias() {
-                let alias = return_type.get_alias_name().unwrap();
-                let new_return_ty = ctx
-                    .get_alias_type(&alias)
-                    .expect(format!("alias {alias} not found").as_str());
-                ty = ty.with_return_type(new_return_ty)
+            if let Some(return_type) = ty.get_function_return_type() {
+                if return_type.is_alias() {
+                    if let Some(alias) = return_type.get_alias_name() {
+                        if let Some(new_return_ty) = ctx.get_alias_type(&alias) {
+                            ty = ty.with_return_type(new_return_ty);
+                        }
+                    }
+                }
             }
-            ctx.set_symbol_type(name.clone(), ty)
+            ctx.set_symbol_type(name.clone(), ty);
         }
+    }
+
+    fn register_processed_functions(&mut self, functions: &HashMap<String, Function>, ctx: &Context) {
         for (name, f) in functions.iter() {
             if f.is_template && name != "sizeof" {
                 continue;
             }
-            let mut new_f;
-            if f.is_extern {
-                new_f = f.clone();
+
+            let new_f = if f.is_extern {
+                f.clone()
             } else {
-                let mut symbol_types = HashMap::new();
-                let mut locals = vec![];
-                for i in f.args() {
-                    let ty = i.r#type().unwrap();
-                    symbol_types.insert(i.name(), ty);
-                    locals.push(i.name());
-                }
-                let ctx = Context::with_value(
-                    &ctx,
-                    ContextKey::SymbolType,
-                    ContextValue::SymbolType(Arc::new(RwLock::new(symbol_types))),
-                );
-                let ctx = Context::with_local(&ctx, locals);
-                let mut v = vec![];
-                for i in f.body() {
-                    let stmt = self.process_stmt(i, &ctx);
-                    v.push(stmt)
-                }
-                new_f = f.clone();
-                new_f.set_body(v);
+                self.process_non_extern_function(f, ctx)
+            };
+
+            if let Some(ret) = ctx.get_symbol_type(name)
+                .and_then(|ty| ty.get_function_return_type()) {
+                let mut new_f = new_f;
+                new_f.set_return_type(ret);
+                self.module.register_function(name, new_f);
             }
-            let ret = ctx
-                .get_symbol_type(name)
-                .unwrap()
-                .get_function_return_type()
-                .unwrap();
-            new_f.set_return_type(ret);
-            self.module.register_function(name, new_f);
-            symbols.insert(name.clone(), f.get_type());
         }
-        let ctx = Context::with_local(&ctx, vec![]);
-        for stmt in module.get_global_block().iter() {
+    }
+
+    fn process_non_extern_function(&mut self, f: &Function, ctx: &Context) -> Function {
+        let mut symbol_types = HashMap::new();
+        let mut locals = vec![];
+
+        for arg in f.args() {
+            if let Some(ty) = arg.r#type() {
+                symbol_types.insert(arg.name(), ty);
+                locals.push(arg.name());
+            }
+        }
+
+        let ctx = Context::with_value(
+            ctx,
+            ContextKey::SymbolType,
+            ContextValue::SymbolType(Arc::new(RwLock::new(symbol_types))),
+        );
+        let ctx = Context::with_local(&ctx, locals);
+
+        let mut new_f = f.clone();
+        let processed_body: Vec<_> = f.body()
+            .iter()
+            .map(|stmt| self.process_stmt(stmt, &ctx))
+            .collect();
+        new_f.set_body(processed_body);
+        new_f
+    }
+
+    fn process_global_block(&mut self, module: &Module, ctx: &Context) {
+        let ctx = Context::with_local(ctx, vec![]);
+        for stmt in module.get_global_block() {
             let stmt = self.process_stmt(stmt, &ctx);
             self.module.add_stmt(stmt);
         }
     }
 
     fn process_struct(&self, s: &Struct, ctx: &Context) -> Struct {
-        let mut fields = vec![];
-        for i in s.get_fields() {
-            let ty = Self::process_type(&i.field_type, ctx);
-            fields.push(StructField::new(i.name.clone(), ty));
-        }
+        let fields = s.get_fields()
+            .iter()
+            .map(|i| {
+                let ty = Self::process_type(&i.field_type, ctx);
+                StructField::new(i.name.clone(), ty)
+            })
+            .collect();
+        
         Struct::new(s.name.clone(), fields, s.generics.clone())
     }
     fn process_type(ty: &Type, ctx: &Context) -> Type {
@@ -333,11 +379,9 @@ impl TypePostprocessor {
                 };
 
                 // 获取最终类型
-                let final_type = if need_register {
-                    let concrete_struct = self.module.get_struct(&new_name).unwrap();
-                    Self::process_type(&concrete_struct.get_type(), ctx)
-                } else {
-                    let struct_val = self.module.get_struct(&struct_name).unwrap();
+                let final_type = {
+                    let struct_name_to_lookup = if need_register { &new_name } else { &struct_name };
+                    let struct_val = self.module.get_struct(struct_name_to_lookup).unwrap();
                     Self::process_type(&struct_val.get_type(), ctx)
                 };
 
@@ -345,22 +389,23 @@ impl TypePostprocessor {
             }
             Expr::Array(v0) => {
                 let mut v = vec![];
-                let context_value = ctx.get(ContextKey::Type("default".into()));
-                if let Some(ContextValue::Type(ty)) = context_value {
-                    let element_type = ty.get_element_type().unwrap();
-                    let ctx = Context::with_type(ctx, "default".into(), element_type.clone());
-                    for i in v0.iter() {
-                        let i = self.process_expr(i, &ctx);
-                        v.push(i)
-                    }
-                    return ExprNode::new(Expr::Array(v))
-                        .with_type(Type::Array(Box::new(element_type.clone())));
-                }
+                
+                // 获取元素类型（从上下文或默认为Int64）
+                let element_type = match ctx.get(ContextKey::Type("default".into())) {
+                    Some(ContextValue::Type(ty)) => ty.get_element_type().unwrap().clone(),
+                    _ => Type::Int64
+                };
+                
+                // 使用带有正确元素类型的上下文处理数组元素
+                let ctx = Context::with_type(ctx, "default".into(), element_type.clone());
+                
+                // 处理所有数组元素
                 for i in v0.iter() {
                     let i = self.process_expr(i, &ctx);
-                    v.push(i)
+                    v.push(i);
                 }
-                ExprNode::new(Expr::Array(v)).with_type(Type::Array(Box::new(Type::Int64)))
+                
+                ExprNode::new(Expr::Array(v)).with_type(Type::Array(Box::new(element_type)))
             }
             Expr::Index(target, index) => {
                 let target = self.process_expr(&target, ctx);
