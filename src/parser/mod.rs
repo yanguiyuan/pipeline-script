@@ -173,28 +173,38 @@ impl Parser {
         Ok(())
     }
     fn parse_param_list(&mut self) -> Result<Vec<VariableDeclaration>> {
-        let mut v = vec![];
+        let mut params = vec![];
+        
         loop {
             let (token, pos) = self.token_stream.peek();
+            
             match token {
-                Token::Identifier(id) => {
-                    let _ = self.parse_identifier()?;
-                    let _ = self.parse_special_token(Token::Colon)?;
+                Token::Identifier(_) => {
+                    // 解析参数名
+                    let (id, _) = self.parse_identifier()?;
+                    
+                    // 解析类型
+                    self.parse_special_token(Token::Colon)?;
                     let ty = self.parse_type()?;
-                    v.push(VariableDeclaration::new(id).with_type(ty));
-                    continue;
+                    
+                    // 添加参数
+                    params.push(VariableDeclaration::new(id).with_type(ty));
                 }
                 Token::Comma => {
                     self.parse_special_token(Token::Comma)?;
-                    continue;
                 }
                 Token::BraceRight | Token::Vertical => {
                     break;
                 }
-                t => panic!("unexpected token {:?} at {:?}", t, pos),
+                t => return Err(Error::UnexpectedToken(
+                    t.to_string(),
+                    "Identifier, comma, or closing brace".into(),
+                    pos,
+                )),
             }
         }
-        Ok(v)
+        
+        Ok(params)
     }
     fn parse_continue_stmt(&mut self) -> Result<StmtNode> {
         todo!()
@@ -461,66 +471,79 @@ impl Parser {
         Ok(expr)
     }
     fn parse_fn_args(&mut self, ctx: &Context) -> Result<(Vec<Argument>, Position)> {
-        let mut p0 = self.parse_special_token(Token::BraceLeft)?;
+        // 解析左括号
+        let mut total_pos = self.parse_special_token(Token::BraceLeft)?;
         let mut args = vec![];
+        
         loop {
-            let (peek, p1) = self.token_stream.peek();
-            p0 += p1;
+            let (peek, peek_pos) = self.token_stream.peek();
+            total_pos += peek_pos;
+            
             match peek {
+                // 如果是右括号，结束解析
                 Token::BraceRight => {
-                    let p2 = self.parse_special_token(Token::BraceRight)?;
-                    p0 += p2;
-                    // 解析外置闭包
-                    let peek0 = self.token_stream.peek().0;
-                    if peek0 == Token::ParenLeft {
-                        let body = self.parse_block(ctx).unwrap();
+                    let right_pos = self.parse_special_token(Token::BraceRight)?;
+                    total_pos += right_pos;
+                    
+                    // 检查是否有外置闭包
+                    if self.token_stream.peek().0 == Token::ParenLeft {
+                        let body = self.parse_block(ctx)?;
                         let expr = Expr::Closure(vec![], body, vec![]);
                         args.push(Argument::new(ExprNode::from(expr)));
                     }
+                    
                     break;
                 }
+                // 如果是逗号，继续解析
                 Token::Comma => {
-                    let p2 = self.parse_special_token(Token::Comma)?;
-                    p0 += p2;
-                    continue;
+                    let comma_pos = self.parse_special_token(Token::Comma)?;
+                    total_pos += comma_pos;
                 }
+                // 否则，解析参数表达式
                 _ => {
                     let expr = self.parse_expr(ctx)?;
                     args.push(Argument::new(expr));
                 }
             }
         }
-        Ok((args, p0))
+        
+        Ok((args, total_pos))
     }
     fn parse_generic_list(&mut self) -> Result<Vec<Type>> {
         let mut list = vec![];
-        let _ = self.parse_special_token(Token::Less)?;
+        
+        // 解析开始符号
+        self.parse_special_token(Token::Less)?;
+        
+        // 解析第一个类型
         let ty = self.parse_type()?;
         list.push(ty);
-        let mut flag = 0b001 | 0b010; //期望下一个是竖线或者>
+        
+        // 解析剩余的类型
         loop {
             let (peek, _) = self.token_stream.peek();
+            
             match peek {
-                // 0b001
-                Token::Vertical if flag & 0b001 == 0b001 => {
-                    let _ = self.parse_special_token(Token::Vertical)?;
-                    flag = 0b100;
-                    continue;
-                }
-                // 0b010
-                Token::Greater if flag & 0b010 == 0b010 => {
-                    let _ = self.parse_special_token(Token::Greater)?;
-                    break;
-                }
-                // 0b100
-                _ if flag & 0b100 == 0b100 => {
+                // 如果是 '|'，则继续解析下一个类型
+                Token::Vertical => {
+                    self.parse_special_token(Token::Vertical)?;
                     let ty = self.parse_type()?;
                     list.push(ty);
-                    flag = 0b010 | 0b001
                 }
-                t => panic!("unexpected token {:?}", t),
+                // 如果是 '>'，则结束解析
+                Token::Greater => {
+                    self.parse_special_token(Token::Greater)?;
+                    break;
+                }
+                // 其他情况，报错
+                t => return Err(Error::UnexpectedToken(
+                    t.to_string(),
+                    "| or >".into(),
+                    Position::none(),
+                )),
             }
         }
+        
         Ok(list)
     }
     pub fn parse_primary_expr(&mut self, ctx: &Context) -> Result<ExprNode> {
@@ -765,51 +788,72 @@ impl Parser {
             _ => Ok(expr0),
         }
     }
-    pub fn parse_keyword(&mut self, keyword: &str) -> Result<Position> {
+    fn parse_token<T, F>(&mut self, expected: &str, validator: F) -> Result<(T, Position)>
+    where
+        F: FnOnce(&Token) -> Option<T>,
+    {
         let (token, pos) = self.token_stream.next_token();
-        match token {
-            Token::Keyword(k) => {
-                if k == keyword {
-                    return Ok(pos);
-                }
-                Err(Error::UnexpectedToken(
-                    format!("Keyword({k})"),
-                    format!("Keyword({keyword})"),
-                    pos,
-                ))
-            }
-            _ => Err(Error::UnexpectedToken(
+        
+        match validator(&token) {
+            Some(value) => Ok((value, pos)),
+            None => Err(Error::UnexpectedToken(
                 token.to_string(),
-                "Keyword(?)".into(),
+                expected.into(),
                 pos,
             )),
         }
     }
+    
     pub fn parse_identifier(&mut self) -> Result<(String, Position)> {
-        let (token, pos) = self.token_stream.next_token();
-        match token {
-            Token::Identifier(id) => Ok((id, pos)),
-            _ => Err(Error::UnexpectedToken(
-                token.to_string(),
-                "Identifier(?)".into(),
-                pos,
-            )),
-        }
+        self.parse_token("Identifier", |token| {
+            if let Token::Identifier(id) = token {
+                Some(id.clone())
+            } else {
+                None
+            }
+        })
     }
+    
+    pub fn parse_keyword(&mut self, keyword: &str) -> Result<Position> {
+        let expected = format!("Keyword({})", keyword);
+        let (_, pos) = self.parse_token(&expected, |token| {
+            if let Token::Keyword(k) = token {
+                if k == keyword {
+                    Some(())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })?;
+        Ok(pos)
+    }
+    
     pub fn parse_special_token(&mut self, token: Token) -> Result<Position> {
-        let (t, pos) = self.token_stream.next_token();
-        if t == token {
-            Ok(pos)
-        } else {
-            Err(Error::UnexpectedToken(
-                t.to_string(),
-                token.to_string(),
-                pos,
-            ))
-        }
+        let expected = token.to_string();
+        let (_, pos) = self.parse_token(&expected, |t| {
+            if t == &token {
+                Some(())
+            } else {
+                None
+            }
+        })?;
+        Ok(pos)
     }
+    fn parse_generic_type<F>(&mut self, constructor: F) -> Result<Type>
+    where
+        F: FnOnce(Box<Type>) -> Type,
+    {
+        self.parse_special_token(Token::Less)?;
+        let el_ty = self.parse_type()?;
+        self.parse_special_token(Token::Greater)?;
+        Ok(constructor(Box::new(el_ty)))
+    }
+    
     pub fn parse_simple_type(&mut self) -> Result<Type> {
         let (token, p0) = self.token_stream.next_token();
+        
         match &token {
             Token::Dot => {
                 let _ = self.parse_special_token(Token::Dot)?;
@@ -831,20 +875,13 @@ impl Parser {
                     if self.token_stream.peek().0 != Token::Less {
                         return Ok(Type::Pointer(Box::new(Type::Any)));
                     }
-                    self.parse_special_token(Token::Less)?;
-                    let el_ty = self.parse_type()?;
-                    self.parse_special_token(Token::Greater)?;
-                    Ok(Type::Pointer(Box::new(el_ty)))
+                    self.parse_generic_type(Type::Pointer)
                 }
-                "Array" => {
-                    self.parse_special_token(Token::Less)?;
-                    let el_ty = self.parse_type()?;
-                    self.parse_special_token(Token::Greater)?;
-                    Ok(Type::Array(Box::new(el_ty)))
-                }
+                "Array" => self.parse_generic_type(Type::Array),
                 "Fn" => {
                     self.parse_special_token(Token::BraceLeft)?;
                     let mut param_type = vec![];
+                    
                     loop {
                         let peek = self.token_stream.peek().0;
                         match peek {
@@ -855,7 +892,6 @@ impl Parser {
                             Token::Comma => {
                                 self.parse_special_token(Token::Comma)?;
                             }
-
                             Token::Identifier(_) => {
                                 let ty = self.parse_type()?;
                                 param_type.push(ty);
@@ -863,12 +899,13 @@ impl Parser {
                             t => {
                                 return Err(Error::UnexpectedToken(
                                     t.to_string(),
-                                    "Identifier(?)".into(),
+                                    "Identifier or special token".into(),
                                     p0,
                                 ))
                             }
                         }
                     }
+                    
                     Ok(Type::Function(Box::new(Type::Unit), param_type))
                 }
                 name => Ok(Type::Alias(name.into())),
@@ -881,27 +918,33 @@ impl Parser {
             }
             _ => Err(Error::UnexpectedToken(
                 token.to_string(),
-                "Identifier(?)".into(),
+                "Identifier or special token".into(),
                 p0,
             )),
         }
     }
     pub fn parse_type(&mut self) -> Result<Type> {
         let ty = self.parse_simple_type()?;
-        let mut list = vec![];
-        if self.try_parse_token(Token::Less) {
-            let t0 = self.parse_type()?;
-            list.push(t0);
-            let _ = self.parse_special_token(Token::Greater);
-        }
-        if list.is_empty() {
+        
+        // 检查是否有泛型参数
+        if !self.try_parse_token(Token::Less) {
             return Ok(ty);
         }
+        
+        // 解析泛型参数列表
+        let mut list = vec![];
+        let t0 = self.parse_type()?;
+        list.push(t0);
+        
+        // 解析结束符
+        self.parse_special_token(Token::Greater)?;
+        
         Ok(Type::Generic(Box::new(ty), list))
     }
 
     pub fn parse_type_name(&mut self) -> Result<(String, Position)> {
         let (token, p0) = self.token_stream.next_token();
+        
         match &token {
             Token::BracketLeft => {
                 let p1 = self.parse_special_token(Token::BracketRight)?;
@@ -916,7 +959,7 @@ impl Parser {
             Token::Identifier(id) => Ok((id.to_string(), p0)),
             _ => Err(Error::UnexpectedToken(
                 token.to_string(),
-                "Identifier(?)".into(),
+                "Identifier or special token".into(),
                 p0,
             )),
         }

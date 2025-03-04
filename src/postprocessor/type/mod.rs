@@ -243,10 +243,9 @@ impl TypePostprocessor {
 
                 // 创建新的函数调用对象
                 let mut new_fc = fc.clone();
-                // let mut args = vec![];
 
                 // 获取函数类型信息
-                let (mut fc_type, fc_return_type) = self.resolve_function_type(&fc_name, ctx);
+                let (mut fc_type, mut fc_return_type) = self.resolve_function_type(&fc_name, ctx);
 
                 // 处理泛型参数
                 let new_generics = self.process_generics(&fc.generics, ctx);
@@ -256,15 +255,16 @@ impl TypePostprocessor {
                     self.handle_closure_function(&fc_name, &fc_type, ctx);
                     fc_type = fc_type
                         .get_closure_fn_gen_type()
-                        .expect("Failed to get closure function type");
+                        .unwrap_or_else(|| {
+                            eprintln!("无法获取闭包函数 '{}' 的类型", fc_name);
+                            panic!("闭包函数类型获取失败");
+                        });
                 }
 
                 // 处理模板函数实例化
-                let fc_return_type = if !fc.generics.is_empty() && &fc.name != "sizeof" {
-                    self.instantiate_template_function(&fc, &fc_name, ctx)
-                } else {
-                    fc_return_type
-                };
+                if !fc.generics.is_empty() && &fc.name != "sizeof" {
+                    fc_return_type = self.instantiate_template_function(&fc, &fc_name, ctx);
+                }
 
                 // 处理函数参数
                 let args = self.process_function_arguments(&fc_args, &fc_type, ctx);
@@ -279,13 +279,43 @@ impl TypePostprocessor {
             Expr::Binary(op, l, r) => {
                 let l = self.process_expr(&l, ctx);
                 let r = self.process_expr(&r, ctx);
-                let ty = l.get_type().unwrap();
-                if ty == r.get_type().unwrap() {
-                    ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(ty)
-                } else {
-                    dbg!(&l, &r);
-                    panic!("type mismatch")
+                
+                // 获取左右操作数的类型
+                let l_type = l.get_type().unwrap();
+                let r_type = r.get_type().unwrap();
+                
+                // 如果类型相同，直接返回
+                if l_type == r_type {
+                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(l_type);
                 }
+                
+                // 处理数值类型之间的转换
+                if l_type.is_integer() && r_type.is_integer() {
+                    // 整数类型间的转换 - 选择更大的类型
+                    let result_type = self.get_wider_integer_type(&l_type, &r_type);
+                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(result_type);
+                } else if (l_type.is_integer() && (r_type == Type::Float || r_type == Type::Double)) ||
+                          ((l_type == Type::Float || l_type == Type::Double) && r_type.is_integer()) {
+                    // 整数和浮点数之间的转换 - 选择浮点类型
+                    let result_type = if l_type == Type::Double || r_type == Type::Double {
+                        Type::Double
+                    } else {
+                        Type::Float
+                    };
+                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(result_type);
+                } else if l_type == Type::Float && r_type == Type::Double {
+                    // Float 和 Double 之间的转换 - 选择 Double
+                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(Type::Double);
+                } else if l_type == Type::Double && r_type == Type::Float {
+                    // Double 和 Float 之间的转换 - 选择 Double
+                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(Type::Double);
+                }
+                
+                // 对于不支持的类型组合，输出更详细的错误信息
+                eprintln!("类型不匹配: 左操作数类型 {:?}, 右操作数类型 {:?}, 操作符 {:?}", 
+                          l_type, r_type, op);
+                panic!("二元操作符类型不匹配: 无法对 {:?} 和 {:?} 执行 {:?} 操作", 
+                       l_type, r_type, op);
             }
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => {
@@ -388,6 +418,19 @@ impl TypePostprocessor {
                 ExprNode::new(Expr::Struct(StructExpr::new(new_name, fields))).with_type(final_type)
             }
             Expr::Array(v0) => {
+                // 如果数组为空，直接使用上下文中的类型或默认为Int64
+                if v0.is_empty() {
+                    let element_type = match ctx.get(ContextKey::Type("default".into())) {
+                        Some(ContextValue::Type(ty)) => match ty.get_element_type() {
+                            Some(element_ty) => element_ty.clone(),
+                            None => Type::Int64
+                        },
+                        _ => Type::Int64
+                    };
+                    
+                    return ExprNode::new(Expr::Array(vec![])).with_type(Type::Array(Box::new(element_type)));
+                }
+                
                 let mut v = vec![];
                 
                 // 获取元素类型（从上下文或默认为Int64）
@@ -534,6 +577,23 @@ impl TypePostprocessor {
                 )
             }
             _ => stmt.clone(),
+        }
+    }
+    // 获取两个整数类型中更宽的类型
+    fn get_wider_integer_type(&self, t1: &Type, t2: &Type) -> Type {
+        if !t1.is_integer() || !t2.is_integer() {
+            panic!("get_wider_integer_type 只能用于整数类型");
+        }
+        
+        // 按照位宽排序: Int64 > Int32 > Int16 > Int8
+        if *t1 == Type::Int64 || *t2 == Type::Int64 {
+            Type::Int64
+        } else if *t1 == Type::Int32 || *t2 == Type::Int32 {
+            Type::Int32
+        } else if *t1 == Type::Int16 || *t2 == Type::Int16 {
+            Type::Int16
+        } else {
+            Type::Int8
         }
     }
 }
