@@ -1,7 +1,16 @@
-
+%Any.0 = type { i32, ptr }
 %"Vec<Int64>" = type { i64, ptr }
-declare void @println(%Any.0 %0)
+
+declare void @call(ptr %0)
+
 declare ptr @malloc(i64 %0)
+
+declare ptr @FormatAppend({ i64, ptr } %0)
+
+declare void @println(%Any.0 %0)
+
+declare void @cmd(ptr %0)
+
 define void @"$Module.main"() {
 entry:
   %a = alloca %"Vec<Int64>", align 8
@@ -11,8 +20,8 @@ entry:
   store { i64, ptr } %1, ptr %a, align 8
   %2 = getelementptr inbounds { i64, ptr }, ptr %a, i32 0, i32 1
   %3 = load ptr, ptr %2, align 8
-  %4 = alloca i64, i64 1, align 8
-  store [1 x i64] [i64 100], ptr %4, align 4
+  %4 = alloca i64, i64 2, align 8
+  store [2 x i64] [i64 100, i64 200], ptr %4, align 4
   store ptr %4, ptr %3, align 8
   %5 = load %"Vec<Int64>", ptr %a, align 8
   %6 = extractvalue %"Vec<Int64>" %5, 1
@@ -21,10 +30,8 @@ entry:
   %9 = alloca i64, align 8
   store i64 %8, ptr %9, align 4
   %any = alloca { i32, ptr }, align 8
-  store { i32, ptr } { i32 4, ptr %9 }, ptr %any, align 8
+  %10 = insertvalue { i32, ptr } { i32 4, ptr undef }, ptr %9, 1
+  store { i32, ptr } %10, ptr %any, align 8
   call void @println(ptr %any)
   ret void
 }
-
-
-

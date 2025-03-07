@@ -114,6 +114,7 @@ impl NodeTrait for StmtNode {
         match &self.stmt {
             Stmt::ValDecl(v) => v.get_data(key),
             Stmt::EvalExpr(e) => e.get_data(key),
+            Stmt::VarDecl(v) => v.get_data(key),
             _ => {
                 todo!()
             }
@@ -128,6 +129,11 @@ impl NodeTrait for StmtNode {
                 }
             }
             Stmt::EvalExpr(e) => e.set_data(key, value),
+            Stmt::VarDecl(v) => {
+                if key == "name" {
+                    v.set_name(value.as_str().unwrap());
+                }
+            }
             _ => {
                 todo!()
             }
@@ -162,6 +168,17 @@ impl NodeTrait for StmtNode {
             }
             Stmt::Assign(target, value) => {
                 vec![&mut **target, &mut **value]
+            }
+            Stmt::VarDecl(v) => {
+                let mut children = vec![];
+                let default = v.get_mut_default();
+                match default {
+                    Some(default) => {
+                        children.push(default as &mut dyn NodeTrait);
+                        children
+                    }
+                    None => vec![],
+                }
             }
             t => {
                 dbg!(t);

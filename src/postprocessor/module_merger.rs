@@ -35,6 +35,7 @@ impl Visitor for ModuleMerger {
             "Module",
             "Function",
             "ValDecl",
+            "VarDecl",
             "Expr:Variable",
             "Expr:FnCall",
         ]
@@ -68,6 +69,13 @@ impl Visitor for ModuleMerger {
                     .replace(name.as_str().unwrap().to_string());
             }
             "ValDecl" => {
+                let name = node.get_data("name").unwrap();
+                let name = name.as_str().unwrap();
+                let module_name = self.module_name.borrow();
+                let module_name = module_name.as_ref().unwrap();
+                node.set_data("name", Data::String(format!("{}:{}", module_name, name)));
+            }
+            "VarDecl" => {
                 let name = node.get_data("name").unwrap();
                 let name = name.as_str().unwrap();
                 let module_name = self.module_name.borrow();

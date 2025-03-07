@@ -40,6 +40,7 @@ impl TypePostprocessor {
             module.merge_into_main(ctx, &name);
         }
         module.sort_global_block();
+        dbg!(&module);
         self.process_module(&module, ctx);
         self.module.clone()
     }

@@ -365,14 +365,14 @@ impl Compiler {
                     .get_struct_field(&field_name)
                     .unwrap_or_else(|| panic!("未定义的字段: {}", field_name));
                 let target_ty = target.get_type().unwrap().get_element_type().unwrap().as_llvm_type();
-                let mut val = builder.build_struct_gep(
+                let val = builder.build_struct_gep(
                     target_ty,
                     v.get_value(),
                     idx,
                 );
-                if field_ty.is_pointer() {
-                    val = builder.build_load(field_ty.as_llvm_type(), val);
-                }
+                // if field_ty.is_pointer() {
+                //     val = builder.build_load(field_ty.as_llvm_type(), val);
+                // }
                 dbg!(&ty0);
                 Value::new(val, ty0)
             }
@@ -450,9 +450,12 @@ impl Compiler {
                             builder.build_store(val, v.value);
                         }
                         let a = builder.build_alloca("any", &t.as_llvm_type());
+                        let any_struct = Global::undef(Global::struct_type(vec![Global::i32_type(), Global::pointer_type(Global::i8_type())]));
+                        let any_struct = builder.build_struct_insert(any_struct, 0, &Global::const_i32(v.get_type().id()));
+                        let any_struct = builder.build_struct_insert(any_struct, 1, &val);
                         builder.build_store(
                             a,
-                            Global::const_struct(vec![Global::const_i32(v.get_type().id()), val]),
+                            any_struct,
                         );
                         v = Value::new(a, t);
                     }
