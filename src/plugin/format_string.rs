@@ -1,4 +1,4 @@
-use crate::core::buidin::append;
+use crate::core::builtin::append;
 use crate::core::engine::Engine;
 use crate::plugin::Plugin;
 use crate::preprocessor::FormatStringPreprocessor;

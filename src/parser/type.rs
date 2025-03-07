@@ -168,6 +168,7 @@ impl Type {
                 }
                 None
             }
+            Type::Pointer(t) => t.get_struct_field(name),
             _ => None,
         }
     }

@@ -841,6 +841,7 @@ impl Parser {
         })?;
         Ok(pos)
     }
+
     fn parse_generic_type<F>(&mut self, constructor: F) -> Result<Type>
     where
         F: FnOnce(Box<Type>) -> Type,

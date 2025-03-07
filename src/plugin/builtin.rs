@@ -1,4 +1,4 @@
-use crate::core::buidin::{call, cmd, println};
+use crate::core::builtin::{call, cmd, println};
 use crate::core::engine::Engine;
 use crate::plugin::Plugin;
 use std::ffi::c_void;

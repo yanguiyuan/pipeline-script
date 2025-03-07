@@ -507,17 +507,19 @@ impl TypePostprocessor {
                 let actual_type = actual.get_type().unwrap();
                 match expect {
                     None => {
-                        ctx.set_symbol_type(decl.name.clone(), actual_type.clone());
+                        dbg!(&actual_type.clone());
+                        ctx.set_symbol_type(decl.name.clone(), Type::Pointer(Box::new(actual_type.clone())));
                         let mut new_decl = decl.clone();
                         new_decl.set_default(actual);
-                        new_decl.set_type(actual_type);
-                        StmtNode::new(Stmt::ValDecl(new_decl), stmt.position())
+                        new_decl.set_type(Type::Pointer(Box::new(actual_type.clone())));
+                        StmtNode::new(Stmt::VarDecl(new_decl), stmt.position())
                     }
                     Some(ty) => {
                         let mut new_decl = decl.clone();
-                        ctx.set_symbol_type(decl.name.clone(), ty);
+                        ctx.set_symbol_type(decl.name.clone(), Type::Pointer(Box::new(ty)));
                         new_decl.set_default(actual);
-                        StmtNode::new(Stmt::ValDecl(new_decl), stmt.position())
+                        dbg!(&new_decl);
+                        StmtNode::new(Stmt::VarDecl(new_decl), stmt.position())
                     }
                 }
             }

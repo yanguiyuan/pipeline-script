@@ -1,5 +1,5 @@
 pub mod app;
-pub(crate) mod buidin;
+pub mod builtin;
 pub mod engine;
 pub mod error;
 pub mod result;
