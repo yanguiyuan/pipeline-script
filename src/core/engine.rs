@@ -92,10 +92,10 @@ impl Engine {
         {
             run_visitor(module, &**i)
         }
-        // dbg!(&module);
         drop(module_slot_map);
         let mut type_preprocessor = TypePostprocessor::new();
         let mut module = type_preprocessor.process(module_key, &ctx);
+        dbg!(&module);
         for i in self
             .visitors
             .iter()
@@ -103,7 +103,6 @@ impl Engine {
         {
             run_visitor(&mut module, &**i)
         }
-        dbg!(&module);
         //编译
         let mut compiler = Compiler::new(module.clone());
         let llvm_module = compiler.compile();

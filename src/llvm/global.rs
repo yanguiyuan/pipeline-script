@@ -79,6 +79,7 @@ impl Global {
         let t = unsafe { LLVMStructType(t.as_mut_ptr(), element_type.len() as c_uint, 0) };
         LLVMType::Struct(element_type, t)
     }
+    #[allow(unused)]
     pub fn const_struct(element_type: Vec<LLVMValue>) -> LLVMValue {
         let mut t = element_type
             .iter()

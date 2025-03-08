@@ -164,7 +164,7 @@ impl Parser {
     }
     fn parse_extern_function_declaration(&mut self, ctx: &Context) -> Result<()> {
         self.parse_keyword("extern")?;
-        let fun = self.parse_function_declaration()?;
+        let fun = self.parse_function_declaration(ctx)?;
         let fun = fun.with_extern(true);
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
@@ -172,7 +172,7 @@ impl Parser {
         module.register_function(&fun.name(), fun);
         Ok(())
     }
-    fn parse_param_list(&mut self) -> Result<Vec<VariableDeclaration>> {
+    fn parse_param_list(&mut self, ctx: &Context) -> Result<Vec<VariableDeclaration>> {
         let mut params = vec![];
         
         loop {
@@ -187,8 +187,17 @@ impl Parser {
                     self.parse_special_token(Token::Colon)?;
                     let ty = self.parse_type()?;
                     
+                    // 检查是否有默认值
+                    let mut var_decl = VariableDeclaration::new(id).with_type(ty);
+                    
+                    if self.try_parse_token(Token::Assign) {
+                        // 解析默认值表达式
+                        let default_expr = self.parse_expr(ctx)?;
+                        var_decl = var_decl.with_default(default_expr);
+                    }
+                    
                     // 添加参数
-                    params.push(VariableDeclaration::new(id).with_type(ty));
+                    params.push(var_decl);
                 }
                 Token::Comma => {
                     self.parse_special_token(Token::Comma)?;
@@ -255,8 +264,8 @@ impl Parser {
     fn parse_enum(&mut self) {}
     fn parse_trait(&mut self) {}
     fn parse_function(&mut self, ctx: &Context) -> Result<()> {
-        let mut fun = self.parse_function_declaration().unwrap();
-        let block = self.parse_block(ctx).unwrap();
+        let mut fun = self.parse_function_declaration(ctx)?;
+        let block = self.parse_block(ctx)?;
         fun.set_body(block);
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
@@ -272,7 +281,7 @@ impl Parser {
         }
         false
     }
-    fn parse_function_declaration(&mut self) -> Result<Function> {
+    fn parse_function_declaration(&mut self, ctx: &Context) -> Result<Function> {
         let mut fun = Function::default();
         let fun_name = self.function_keyword.clone();
         let _ = self.parse_keyword(&fun_name)?;
@@ -314,7 +323,7 @@ impl Parser {
         }
         fun = fun.with_template(is_template);
         let _ = self.parse_special_token(Token::BraceLeft)?;
-        let param_list = self.parse_param_list()?;
+        let param_list = self.parse_param_list(ctx)?;
         let _ = self.parse_special_token(Token::BraceRight)?;
         if self.try_parse_token(Token::Arrow) {
             let ret_ty = self.parse_type().unwrap();
@@ -553,7 +562,7 @@ impl Parser {
                 let peek = self.token_stream.peek().0;
                 let mut l = vec![];
                 if peek != Token::Vertical {
-                    l = self.parse_param_list().unwrap();
+                    l = self.parse_param_list(ctx).unwrap();
                 }
                 let p1 = self.parse_special_token(Token::Vertical)?;
                 let block = self.parse_block(ctx).unwrap();

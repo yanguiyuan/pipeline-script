@@ -241,7 +241,6 @@ impl Compiler {
             }
             Stmt::VarDecl(val) => {
                 let t = val.r#type().unwrap();
-                dbg!(&t);
                 let alloc = builder.build_alloca(val.name(), &self.compile_type(t.get_element_type().unwrap()));
                 
                 if let Some(default_expr) = val.get_default() {
@@ -360,8 +359,7 @@ impl Compiler {
             Expr::Member(target, field_name) => {
                 let v = self.compile_expr_with_ptr(&target, ctx);
                 let ty = v.get_type();
-                dbg!(&ty);
-                let (idx, field_ty) = ty
+                let (idx, _) = ty
                     .get_struct_field(&field_name)
                     .unwrap_or_else(|| panic!("未定义的字段: {}", field_name));
                 let target_ty = target.get_type().unwrap().get_element_type().unwrap().as_llvm_type();
@@ -370,10 +368,6 @@ impl Compiler {
                     v.get_value(),
                     idx,
                 );
-                // if field_ty.is_pointer() {
-                //     val = builder.build_load(field_ty.as_llvm_type(), val);
-                // }
-                dbg!(&ty0);
                 Value::new(val, ty0)
             }
             Expr::Struct(_) => {
@@ -597,7 +591,6 @@ impl Compiler {
                 Value::new(v1, ty0)
             }
             Expr::Index(target, index) => {
-                dbg!(&target);
                 let v = self.compile_expr(&target, ctx);
                 let index = self.compile_expr(&index, ctx);
                 let v = builder.build_array_get_in_bounds(
@@ -636,23 +629,17 @@ impl Compiler {
                 Value::new(val, ty0)
             }
             Expr::Member(target, field_name) => {
-                dbg!(&target);
                 let v = self.compile_expr(&target, ctx);
                 let ty = v.get_type();
                 let mut val = v.get_value();
 
                 if ty.is_pointer() {
-                    dbg!(&ty);
                     let ty = ty.get_element_type().unwrap();
-                    dbg!(&ty);
                     let llvm_type = self.compile_type(ty);
-                    dbg!(&llvm_type);
                     val = builder.build_load(llvm_type, v.get_value());
-                    dbg!(&val);
                 }
 
                 let (idx, _) = ty.get_struct_field(field_name).unwrap();
-                dbg!(&val);
                 let v = builder.build_struct_get(val, idx);
                 Value::new(v, ty0)
             }

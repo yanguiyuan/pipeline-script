@@ -40,7 +40,6 @@ impl TypePostprocessor {
             module.merge_into_main(ctx, &name);
         }
         module.sort_global_block();
-        dbg!(&module);
         self.process_module(&module, ctx);
         self.module.clone()
     }
@@ -280,7 +279,6 @@ impl TypePostprocessor {
             Expr::Binary(op, l, r) => {
                 let l = self.process_expr(&l, ctx);
                 let r = self.process_expr(&r, ctx);
-                
                 // 获取左右操作数的类型
                 let l_type = l.get_type().unwrap();
                 let r_type = r.get_type().unwrap();
@@ -508,7 +506,6 @@ impl TypePostprocessor {
                 let actual_type = actual.get_type().unwrap();
                 match expect {
                     None => {
-                        dbg!(&actual_type.clone());
                         ctx.set_symbol_type(decl.name.clone(), Type::Pointer(Box::new(actual_type.clone())));
                         let mut new_decl = decl.clone();
                         new_decl.set_default(actual);
@@ -561,6 +558,17 @@ impl TypePostprocessor {
                 let expr = self.process_expr(&expr, ctx);
                 StmtNode::new(
                     Stmt::Assign(Box::new(target), Box::new(expr)),
+                    stmt.position(),
+                )
+            }
+            Stmt::While(expr, body) => {
+                let expr = self.process_expr(&expr, ctx);
+                let body = body
+                    .iter()
+                    .map(|x| self.process_stmt(x, ctx))
+                    .collect::<Vec<_>>();
+                StmtNode::new(
+                    Stmt::While(Box::new(expr), body),
                     stmt.position(),
                 )
             }
