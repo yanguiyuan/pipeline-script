@@ -1,8 +1,5 @@
 import core
-fn add(a:Int64 = 5, b:Int64 = 1)->Int64{
-    return a + b
-}
+let a = 11 // 原 var a =1
+const b = 2 // 原 val b = 2
 
-add(a = 5,b=6)
-add(5,b = 8)
-add(b=6)
+println(a+b)

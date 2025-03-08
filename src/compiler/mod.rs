@@ -720,7 +720,9 @@ impl Compiler {
                         if t.is_any() {
                             let mut val = v.get_value();
                             if !(v.ty.is_pointer() || v.ty.is_string()) {
+                                dbg!(&v.ty);
                                 let ty = v.ty.as_llvm_type();
+                                
                                 val = builder.build_alloca("", &ty);
                                 builder.build_store(val, v.value);
                             }
@@ -856,6 +858,11 @@ impl Compiler {
                     let f = self.llvm_module.get_function(name).unwrap().as_ref();
                     Value::new(LLVMValue::Pointer(f), ty0.clone())
                 });
+                if ty0.is_ref() {
+                    let element_type = ty0.get_element_type().unwrap();
+                    let v0 = builder.build_load(element_type.as_llvm_type(), ptr.value);
+                    return Value::new(v0, element_type.clone());
+                }
                 if ptr.get_type() == ty0 {
                     return ptr;
                 }
@@ -863,6 +870,7 @@ impl Compiler {
                     let v0 = builder.build_load(ptr.ty.as_llvm_type(), ptr.value);
                     return Value::new(v0, ty0);
                 }
+                
                 ptr
             }
             Expr::Array(v) => {

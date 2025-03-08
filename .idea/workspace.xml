@@ -9,13 +9,14 @@
   <component name="ChangeListManager">
     <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 模块中闭包引用问题">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/core.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/builtin.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/iter.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/iter.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/type.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.ll" beforeDir="false" afterPath="$PROJECT_DIR$/test.ll" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -60,32 +61,32 @@
     <option name="showMembers" value="true" />
     <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Cargo.Run pipeline-script.executor": "Run",
-    "Cargo.Test preprocessor::test_regex.executor": "Run",
-    "Cargo.Test tests::test.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.rust.reset.selective.auto.import": "true",
-    "ToolWindow.Build.ShowToolbar": "false",
-    "git-widget-placeholder": "dev",
-    "go.import.settings.migrated": "true",
-    "ignore.virus.scanning.warn.message": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "D:/01-Projects/pipeline-script",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
-    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
-    "org.rust.first.attach.projects": "true",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Cargo.Run pipeline-script.executor&quot;: &quot;Run&quot;,
+    &quot;Cargo.Test preprocessor::test_regex.executor&quot;: &quot;Run&quot;,
+    &quot;Cargo.Test tests::test.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.rust.reset.selective.auto.import&quot;: &quot;true&quot;,
+    &quot;ToolWindow.Build.ShowToolbar&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/01-Projects/pipeline-script&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
+    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
+    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\01-Projects\pipeline-script\src\ast" />
@@ -248,6 +249,7 @@
       <workItem from="1741098272891" duration="17000" />
       <workItem from="1741101750713" duration="1290000" />
       <workItem from="1741185385257" duration="3282000" />
+      <workItem from="1741442100773" duration="1052000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -399,7 +401,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/llvm/global.rs</url>
-          <line>164</line>
+          <line>165</line>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
@@ -409,18 +411,23 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
-          <line>614</line>
+          <line>910</line>
           <option name="timeStamp" value="8" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
-          <line>382</line>
+          <line>376</line>
           <option name="timeStamp" value="10" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
           <line>37</line>
           <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
+          <line>611</line>
+          <option name="timeStamp" value="13" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -85,6 +85,7 @@ impl Engine {
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let module = module_slot_map.get_mut(module_key).unwrap();
+        
         for i in self
             .visitors
             .iter()
@@ -92,6 +93,7 @@ impl Engine {
         {
             run_visitor(module, &**i)
         }
+        dbg!(&module);
         drop(module_slot_map);
         let mut type_preprocessor = TypePostprocessor::new();
         let mut module = type_preprocessor.process(module_key, &ctx);

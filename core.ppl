@@ -1,9 +1,11 @@
 
 extern fn println(obj: Any)
+
 extern fn cmd(command: String)
 extern fn call(f: Pointer<Unit>)
 extern fn sizeof<T>()->Int64
 extern fn malloc(size: Int64)->Pointer<Unit>
+
 struct Vec<T> {
     len: Int64,
     data: Pointer<T>,

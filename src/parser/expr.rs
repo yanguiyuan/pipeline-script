@@ -336,6 +336,12 @@ impl ExprNode {
         self.expr.clone()
     }
     pub fn get_type(&self) -> Option<Type> {
+        if let Some(t) = &self.ty {
+            if t.is_ref() {
+                let element_type = t.get_element_type().unwrap();
+                return Some(element_type.clone());
+            }
+        }
         self.ty.clone()
     }
     pub fn get_member_name(&self) -> String {

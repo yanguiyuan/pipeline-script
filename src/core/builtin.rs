@@ -27,15 +27,19 @@ pub extern "C" fn println(obj: Any) {
                 let value = obj.ptr as *mut i32;
                 print!("{}", *value);
             }
-            4 => {
+            7 | 8 => {
                 let v = obj.ptr as *mut i64;
                 // let v =  *v ;
                 // let v = v as *mut i64;
                 print!("{}", *v);
             }
-            7 => {
+            13 => {
                 let s = CStr::from_ptr(obj.ptr as *const c_char);
                 print!("{}", s.to_str().unwrap());
+            }
+            15 => {
+                let b = obj.ptr as *mut bool;
+                print!("{}", *b);
             }
             t => todo!("{t}"),
         }

@@ -12,6 +12,8 @@ pub enum Type {
     String,
     Bool,
     Pointer(Box<Type>),
+    // 引用类型和指针类型底层一致，但是使用时默认获取值
+    Ref(Box<Type>),
     // 泛型 例如：Array<Int32>,即Generic(Array,[Int32])
     Generic(Box<Type>, Vec<Type>),
     Alias(String),
@@ -44,6 +46,7 @@ impl From<&str> for Type {
             "Bool" => Type::Bool,
             "Any" => Type::Any,
             "Pointer" => Type::Pointer(Box::new(Type::Any)),
+            "Ref" => Type::Ref(Box::new(Type::Any)),
             //            t=>Type::Struct(t.into()),
             _ => panic!("Unknown type: {}", s),
         }
@@ -108,22 +111,31 @@ impl Type {
         }
     }
     pub fn is_integer(&self) -> bool {
-        match self {
-            Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64 => true,
-            _ => false,
-        }
+        matches!(self, Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64)
+    }
+    pub fn is_float(&self) -> bool {
+        matches!(self, Type::Float)
+    }
+    pub fn is_double(&self) -> bool {
+        matches!(self, Type::Double)
     }
     pub fn id(&self) -> i32 {
         match self {
             Type::Unit => 0,
             Type::Int8 => 1,
-            Type::Int16 => 2,
-            Type::Int32 => 3,
-            Type::Int64 => 4,
-            Type::Float => 5,
-            Type::Double => 6,
-            Type::String => 7,
-            Type::Bool => 8,
+            Type::Pointer(t) if t.is_i8() => 2,
+            Type::Int16 => 3,
+            Type::Pointer(t) if t.is_i16() => 4,
+            Type::Int32 => 5,
+            Type::Pointer(t) if t.is_i32() => 6,
+            Type::Int64 => 7,
+            Type::Pointer(t)|Type::Ref(t) if t.is_i64() => 8,
+            Type::Float => 9,
+            Type::Pointer(t) if t.is_float() => 10,
+            Type::Double => 11,
+            Type::Pointer(t) if t.is_double() => 12,
+            Type::String => 13,
+            Type::Bool => 15,
             // Type::Any => 9,
             t => panic!("{t:?}"),
         }
@@ -134,6 +146,7 @@ impl Type {
             Type::Int32 | Type::Int64 | Type::Float | Type::Double | Type::String | Type::Bool
         )
     }
+
     pub fn as_struct(&self) -> Option<&Vec<(String, Type)>> {
         match self {
             Type::Struct(_, m) => Some(m),
@@ -157,6 +170,9 @@ impl Type {
             Type::Function(_, args) => Type::Function(Box::new(return_type), args.clone()),
             _ => panic!("Not a function type"),
         }
+    }
+    pub fn is_ref(&self) -> bool {
+        matches!(self, Type::Ref(_))
     }
     pub fn get_struct_field(&self, name: impl AsRef<str>) -> Option<(usize, Type)> {
         match self {
@@ -241,6 +257,7 @@ impl Type {
                 Global::function_type(ret.as_llvm_type(), v)
             }
             Type::ArrayVarArg(t) => Global::pointer_type(t.as_llvm_type()),
+            Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
             _ => panic!("Unknown type: {:?}", self),
         }
     }
@@ -273,6 +290,7 @@ impl Type {
             Type::Array(t) => Some(t),
             Type::Pointer(t) => Some(t),
             Type::ArrayVarArg(t) => Some(t),
+            Type::Ref(t) => Some(t),
             _ => None,
         }
     }
@@ -433,6 +451,9 @@ impl Type {
             }
             Type::Pointer(t) => {
                 format!("*{}", t.as_str())
+            }
+            Type::Ref(t) => {
+                format!("&{}", t.as_str())
             }
             Type::ArrayVarArg(t) => {
                 format!("..{}", t.as_str())
