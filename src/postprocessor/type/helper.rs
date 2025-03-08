@@ -83,39 +83,17 @@ impl TypePostprocessor {
     ) -> Vec<Argument> {
         let mut args = vec![];
         let arg_count = fc_type.get_function_arg_count();
-
+        // 直接返回参数，不进行命名参数处理
+        // 命名参数的处理将在add_default_arguments中完成
         for (idx, arg) in fc_args.iter().enumerate() {
-            if idx == arg_count - 1 {
-                // 处理可变参数
-                if let Some(vararg_ty) = fc_type.get_function_arg_type(idx) {
-                    if vararg_ty.is_array_vararg() {
-                        let array_args = self.process_varargs(&mut fc_args[idx..].to_vec(), ctx);
-                        args.push(Argument::new(
-                            ExprNode::new(Expr::Array(array_args)).with_type(vararg_ty),
-                        ));
-                        break;
-                    }
-                }
+            if idx < arg_count {
+                let mut new_arg = arg.clone();
+                new_arg.value = self.process_expr(&arg.value, ctx);
+                args.push(new_arg);
             }
-
-            // 处理普通参数
-            let mut new_arg = arg.clone();
-            new_arg.value = self.process_expr(&arg.value, ctx);
-            args.push(new_arg);
         }
-
+        
         args
-    }
-
-    // 处理可变参数
-    pub(crate) fn process_varargs(
-        &mut self,
-        args: &mut [Argument],
-        ctx: &Context,
-    ) -> Vec<ExprNode> {
-        args.iter_mut()
-            .map(|arg| self.process_expr(&arg.value, ctx))
-            .collect()
     }
 
     // 实例化模板函数

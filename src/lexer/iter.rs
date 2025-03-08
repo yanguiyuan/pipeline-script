@@ -39,7 +39,6 @@ impl TokenStream {
             .next_token()
             .unwrap_or((Token::Eof, Position::none()))
     }
-    #[allow(unused)]
     pub fn peek(&mut self) -> (Token, Position) {
         if self.peek.is_some() {
             return self.peek.clone().unwrap();

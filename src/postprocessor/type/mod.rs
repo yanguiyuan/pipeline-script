@@ -160,6 +160,47 @@ impl TypePostprocessor {
         let ctx = Context::with_local(&ctx, locals);
 
         let mut new_f = f.clone();
+        
+        // 处理函数参数的默认值
+        for i in 0..new_f.args().len() {
+            let arg = &new_f.args()[i];
+            
+            // 先检查参数是否有默认值和类型
+            if arg.has_default() && arg.r#type().is_some() {
+                let param_type = arg.r#type().unwrap();
+                let param_name = arg.name();
+                
+                // 创建类型上下文
+                let ctx_with_type = Context::with_value(
+                    &ctx,
+                    ContextKey::Type("default".into()),
+                    ContextValue::Type(param_type.clone()),
+                );
+                
+                // 获取默认值表达式并处理
+                let default_expr = arg.clone_default().unwrap();
+                let processed_expr = self.process_expr(&default_expr, &ctx_with_type);
+                
+                // 检查类型是否匹配
+                let default_type = processed_expr.get_type().unwrap();
+                if default_type != param_type {
+                    if param_type.is_integer() && default_type.is_integer() {
+                        // 整数类型之间可以进行隐式转换，继续处理
+                    } else {
+                        eprintln!("函数 '{}' 参数 '{}' 的默认值类型 {:?} 与参数类型 {:?} 不匹配",
+                            f.name(), param_name, default_type, param_type);
+                        panic!("参数默认值类型不匹配");
+                    }
+                }
+                
+                // 更新默认值表达式
+                let arg = &mut new_f.args_mut()[i];
+                if let Some(default_expr_mut) = arg.get_mut_default() {
+                    *default_expr_mut = processed_expr;
+                }
+            }
+        }
+        
         let processed_body: Vec<_> = f.body()
             .iter()
             .map(|stmt| self.process_stmt(stmt, &ctx))
@@ -271,7 +312,7 @@ impl TypePostprocessor {
 
                 // 构建新的函数调用表达式
                 new_fc.args = args;
-                new_fc.name = fc_name;
+                new_fc.name = fc_name.clone();
                 new_fc.generics = new_generics;
 
                 ExprNode::new(Expr::FnCall(new_fc)).with_type(fc_return_type)

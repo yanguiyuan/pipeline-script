@@ -91,6 +91,9 @@ impl Function {
     pub fn args(&self) -> &Vec<VariableDeclaration> {
         &self.args
     }
+    pub fn args_mut(&mut self) -> &mut Vec<VariableDeclaration> {
+        &mut self.args
+    }
     pub fn return_type(&self) -> &Type {
         &self.return_type
     }

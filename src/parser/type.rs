@@ -181,7 +181,7 @@ impl Type {
     pub fn get_function_arg_type(&self, index: usize) -> Option<Type> {
         match self {
             Type::Function(_, args) => args.get(index).cloned(),
-            _ => panic!("Not a function type"),
+            _ => None,
         }
     }
     pub fn is_i8(&self) -> bool {
@@ -464,5 +464,12 @@ impl Type {
             Type::Any => "Any".to_string(),
             Type::Unit => "Unit".to_string(),
         }
+    }
+    /// 获取函数名称，仅在类型是由特定函数生成的函数类型时有效
+    pub fn get_function_name(&self) -> Option<&str> {
+        // 这个方法实际上不能简单地从类型中获取函数名称
+        // 因为标准函数类型 Type::Function 并不存储函数名
+        // 我们将返回 None，由调用代码处理这种情况
+        None
     }
 }

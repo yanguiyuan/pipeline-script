@@ -508,7 +508,29 @@ impl Parser {
                     let comma_pos = self.parse_special_token(Token::Comma)?;
                     total_pos += comma_pos;
                 }
-                // 否则，解析参数表达式
+                // 如果是标识符，检查是否是命名参数
+                Token::Identifier(_) => {
+                    // 先保存当前位置
+                    let token_start_pos = self.token_stream.peek().1;
+                    
+                    // 解析标识符
+                    let (name, _) = self.parse_identifier()?;
+                    
+                    // 检查下一个token是否是赋值符号
+                    let next_token = self.token_stream.peek().0;
+                    if next_token == Token::Assign {
+                        // 是命名参数
+                        self.parse_special_token(Token::Assign)?;
+                        let expr = self.parse_expr(ctx)?;
+                        args.push(Argument::with_name(name, expr));
+                    } else {
+                        // 不是命名参数，将标识符视为表达式的一部分
+                        let expr = ExprNode::new(Expr::Variable(name))
+                            .with_position(token_start_pos);
+                        args.push(Argument::new(expr));
+                    }
+                }
+                // 其他情况，解析普通参数表达式
                 _ => {
                     let expr = self.parse_expr(ctx)?;
                     args.push(Argument::new(expr));
