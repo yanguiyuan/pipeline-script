@@ -1,2 +1,2 @@
-
+extern fn cmd(cmd: String)
 extern fn println(obj: Any)

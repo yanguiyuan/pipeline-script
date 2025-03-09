@@ -6,14 +6,16 @@ enum Option<T> {
 }
 let b = Option.Some(10.3);
 
-/*
+
 match(b) {
     Option.None -> println("None"),
     Option.Some(c) -> {
         println(c)
     }
 }
-*/
+
 if let(Option.Some(x) = b) {
+    // x = x + 11.5
     println(x)
 }
+//cmd("ls")
