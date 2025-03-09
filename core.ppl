@@ -1,19 +1,2 @@
 
 extern fn println(obj: Any)
-
-extern fn cmd(command: String)
-extern fn call(f: Pointer<Unit>)
-extern fn sizeof<T>()->Int64
-extern fn malloc(size: Int64)->Pointer<Unit>
-
-struct Vec<T> {
-    len: Int64,
-    data: Pointer<T>,
-}
-
-fn Vec<T>.create() -> Vec<T> {
-    return Vec{
-        len:0
-        data:malloc(10*sizeof::<T>())
-    }
-}

@@ -4,11 +4,11 @@ use crate::context::Context;
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::expr::StructExpr;
-use crate::parser::expr::{Expr, ExprNode};
+use crate::parser::expr::{Expr, ExprNode, FnCallExpr};
 use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
-use crate::parser::stmt::{IfBranchStmt, Stmt, StmtNode};
+use crate::parser::stmt::{IfBranchStmt, IfStmt, MatchBranch, Stmt, StmtNode};
 use crate::postprocessor::id::id;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
@@ -362,14 +362,17 @@ impl TypePostprocessor {
                 let context_value = ctx.get(ContextKey::Type("default".into()));
                 if let Some(ContextValue::Type(ty)) = context_value {
                     if ty.is_integer() {
-                        return ExprNode::new(Expr::Int(i)).with_type(ty);
+                        return ExprNode::new(Expr::Int(i)).with_type(ty.clone());
                     }
                 }
                 ExprNode::new(Expr::Int(i)).with_type(Type::Int64)
             }
+            Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
                 let ty = ctx.get_symbol_type(&name);
+                dbg!(&name);
                 let ty = ty.unwrap();
+                dbg!(&ty);
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
@@ -512,6 +515,107 @@ impl TypePostprocessor {
                 };
                 ExprNode::new(Expr::Member(Box::new(target), name)).with_type(ty)
             }
+            Expr::EnumVariant(enum_name, variant_name, value) => {
+                // 克隆枚举名称
+                let enum_name_clone = enum_name.clone();
+                let is_pattern =ctx.get_flag("pattern").unwrap_or(false);
+                // 获取枚举类型
+                let enum_type = if is_pattern{
+                    ctx.get(ContextKey::Type("default".into())).unwrap_or_else(|| {
+                        panic!("未找到枚举类型: {}", enum_name_clone);
+                    }).as_type()
+                } else {
+                    dbg!(&enum_name_clone);
+                    ctx.get_type_alias(&enum_name_clone).unwrap_or_else(|| {
+                        panic!("未找到枚举类型: {}", enum_name_clone);
+                    })
+                };
+
+                // 处理关联值
+                let processed_value = match value {
+                    Some(v) => {
+                        println!("处理关联值");
+                        // v目前只能是变量，直接处理
+
+                        let processed = if is_pattern {
+                            let inner_type = enum_type.get_enum_variant_type(&variant_name).unwrap();
+                            ctx.try_add_local(v.get_variable_name().unwrap());
+                             v.clone().with_type(inner_type)
+                        }else{
+                            self.process_expr(&v, ctx)
+                        };
+
+                        dbg!(&processed);
+
+                        let value_type = processed.get_type().unwrap();
+                        
+                        // 检查是否需要泛型实例化
+                        if let Type::Enum(Some(name), variants) = &enum_type {
+                            // 查找变体的关联类型
+                            let mut variant_type = None;
+                            for (var_name, var_type) in variants {
+                                if var_name == &variant_name {
+                                    variant_type = var_type.clone();
+                                    break;
+                                }
+                            }
+                            
+                            // 如果变体有关联类型，并且是泛型参数
+                            if let Some(Type::Alias(type_param)) = variant_type {
+                                // 创建泛型映射
+                                let mut generic_map = HashMap::new();
+                                generic_map.insert(type_param.clone(), value_type.clone());
+                                
+                                // 创建实例化后的枚举类型名称
+                                let new_enum_name = format!("{}<{}>", name, value_type.as_str());
+                                
+                                // 实例化变体类型
+                                let mut new_variants = vec![];
+                                for (var_name, var_type) in variants {
+                                    let new_var_type = if let Some(ty) = var_type {
+                                        if let Type::Alias(param) = ty {
+                                            if param == &type_param {
+                                                Some(value_type.clone())
+                                            } else {
+                                                var_type.clone()
+                                            }
+                                        } else {
+                                            var_type.clone()
+                                        }
+                                    } else {
+                                        None
+                                    };
+                                    new_variants.push((var_name.clone(), new_var_type));
+                                }
+                                
+                                // 创建实例化后的枚举类型
+                                let new_enum_type = Type::Enum(Some(new_enum_name.clone()), new_variants);
+                                dbg!(&new_enum_type);
+                                // 注册新的枚举类型
+                                self.module.register_type_alias(&new_enum_name, new_enum_type.clone());
+
+                                dbg!(&new_enum_name);
+                                // 返回实例化后的枚举变体表达式
+                                return ExprNode::new(Expr::EnumVariant(
+                                    new_enum_name,
+                                    variant_name.clone(),
+                                    Some(Box::new(processed.clone()))
+                                )).with_type(new_enum_type);
+                            }
+                        }
+                        
+                        Some(Box::new(processed.clone()))
+                    },
+                    None => None
+                };
+                
+                // 创建枚举变体表达式
+                ExprNode::new(Expr::EnumVariant(
+                    enum_name.clone(),
+                    variant_name.clone(),
+                    processed_value
+                )).with_type(enum_type)
+            }
             _ => expr.clone(),
         }
     }
@@ -626,6 +730,118 @@ impl TypePostprocessor {
                 StmtNode::new(
                     Stmt::ForIn(var.clone(), Box::new(expr), body),
                     stmt.position(),
+                )
+            }
+            Stmt::Match(expr, branches) => {
+                // 处理匹配的表达式
+                let processed_expr = self.process_expr(expr, ctx);
+                let ctx = Context::with_type(&ctx, "default".into(),processed_expr.get_type().unwrap());
+                // 处理匹配分支
+                let mut processed_branches = vec![];
+                for branch in branches {
+                    let ctx = Context::with_flag(&ctx, "pattern",true);
+                    // 处理模式
+                    let processed_pattern = self.process_expr(branch.get_pattern(), &ctx);
+
+                    // 创建新的上下文，用于处理分支体
+                    let mut branch_ctx = ctx.clone();
+                    
+                    // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
+                    if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
+                        if let Expr::Variable(name) = &binding.get_expr() {
+                            // 获取关联值的类型
+                            if let Some(enum_type) = processed_expr.get_type() {
+                                if let Type::Enum(_, variants) = &enum_type {
+                                    // 查找变体的关联类型
+                                    for (variant_name, variant_type) in variants {
+                                        if let Expr::EnumVariant(_, pattern_variant, _) = &processed_pattern.get_expr() {
+                                            if variant_name == pattern_variant {
+                                                if let Some(ty) = variant_type {
+                                                    // 将关联值添加到上下文中
+                                                    branch_ctx.set_symbol_type(name.clone(), ty.clone());
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 处理分支体
+                    let mut processed_body = vec![];
+                    for body_stmt in branch.get_body() {
+                        processed_body.push(self.process_stmt(body_stmt, &branch_ctx));
+                    }
+                    
+                    // 创建处理后的分支
+                    processed_branches.push(MatchBranch::new(processed_pattern, processed_body));
+                }
+                
+                // 创建处理后的Match语句
+                StmtNode::new(Stmt::Match(Box::new(processed_expr), processed_branches), stmt.position())
+            }
+            Stmt::IfLet(pattern, expr, body, else_body) => {
+                // 处理模式和表达式
+                let processed_expr = self.process_expr(expr, &ctx);
+                let ctx = Context::with_type(&ctx, "default".into(),processed_expr.get_type().unwrap());
+                let ctx = Context::with_flag(&ctx, "pattern",true);
+                let processed_pattern = self.process_expr(pattern, &ctx);
+                ctx.set_flag("pattern",false);
+
+                // 创建新的上下文，用于处理if分支体
+                let if_ctx = ctx.clone();
+                
+                // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
+                if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
+                    if let Expr::Variable(name) = &binding.get_expr() {
+                        // 获取关联值的类型
+                        if let Some(enum_type) = processed_expr.get_type() {
+                            if let Type::Enum(_, variants) = &enum_type {
+                                // 查找变体的关联类型
+                                for (variant_name, variant_type) in variants {
+                                    if let Expr::EnumVariant(_, pattern_variant, _) = &processed_pattern.get_expr() {
+                                        if variant_name == pattern_variant {
+                                            if let Some(ty) = variant_type {
+                                                // 将关联值添加到上下文中
+                                                if_ctx.set_symbol_type(name.clone(), ty.clone());
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 处理if分支体
+                let mut processed_body = vec![];
+                for body_stmt in body {
+                    processed_body.push(self.process_stmt(body_stmt, &if_ctx));
+                }
+                
+                // 处理else分支体（如果有）
+                let processed_else_body = if let Some(else_stmts) = else_body {
+                    let mut processed_else = vec![];
+                    for else_stmt in else_stmts {
+                        processed_else.push(self.process_stmt(else_stmt, &ctx));
+                    }
+                    Some(processed_else)
+                } else {
+                    None
+                };
+                
+                // 创建处理后的IfLet语句
+                StmtNode::new(
+                    Stmt::IfLet(
+                        Box::new(processed_pattern),
+                        Box::new(processed_expr),
+                        processed_body,
+                        processed_else_body
+                    ),
+                    stmt.position()
                 )
             }
             _ => stmt.clone(),

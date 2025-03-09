@@ -97,6 +97,7 @@ impl Engine {
         drop(module_slot_map);
         let mut type_preprocessor = TypePostprocessor::new();
         let mut module = type_preprocessor.process(module_key, &ctx);
+
         dbg!(&module);
         for i in self
             .visitors
@@ -107,7 +108,8 @@ impl Engine {
         }
         //编译
         let mut compiler = Compiler::new(module.clone());
-        let llvm_module = compiler.compile();
+        ctx.register_module(module);
+        let llvm_module = compiler.compile(&ctx);
         llvm_module.dump();
         let executor = llvm_module.create_executor().unwrap();
         for (name, f) in &self.function_map {

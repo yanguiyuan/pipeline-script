@@ -28,6 +28,10 @@ pub enum Stmt {
     Break,
     Continue,
     Import(String),
+    // Match语句，包含匹配的表达式和匹配分支
+    Match(Box<ExprNode>, Vec<MatchBranch>),
+    // If let语句，用于模式匹配
+    IfLet(Box<ExprNode>, Box<ExprNode>, Vec<StmtNode>, Option<Vec<StmtNode>>),
     Noop,
 }
 #[derive(Debug, Clone)]
@@ -74,6 +78,28 @@ impl IfBranchStmt {
         &self.body
     }
 }
+
+// 匹配分支，包含模式和对应的语句
+#[derive(Debug, Clone)]
+pub struct MatchBranch {
+    pattern: ExprNode,
+    body: Vec<StmtNode>,
+}
+
+impl MatchBranch {
+    pub fn new(pattern: ExprNode, body: Vec<StmtNode>) -> Self {
+        Self { pattern, body }
+    }
+    
+    pub fn get_pattern(&self) -> &ExprNode {
+        &self.pattern
+    }
+    
+    pub fn get_body(&self) -> &Vec<StmtNode> {
+        &self.body
+    }
+}
+
 impl Stmt {
     pub fn is_noop(&self) -> bool {
         matches!(self, Stmt::Noop)
@@ -107,6 +133,8 @@ impl NodeTrait for StmtNode {
             Stmt::Continue => "Continue",
             Stmt::Import(_) => "Import",
             Stmt::Noop => "Noop",
+            Stmt::Match(_, _) => "Match",
+            Stmt::IfLet(_, _, _, _) => "IfLet",
         }
     }
 
@@ -195,10 +223,15 @@ impl StmtNode {
     pub fn new(stmt: Stmt, pos: Position) -> Self {
         Self { stmt, pos }
     }
-
-    pub fn get_stmt(&self) -> Stmt {
-        self.stmt.clone()
+    
+    pub fn get_stmt(&self) -> &Stmt {
+        &self.stmt
     }
+    
+    pub fn position(&self) -> Position {
+        self.pos.clone()
+    }
+    
     pub fn is_noop(&self) -> bool {
         self.stmt.is_noop()
     }
@@ -226,8 +259,5 @@ impl StmtNode {
     }
     pub fn is_val_decl(&self) -> bool {
         matches!(&self.stmt, Stmt::ValDecl(_))
-    }
-    pub fn position(&self) -> Position {
-        self.pos.clone()
     }
 }

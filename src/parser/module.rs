@@ -21,6 +21,7 @@ pub struct Module {
     structs: HashMap<String, r#struct::Struct>,
     global_block: Vec<StmtNode>,
     submodules: HashMap<String, DefaultKey>,
+    type_aliases: HashMap<String, crate::parser::r#type::Type>,
 }
 impl NodeTrait for Module {
     fn get_id(&self) -> &str {
@@ -91,6 +92,7 @@ impl Module {
             structs: Default::default(),
             submodules: HashMap::new(),
             global_block: vec![],
+            type_aliases: HashMap::new(),
         }
     }
     pub fn register_struct(&mut self, name: &str, s: r#struct::Struct) {
@@ -225,5 +227,16 @@ impl Module {
     }
     pub fn set_name(&mut self, name: impl Into<String>) {
         self.name = name.into();
+    }
+    pub fn register_type_alias(&mut self, name: &str, ty: crate::parser::r#type::Type) {
+        self.type_aliases.insert(name.to_string(), ty);
+    }
+    
+    pub fn get_type_alias(&self, name: &str) -> Option<&crate::parser::r#type::Type> {
+        self.type_aliases.get(name)
+    }
+    
+    pub fn get_type_aliases(&self) -> &HashMap<String, crate::parser::r#type::Type> {
+        &self.type_aliases
     }
 }

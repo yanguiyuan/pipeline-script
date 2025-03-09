@@ -18,6 +18,9 @@ pub enum Type {
     Generic(Box<Type>, Vec<Type>),
     Alias(String),
     Struct(Option<String>, Vec<(String, Type)>),
+    // 枚举类型，Option<String>是枚举名称，Vec<(String, Option<Type>)>是枚举变体列表
+    // 每个变体包含名称和可选的关联类型
+    Enum(Option<String>, Vec<(String, Option<Type>)>),
     Function(Box<Type>, Vec<Type>),
     Array(Box<Type>),
     Map(Box<Type>, Box<Type>),
@@ -112,6 +115,19 @@ impl Type {
     }
     pub fn is_integer(&self) -> bool {
         matches!(self, Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64)
+    }
+    pub fn get_enum_variant_type(&self,name:&str) -> Option<Type> {
+        match self {
+            Type::Enum(_, variants) => {
+                for (name0, t) in variants {
+                    if name0 == name {
+                        return t.clone();
+                    }
+                }
+                None
+            },
+            _ => None,
+        }
     }
     pub fn is_float(&self) -> bool {
         matches!(self, Type::Float)
@@ -231,24 +247,28 @@ impl Type {
             Type::Int16 => Global::i16_type(),
             Type::Int32 => Global::i32_type(),
             Type::Int64 => Global::i64_type(),
-            Type::Unit => Global::unit_type(),
-            Type::Pointer(i) => Global::pointer_type(i.as_llvm_type()),
-            Type::Any => Global::struct_type(vec![
-                Global::i32_type(),
-                Global::pointer_type(Global::i8_type()),
-            ]),
-            Type::Array(t) => Global::struct_type(vec![
-                Global::i64_type(),
-                Global::pointer_type(t.as_llvm_type()),
-            ]),
+            Type::Float => Global::float_type(),
+            Type::Double => Global::double_type(),
+            Type::Bool => Global::i8_type(),
             Type::String => Global::pointer_type(Global::i8_type()),
-            Type::Struct(_, s) => {
-                let mut v = vec![];
-                for (_, t) in s.iter() {
-                    v.push(t.as_llvm_type());
-                }
-                Global::struct_type(v)
-            }
+            Type::Pointer(t) => Global::pointer_type(t.as_llvm_type()),
+            Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
+            Type::Struct(_, _) => Global::pointer_type(Global::i8_type()),
+            Type::Enum(_, t) => {
+                // 枚举类型编译为包含标签和数据的结构体
+                // 标签是一个整数，表示枚举变体的索引
+                // 数据是一个联合体，包含所有变体的数据
+                
+                // 创建枚举结构体类型
+                let fields = vec![
+                    // 标签字段，用于区分不同的变体
+                    Global::i32_type(),
+                    // 数据字段，使用i64作为默认类型
+                    Global::i64_type(),
+                ];
+                
+                Global::struct_type(fields)
+            },
             Type::Function(ret, args) => {
                 let mut v = vec![];
                 for t in args.iter() {
@@ -258,6 +278,10 @@ impl Type {
             }
             Type::ArrayVarArg(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
+            Type::Any => Global::struct_type(vec![
+                Global::i32_type(),
+                Global::pointer_type(Global::i8_type()),
+            ]),
             _ => panic!("Unknown type: {:?}", self),
         }
     }
@@ -364,6 +388,13 @@ impl Type {
                 k.try_replace_alias(alias_map);
                 v.try_replace_alias(alias_map);
             }
+            Type::Enum(_, variants) => {
+                for (_, t) in variants.iter_mut() {
+                    if let Some(ty) = t {
+                        ty.try_replace_alias(alias_map);
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -426,6 +457,16 @@ impl Type {
                 }
                 false
             }
+            Type::Enum(_, variants) => {
+                for (_, t) in variants.iter() {
+                    if let Some(ty) = t {
+                        if ty.has_alias() {
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
             _ => false,
         }
     }
@@ -472,7 +513,29 @@ impl Type {
             Type::Map(k, v) => {
                 format!("Map<{},{}>", k.as_str(), v.as_str())
             }
-
+            Type::Enum(name, variants) => {
+                let mut result = String::new();
+                if let Some(name) = name {
+                    result.push_str(name);
+                } else {
+                    result.push_str("Enum");
+                }
+                
+                if !variants.is_empty() {
+                    result.push_str("<");
+                    for (i, (variant_name, variant_type)) in variants.iter().enumerate() {
+                        if i > 0 {
+                            result.push_str(",");
+                        }
+                        result.push_str(variant_name);
+                        if let Some(ty) = variant_type {
+                            result.push_str(&format!("({})", ty.as_str()));
+                        }
+                    }
+                    result.push_str(">");
+                }
+                result
+            }
             Type::Module => "Module".to_string(),
             Type::Int8 => "Int8".to_string(),
             Type::Int16 => "Int16".to_string(),
@@ -492,5 +555,22 @@ impl Type {
         // 因为标准函数类型 Type::Function 并不存储函数名
         // 我们将返回 None，由调用代码处理这种情况
         None
+    }
+    pub fn is_enum(&self) -> bool {
+        matches!(self, Type::Enum(_, _))
+    }
+    
+    pub fn get_enum_name(&self) -> Option<&str> {
+        match self {
+            Type::Enum(name, _) => name.as_ref().map(|s| s.as_str()),
+            _ => None,
+        }
+    }
+    
+    pub fn get_enum_variants(&self) -> Option<&Vec<(String, Option<Type>)>> {
+        match self {
+            Type::Enum(_, variants) => Some(variants),
+            _ => None,
+        }
     }
 }

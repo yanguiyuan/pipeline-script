@@ -58,6 +58,7 @@ impl NodeTrait for ExprNode {
             Expr::Closure(_, _, _) => "Expr:Closure",
             Expr::Struct(_) => "Expr:Struct",
             Expr::Member(_, _) => "Expr:Member",
+            Expr::EnumVariant(_, _, _) => "Expr:EnumVariant",
             Expr::None => "Expr:None",
         }
     }
@@ -148,6 +149,13 @@ impl NodeTrait for ExprNode {
             }
             Expr::Struct(_) => vec![],
             Expr::Member(_, _) => vec![],
+            Expr::EnumVariant(_, _, value) => {
+                if let Some(expr) = value {
+                    vec![&mut **expr]
+                } else {
+                    vec![]
+                }
+            },
             Expr::None => vec![],
         }
     }
@@ -208,6 +216,7 @@ pub enum Expr {
     Closure(Vec<VariableDeclaration>, Vec<StmtNode>, Vec<(String, Type)>),
     Struct(StructExpr),
     Member(Box<ExprNode>, String),
+    EnumVariant(String, String, Option<Box<ExprNode>>),
     None,
 }
 #[derive(Debug, Clone)]

@@ -47,24 +47,27 @@ impl Context {
             ContextValue::ModuleSlotMap(Arc::new(RwLock::new(t))),
         )
     }
-    // pub fn apply_mut_module(&self,key:DefaultKey,apply:impl Fn(&mut Module)){
-    //     let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
-    //     match slot_map{
-    //         ContextValue::ModuleSlotMap(slot_map)=>{
-    //             let mut slot_map = slot_map.write().unwrap();
-    //             let module = slot_map.get_mut(key).unwrap();
-    //             apply(module)
-    //         }
-    //         _=>panic!("not a module slot map")
-    //     }
-    // }
-    pub fn get_module_slot_map(&self) -> Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>> {
+    pub fn apply_mut_module(&self,key:DefaultKey,apply:impl Fn(&mut Module)){
         let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
-        match slot_map {
-            ContextValue::ModuleSlotMap(slot_map) => slot_map.clone(),
-            _ => panic!("not a module slot map"),
+        match slot_map{
+            ContextValue::ModuleSlotMap(slot_map)=>{
+                let mut slot_map = slot_map.write().unwrap();
+                let module = slot_map.get_mut(key).unwrap();
+                apply(module)
+            }
+            _=>panic!("not a module slot map")
         }
     }
+    pub fn get_module_slot_map(&self) -> Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>> {
+        match self.get(ContextKey::ModuleSlotMap) {
+            Some(ContextValue::ModuleSlotMap(slot_map)) => slot_map.clone(),
+            _ => {
+                let slot_map = Arc::new(RwLock::new(slotmap::SlotMap::new()));
+                slot_map
+            }
+        }
+    }
+
     // pub fn apply_module(&self,key:DefaultKey,mut apply:impl FnMut(&Module)){
     //     let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
     //     match slot_map{
@@ -101,7 +104,7 @@ impl Context {
             _ => panic!("not a function"),
         }
     }
-    pub fn get_current_function_type(&self) -> Type {
+    pub fn get_current_function_type(&self) -> &Type {
         match self.get(ContextKey::Type("current_function".into())) {
             Some(ContextValue::Type(ty)) => ty,
             _ => panic!("not a function"),
@@ -178,13 +181,13 @@ impl Context {
             _ => panic!("not a flag"),
         }
     }
-    pub fn get_flag(&self, key: impl Into<String>) -> bool {
+    pub fn get_flag(&self, key: impl Into<String>) -> Option<bool> {
         match self.get(ContextKey::Flag(key.into())) {
             Some(ContextValue::Flag(f)) => {
                 let f = f.read().unwrap();
-                *f
+                Some(*f)
             }
-            _ => panic!("not a flag"),
+            _ => None,
         }
     }
     pub fn with_value(parent: &Context, key: ContextKey, value: ContextValue) -> Self {
@@ -195,9 +198,9 @@ impl Context {
         }
     }
 
-    pub fn get(&self, key: ContextKey) -> Option<ContextValue> {
+    pub fn get(&self, key: ContextKey) -> Option<&ContextValue> {
         if self.key == key {
-            return Some(self.value.clone());
+            return Some(&self.value);
         }
         match &self.parent {
             None => None,
@@ -311,5 +314,17 @@ impl Context {
             }
             _ => panic!("not a symbol type"),
         }
+    }
+    pub fn get_type_alias(&self, name: impl AsRef<str>) -> Option<Type> {
+        let slot_map = self.get_module_slot_map();
+        let slot_map = slot_map.read().unwrap();
+        
+        for module in slot_map.values() {
+            if let Some(ty) = module.get_type_alias(name.as_ref()) {
+                return Some(ty.clone());
+            }
+        }
+        
+        None
     }
 }

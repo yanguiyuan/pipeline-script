@@ -138,6 +138,28 @@ impl LLVMType {
     pub fn is_i32(&self) -> bool {
         matches!(self, LLVMType::Int32(_))
     }
+    pub fn size(&self) -> usize {
+        match self {
+            LLVMType::Int1(_) => 1,
+            LLVMType::Int8(_) => 1,
+            LLVMType::Int16(_) => 2,
+            LLVMType::Int32(_) => 4,
+            LLVMType::Int64(_) => 8,
+            LLVMType::Float(_) => 4,
+            LLVMType::Double(_) => 8,
+            LLVMType::Pointer(_, _) => 8, // 指针大小为8字节（64位系统）
+            LLVMType::Struct(fields, _) => {
+                // 结构体大小为所有字段大小之和
+                fields.iter().map(|f| f.size()).sum()
+            }
+            LLVMType::Array(element_type, _) => {
+                // 数组大小为元素大小
+                element_type.size()
+            }
+            LLVMType::Function(_, _, _) => 8, // 函数指针大小为8字节
+            LLVMType::Unit(_) => 0, // Unit类型大小为0
+        }
+    }
 }
 
 impl Display for LLVMType {

@@ -1,5 +1,19 @@
 import core
-let a = 11 // 原 var a =1
-const b = 2 // 原 val b = 2
 
-println(a+b)
+enum Option<T> {
+    None,
+    Some(T)
+}
+let b = Option.Some(10.3);
+
+/*
+match(b) {
+    Option.None -> println("None"),
+    Option.Some(c) -> {
+        println(c)
+    }
+}
+*/
+if let(Option.Some(x) = b) {
+    println(x)
+}

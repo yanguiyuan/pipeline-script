@@ -33,6 +33,10 @@ pub extern "C" fn println(obj: Any) {
                 // let v = v as *mut i64;
                 print!("{}", *v);
             }
+            9 => {
+                let v = obj.ptr as *mut f32;
+                print!("{}", *v);
+            }
             13 => {
                 let s = CStr::from_ptr(obj.ptr as *const c_char);
                 print!("{}", s.to_str().unwrap());
