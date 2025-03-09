@@ -322,7 +322,7 @@ impl Lexer {
         }
         pos.set_span(v.len());
         if is_decimal {
-            let f: f64 = v.parse().unwrap();
+            let f: f32 = v.parse().unwrap();
             return Some((Token::Float(f), pos));
         }
         let i: i64 = v.parse().unwrap();

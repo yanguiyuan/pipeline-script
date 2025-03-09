@@ -36,6 +36,10 @@ impl Global {
         let v = unsafe { LLVMConstReal(LLVMDoubleType(), value) };
         LLVMValue::Double(v)
     }
+    pub fn const_float(value: f32) -> LLVMValue {
+        let v = unsafe { LLVMConstReal(LLVMFloatType(), value as f64) };
+        LLVMValue::Float(v)
+    }
     pub fn const_i8(value: i8) -> LLVMValue {
         let v = unsafe { LLVMConstInt(LLVMInt8Type(), value as u64, 0) };
         LLVMValue::Int8(v)

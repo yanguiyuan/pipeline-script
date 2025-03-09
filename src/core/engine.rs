@@ -1,16 +1,16 @@
 use crate::compiler::Compiler;
 use crate::context::Context;
+use crate::core::builtin::println;
 use crate::lexer::Lexer;
 use crate::llvm::context::LLVMContext;
 use crate::parser::Parser;
 use crate::postprocessor::r#type::TypePostprocessor;
+use crate::postprocessor::{run_visitor, DynVisitor, Stage, Visitor};
 use crate::preprocessor::{ImportPreprocessor, Preprocessor};
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::core::builtin::println;
-use crate::postprocessor::{run_visitor, DynVisitor, Stage, Visitor};
 
 pub struct Engine {
     prelude_scripts: Vec<String>,
@@ -82,33 +82,30 @@ impl Engine {
         let ctx = Context::with_module_slot_map(&ctx, Default::default());
         let mut parser = Parser::new(lexer, &ctx);
         let module_key = parser.parse(&ctx).unwrap();
-        let module_slot_map = ctx.get_module_slot_map();
-        let mut module_slot_map = module_slot_map.write().unwrap();
-        let module = module_slot_map.get_mut(module_key).unwrap();
-        
-        for i in self
-            .visitors
-            .iter()
-            .filter(|i| i.stage() == Stage::BeforeTypeInfer)
-        {
-            run_visitor(module, &**i)
-        }
-        dbg!(&module);
-        drop(module_slot_map);
+        ctx.apply_mut_module(module_key, |module| {
+            for i in self
+                .visitors
+                .iter()
+                .filter(|i| i.stage() == Stage::BeforeTypeInfer)
+            {
+                run_visitor(module, &**i)
+            }
+        });
         let mut type_preprocessor = TypePostprocessor::new();
-        let mut module = type_preprocessor.process(module_key, &ctx);
-
-        dbg!(&module);
-        for i in self
-            .visitors
-            .iter()
-            .filter(|i| i.stage() == Stage::AfterTypeInfer)
-        {
-            run_visitor(&mut module, &**i)
-        }
-        //编译
+        let module = type_preprocessor.process(module_key, &ctx);
         let mut compiler = Compiler::new(module.clone());
         ctx.register_module(module);
+        ctx.apply_mut_module(module_key, |module| {
+            for i in self
+                .visitors
+            .iter()
+            .filter(|i| i.stage() == Stage::AfterTypeInfer)
+            {
+                run_visitor(module, &**i)
+            }
+        });
+
+        //编译
         let llvm_module = compiler.compile(&ctx);
         llvm_module.dump();
         let executor = llvm_module.create_executor().unwrap();

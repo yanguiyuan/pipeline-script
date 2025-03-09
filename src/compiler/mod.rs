@@ -50,6 +50,11 @@ impl Compiler {
             let t = self.get_type(&ctx, &t);
             self.llvm_module.register_struct(name, field_index, t);
         }
+        // 编译枚举
+        for (name, item) in self.module.get_type_aliases().iter() {
+            let t = self.compile_type(item);
+            self.llvm_module.register_struct(name, HashMap::new(), t);
+        }
         // 编译函数声明
         for (name, item) in self.module.get_functions().iter() {
             if item.is_template {
@@ -151,7 +156,12 @@ impl Compiler {
                 // 枚举类型编译为包含标签和数据的结构体
                 // 标签是一个整数，表示枚举变体的索引
                 // 数据是一个联合体，包含所有变体的数据
-                
+                if let Some(name) = name {
+                   let t =self.llvm_module.get_struct(name);
+                   if let Some((_, t)) = t {
+                    return t.clone();
+                   }
+                }
                 // 创建枚举结构体类型
                 let mut fields = vec![
                     // 标签字段，用于区分不同的变体
@@ -161,8 +171,10 @@ impl Compiler {
                 // 查找所有变体中最大的数据类型
                 let mut max_data_type: Option<LLVMType> = None;
                 for (_, variant_type) in variants.iter() {
+                    dbg!(&variant_type);
                     if let Some(t) = variant_type {
                         let llvm_type = self.compile_type(t);
+                        dbg!(&llvm_type);
                         if let Some(max_type) = &max_data_type {
                             // 简单比较，选择大小更大的类型
                             if llvm_type.size() > max_type.size() {
@@ -184,7 +196,7 @@ impl Compiler {
                 
                 // 创建命名结构体类型
                 if let Some(name) = name {
-                    self.ctx.create_named_struct_type(name, fields)
+                     self.ctx.create_named_struct_type(name, fields)
                 } else {
                     Global::struct_type(fields)
                 }
@@ -243,6 +255,7 @@ impl Compiler {
                 ]))
             }
             Type::Float=>Global::float_type(),
+            Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Alias(_)=>Global::i8_type(),
             _ => panic!("Unknown type: {:?}", ty),
         }
@@ -409,7 +422,7 @@ impl Compiler {
                         }
                         
                         // 获取枚举值的标签（第一个字段）
-                        let tag_ptr = builder.build_struct_gep(value.ty.as_llvm_type(), value.value, 0);
+                        let tag_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 0);
                         let tag = builder.build_load(Global::i32_type(), tag_ptr);
                         
                         // 创建条件：tag == variant_index
@@ -432,7 +445,7 @@ impl Compiler {
                         if let Expr::EnumVariant(_, _, Some(binding)) = &pattern.get_expr() {
                             if let Expr::Variable(name) = &binding.get_expr() {
                                 // 获取枚举值的数据（第二个字段）
-                                let data_ptr = builder.build_struct_gep(value.ty.as_llvm_type(), value.value, 1);
+                                let data_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 1);
                                 let data_type = value.ty.as_llvm_type().get_struct_field_type(1);
                                 let data = builder.build_load(data_type.clone(), data_ptr);
                                 //
@@ -485,7 +498,7 @@ impl Compiler {
                     }
                     
                     // 获取枚举值的标签（第一个字段）
-                    let tag_ptr = builder.build_struct_gep(value.ty.as_llvm_type(), value.value, 0);
+                    let tag_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 0);
                     let tag = builder.build_load(Global::i32_type(), tag_ptr);
                     
                     // 创建条件：tag == variant_index
@@ -501,8 +514,8 @@ impl Compiler {
                     if let Expr::EnumVariant(_, _, Some(binding)) = &pattern.get_expr() {
                         if let Expr::Variable(name) = &binding.get_expr() {
                             // 获取枚举值的数据（第二个字段）
-                            let data_ptr = builder.build_struct_gep(value.ty.as_llvm_type(), value.value, 1);
-                            let data_type = value.ty.as_llvm_type().get_struct_field_type(1);
+                            let data_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 1);
+                            let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
                             let data = builder.build_load(data_type.clone(), data_ptr);
                             
                             // // 绑定变量
@@ -556,7 +569,7 @@ impl Compiler {
                 if a.is_some() {
                     let a = a.unwrap();
                     if ty0.is_struct() {
-                        let ptr = builder.build_alloca(&name, &ty0.as_llvm_type());
+                        let ptr = builder.build_alloca(&name, &self.compile_type(&ty0));
                         builder.build_store(ptr, a);
                         ctx.get_scope().set(name, Value::new(ptr, ty0.clone()));
                         return Value::new(ptr, ty0);
@@ -569,7 +582,7 @@ impl Compiler {
                 let v = self.compile_expr(&target, ctx);
                 let index = self.compile_expr(&index, ctx);
                 let array_ptr = builder.build_array_gep(
-                    ty0.as_llvm_type(), 
+                    self.compile_type(&ty0), 
                     v.get_value(), 
                     index.get_value()
                 );
@@ -581,7 +594,7 @@ impl Compiler {
                 let (idx, _) = ty
                     .get_struct_field(&field_name)
                     .unwrap_or_else(|| panic!("未定义的字段: {}", field_name));
-                let target_ty = target.get_type().unwrap().get_element_type().unwrap().as_llvm_type();
+                let target_ty = self.compile_type(&target.get_type().unwrap().get_element_type().unwrap());
                 let val = builder.build_struct_gep(
                     target_ty,
                     v.get_value(),
@@ -652,11 +665,11 @@ impl Compiler {
                                 let mut val = v.get_value();
                                 dbg!(&v.ty);
                                 if !(v.ty.is_pointer() || v.ty.is_string()) {
-                                    let ty = v.ty.as_llvm_type();
+                                    let ty = self.compile_type(&v.ty);
                                     val = builder.build_alloca("", &ty);
                                     builder.build_store(val, v.value);
                                 }
-                                let a = builder.build_alloca("any", &t.as_llvm_type());
+                                let a = builder.build_alloca("any", &self.compile_type(&t));
                                 let any_struct = Global::undef(Global::struct_type(vec![Global::i32_type(), Global::pointer_type(Global::i8_type())]));
                                 let any_struct = builder.build_struct_insert(any_struct, 0, &Global::const_i32(v.get_type().id()));
                                 let any_struct = builder.build_struct_insert(any_struct, 1, &val);
@@ -692,11 +705,11 @@ impl Compiler {
                         if t.is_any() {
                             let mut val = v.get_value();
                             if !(v.ty.is_pointer() || v.ty.is_string()) {
-                                let ty = v.ty.as_llvm_type();
+                                let ty = self.compile_type(&v.ty);
                                 val = builder.build_alloca("", &ty);
                                 builder.build_store(val, v.value);
                             }
-                            let a = builder.build_alloca("any", &t.as_llvm_type());
+                            let a = builder.build_alloca("any", &self.compile_type(&t));
                             let any_struct = Global::undef(Global::struct_type(vec![Global::i32_type(), Global::pointer_type(Global::i8_type())]));
                             let any_struct = builder.build_struct_insert(any_struct, 0, &Global::const_i32(v.get_type().id()));
                             let any_struct = builder.build_struct_insert(any_struct, 1, &val);
@@ -790,7 +803,7 @@ impl Compiler {
                 };
                 Value::new(v, ty0)
             }
-            Expr::Float(f) => Value::new(Global::const_double(f), ty0),
+            Expr::Float(f) => Value::new(Global::const_float(f), ty0),
             Expr::String(s, ..) => {
                 let ptr = builder.build_global_string("", s);
                 Value::new(ptr, ty0)
@@ -938,11 +951,11 @@ impl Compiler {
                             if t.is_any() {
                                 let mut val = v.get_value();
                                 if !(v.ty.is_pointer() || v.ty.is_string()) {
-                                    let ty = v.ty.as_llvm_type();
+                                    let ty = self.compile_type(&v.ty);
                                     val = builder.build_alloca("", &ty);
                                     builder.build_store(val, v.value);
                                 }
-                                let a = builder.build_alloca("any", &t.as_llvm_type());
+                                let a = builder.build_alloca("any", &self.compile_type(&t));
                                 let any_struct = Global::undef(Global::struct_type(vec![Global::i32_type(), Global::pointer_type(Global::i8_type())]));
                                 let any_struct = builder.build_struct_insert(any_struct, 0, &Global::const_i32(v.get_type().id()));
                                 let any_struct = builder.build_struct_insert(any_struct, 1, &val);
@@ -979,12 +992,12 @@ impl Compiler {
                             let mut val = v.get_value();
                             if !(v.ty.is_pointer() || v.ty.is_string()) {
                                 dbg!(&v.ty);
-                                let ty = v.ty.as_llvm_type();
+                                let ty = self.compile_type(&v.ty);
                                 
                                 val = builder.build_alloca("", &ty);
                                 builder.build_store(val, v.value);
                             }
-                            let a = builder.build_alloca("any", &t.as_llvm_type());
+                            let a = builder.build_alloca("any", &self.compile_type(&t));
                             let any_struct = Global::undef(Global::struct_type(vec![Global::i32_type(), Global::pointer_type(Global::i8_type())]));
                             let any_struct = builder.build_struct_insert(any_struct, 0, &Global::const_i32(v.get_type().id()));
                             let any_struct = builder.build_struct_insert(any_struct, 1, &val);
@@ -1043,7 +1056,7 @@ impl Compiler {
                             panic!("sizeof must have one generic");
                         }
                         let generic = &fc.generics[0];
-                        let v = Global::sizeof(generic.as_llvm_type());
+                        let v = Global::sizeof(self.compile_type(&generic));
                         return Value::new(v, Type::Int64);
                     }
                     _ => {}
@@ -1055,7 +1068,7 @@ impl Compiler {
                     let extra_param = builder.build_struct_get(fn_struct, 1);
                     llvm_args.push(extra_param);
                     let v = builder.build_call_fn_ptr(
-                        function_decl.as_llvm_type(),
+                        self.compile_type(&function_decl),
                         fn_ptr,
                         llvm_args.as_mut_slice(),
                         "",
@@ -1078,7 +1091,7 @@ impl Compiler {
                 };
                 Value::new(v, ty0)
             }
-            Expr::Float(f) => Value::new(Global::const_double(f), ty0),
+            Expr::Float(f) => Value::new(Global::const_float(f), ty0),
             Expr::String(s, ..) => {
                 let ptr = builder.build_global_string("", s);
                 Value::new(ptr, ty0)
@@ -1121,14 +1134,14 @@ impl Compiler {
                 if ty0.is_ref() {
                     let element_type = ty0.get_element_type().unwrap();
                     dbg!(&element_type);
-                    let v0 = builder.build_load(element_type.as_llvm_type(), ptr.value);
+                    let v0 = builder.build_load(self.compile_type(&element_type), ptr.value);
                     return Value::new(v0, element_type.clone());
                 }
                 if ptr.get_type() == ty0 {
                     return ptr;
                 }
                 if !ty0.is_pointer() {
-                    let v0 = builder.build_load(ptr.ty.as_llvm_type(), ptr.value);
+                    let v0 = builder.build_load(self.compile_type(&ptr.ty), ptr.value);
                     return Value::new(v0, ty0);
                 }
                 
@@ -1163,7 +1176,7 @@ impl Compiler {
                 let v = self.compile_expr(&target, ctx);
                 let index = self.compile_expr(&index, ctx);
                 let v = builder.build_array_get_in_bounds(
-                    ty0.as_llvm_type(),
+                    self.compile_type(&ty0),
                     v.get_value(),
                     index.get_value(),
                 );
@@ -1190,7 +1203,7 @@ impl Compiler {
                     .into_iter()
                     .map(|(_, v)| v.get_value())
                     .collect::<Vec<LLVMValue>>();
-                let mut val = Global::undef(ty0.as_llvm_type());
+                let mut val = Global::undef(self.compile_type(&ty0));
                 for (idx, v) in props.iter().enumerate() {
                     val = builder.build_struct_insert(val, idx, v);
                 }
@@ -1235,7 +1248,7 @@ impl Compiler {
                 }
                 
                 // 设置标签字段（第一个字段）
-                let tag_ptr = builder.build_struct_gep(enum_type.as_llvm_type(), enum_ptr, 0);
+                let tag_ptr = builder.build_struct_gep(self.compile_type(&enum_type), enum_ptr, 0);
                 builder.build_store(tag_ptr, Global::const_i32(variant_index as i32));
                 
                 // 如果有关联值，设置数据字段（第二个字段）
@@ -1244,7 +1257,7 @@ impl Compiler {
                     let val_value = self.compile_expr(&val, ctx);
                     
                     // 设置数据字段
-                    let data_ptr = builder.build_struct_gep(enum_type.as_llvm_type(), enum_ptr, 1);
+                    let data_ptr = builder.build_struct_gep(self.compile_type(&enum_type), enum_ptr, 1);
                     builder.build_store(data_ptr, val_value.value);
                 }
                 

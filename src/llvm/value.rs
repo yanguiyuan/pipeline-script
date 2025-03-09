@@ -55,6 +55,7 @@ impl From<LLVMValueRef> for LLVMValue {
             LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(value),
             LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
             LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(value),
+            LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(value),
             t => {
                 println!("{t:?}");
                 todo!()

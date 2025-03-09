@@ -6,7 +6,7 @@ pub enum Token {
     String(String),
     FormatString(String),
     Int(i64),
-    Float(f64),
+    Float(f32),
     Identifier(String),
     Boolean(bool),
     /// 关键字

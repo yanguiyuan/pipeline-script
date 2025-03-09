@@ -202,7 +202,7 @@ impl ExprNode {
 pub enum Expr {
     String(String),
     Int(i64),
-    Float(f64),
+    Float(f32),
     Boolean(bool),
     BraceExpr(Box<ExprNode>),
     FnCall(FnCallExpr),
