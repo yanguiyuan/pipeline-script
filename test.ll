@@ -1,37 +1,48 @@
-%Any.0 = type { i32, ptr }
-%"Vec<Int64>" = type { i64, ptr }
+; ModuleID = 'main'
+source_filename = "main"
 
-declare void @call(ptr %0)
+%Any = type { i32, ptr }
+%"Option<Float>" = type { i32, float }
+%Any.1 = type { i32, ptr }
 
-declare ptr @malloc(i64 %0)
+declare void @println(%Any %0)
 
 declare ptr @FormatAppend({ i64, ptr } %0)
-
-declare void @println(%Any.0 %0)
 
 declare void @cmd(ptr %0)
 
 define void @"$Module.main"() {
 entry:
-  %a = alloca %"Vec<Int64>", align 8
-  %0 = alloca i64, i64 10, align 8
-  store [10 x i64] [i64 1, i64 2, i64 3, i64 4, i64 5, i64 6, i64 7, i64 8, i64 9, i64 10], ptr %0, align 4
-  %1 = insertvalue { i64, ptr } { i64 10, ptr undef }, ptr %0, 1
-  store { i64, ptr } %1, ptr %a, align 8
-  %2 = getelementptr inbounds { i64, ptr }, ptr %a, i32 0, i32 1
-  %3 = load ptr, ptr %2, align 8
-  %4 = alloca i64, i64 2, align 8
-  store [2 x i64] [i64 100, i64 200], ptr %4, align 4
-  store ptr %4, ptr %3, align 8
-  %5 = load %"Vec<Int64>", ptr %a, align 8
-  %6 = extractvalue %"Vec<Int64>" %5, 1
-  %7 = getelementptr inbounds i64, ptr %6, i64 0
-  %8 = load i64, ptr %7, align 4
-  %9 = alloca i64, align 8
-  store i64 %8, ptr %9, align 4
-  %any = alloca { i32, ptr }, align 8
-  %10 = insertvalue { i32, ptr } { i32 4, ptr undef }, ptr %9, 1
-  store { i32, ptr } %10, ptr %any, align 8
+  %b = alloca %"Option<Float>", align 8
+  %enum_instance = alloca %"Option<Float>", align 8
+  %0 = getelementptr inbounds %"Option<Float>", ptr %enum_instance, i32 0, i32 0
+  store i32 1, ptr %0, align 4
+  %1 = getelementptr inbounds %"Option<Float>", ptr %enum_instance, i32 0, i32 1
+  store float 0x40249999A0000000, ptr %1, align 4
+  store ptr %enum_instance, ptr %b, align 8
+  %2 = load %"Option<Float>", ptr %b, align 4
+  %3 = getelementptr inbounds %"Option<Float>", %"Option<Float>" %2, i32 0, i32 0
+  %4 = load i32, %"Option<Float>" %3, align 4
+  %5 = icmp eq i32 %4, 1
+  br i1 %5, label %if_let_then, label %if_let_else
+
+if_let_then:                                      ; preds = %entry
+  %6 = getelementptr inbounds %"Option<Float>", %"Option<Float>" %2, i32 0, i32 1
+  %7 = load float, %"Option<Float>" %6, align 4
+  %8 = fadd float %7, 1.150000e+01
+  store float %8, %"Option<Float>" %6, align 4
+  %9 = load float, %"Option<Float>" %6, align 4
+  %10 = alloca float, align 4
+  store float %9, ptr %10, align 4
+  %any = alloca %Any.1, align 8
+  %11 = insertvalue { i32, ptr } { i32 9, ptr undef }, ptr %10, 1
+  store { i32, ptr } %11, ptr %any, align 8
   call void @println(ptr %any)
+  br label %if_let_end
+
+if_let_else:                                      ; preds = %entry
+  br label %if_let_end
+
+if_let_end:                                       ; preds = %if_let_else, %if_let_then
   ret void
 }

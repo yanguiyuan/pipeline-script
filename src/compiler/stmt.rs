@@ -159,9 +159,9 @@ impl Compiler {
                         }
                         
                         // 获取枚举值的标签（第一个字段）
-                        let tag_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 0);
-                        let tag = builder.build_load(Global::i32_type(), tag_ptr);
-                        
+                        // let tag_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 0);
+                        // let tag = builder.build_load(Global::i32_type(), tag_ptr);
+                        let tag = builder.build_struct_get(value.value, 0);
                         // 创建条件：tag == variant_index
                         let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
                         
@@ -182,9 +182,10 @@ impl Compiler {
                         if let Expr::EnumVariant(_, _, Some(binding)) = &pattern.get_expr() {
                             if let Expr::Variable(name) = &binding.get_expr() {
                                 // 获取枚举值的数据（第二个字段）
-                                let data_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 1);
+                                // let data_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 1);
                                 let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
-                                let data = builder.build_load(data_type.clone(), data_ptr);
+                                // let data = builder.build_load(data_type.clone(), data_ptr);
+                                let data = builder.build_struct_get(value.value, 1);
                                 //
                                 // // 绑定变量
                                 // let var_ptr = builder.build_alloca(name, &data_type);
@@ -210,7 +211,7 @@ impl Compiler {
             }
             Stmt::IfLet(pattern, expr, body, else_body) => {
                 // 编译匹配的表达式
-                let value = self.compile_expr(expr, ctx);
+                let value = self.compile_expr_with_ptr(expr, ctx);
                 
                 // 创建基本块
                 let function = ctx.get_current_function();
@@ -235,9 +236,11 @@ impl Compiler {
                     }
                     
                     // 获取枚举值的标签（第一个字段）
-                    let tag_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 0);
+                    let element_type = value.ty.get_element_type().unwrap();
+                    let element_llvm_type = self.compile_type(element_type);
+                    let tag_ptr = builder.build_struct_gep(element_llvm_type.clone(), value.value, 0);
                     let tag = builder.build_load(Global::i32_type(), tag_ptr);
-                    
+                    // let tag = builder.build_struct_get(value.value, 0);
                     // 创建条件：tag == variant_index
                     let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
                     
@@ -251,11 +254,11 @@ impl Compiler {
                     if let Expr::EnumVariant(_, _, Some(binding)) = &pattern.get_expr() {
                         if let Expr::Variable(name) = &binding.get_expr() {
                             // 获取枚举值的数据（第二个字段）
-                            let data_ptr = builder.build_struct_gep(self.compile_type(&value.ty), value.value, 1);
+                            let data_ptr = builder.build_struct_gep(element_llvm_type.clone(), value.value, 1);
                             dbg!(&data_ptr);
-                            let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
+                            let data_type = element_llvm_type.get_struct_field_type(1);
                             // let data = builder.build_load(data_type.clone(), data_ptr);
-                            
+                            dbg!(&data_type);
                             // // 绑定变量
                             // let var_ptr = builder.build_alloca(name, &data_type);
                             // builder.build_store(var_ptr, data);

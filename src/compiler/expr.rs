@@ -556,7 +556,7 @@ impl Compiler {
                 let l = self.compile_expr(&l, ctx).get_value();
                 let r = self.compile_expr(&r, ctx).get_value();
                 let v = match op {
-                    Op::Plus => builder.build_add(l, r),
+                    Op::Plus =>self.compile_add(l,r,ctx),
                     Op::Minus => builder.build_sub(l, r),
                     Op::Mul => builder.build_mul(l, r),
                     Op::Equal => builder.build_eq(l, r),
@@ -587,8 +587,14 @@ impl Compiler {
                 });
                 dbg!(&ptr);
                 dbg!(&ty0);
+                let ptr_type = ptr.get_type();
                 if ty0.is_ref() {
                     let element_type = ty0.get_element_type().unwrap();
+                    dbg!(&element_type);
+                    let v0 = builder.build_load(self.compile_type(&element_type), ptr.value);
+                    return Value::new(v0, element_type.clone());
+                }else if ptr_type.is_ref() {
+                    let element_type = ptr_type.get_element_type().unwrap();
                     dbg!(&element_type);
                     let v0 = builder.build_load(self.compile_type(&element_type), ptr.value);
                     return Value::new(v0, element_type.clone());
@@ -699,7 +705,7 @@ impl Compiler {
                 let builder = ctx.get_builder();
                 
                 // 分配内存
-                let enum_ptr = builder.build_alloca("enum_instance", &self.compile_type(&enum_type));
+                // let enum_ptr = builder.build_alloca("enum_instance", &self.compile_type(&enum_type));
                 
                 // 获取变体索引
                 let mut variant_index = 0;
@@ -713,8 +719,10 @@ impl Compiler {
                 }
                 
                 // 设置标签字段（第一个字段）
-                let tag_ptr = builder.build_struct_gep(self.compile_type(&enum_type), enum_ptr, 0);
-                builder.build_store(tag_ptr, Global::const_i32(variant_index as i32));
+                let enum_val = Global::undef(self.compile_type(&enum_type));
+                let mut enum_val = builder.build_struct_insert(enum_val, 0, &Global::const_i32(variant_index as i32));
+                // let tag_ptr = builder.build_struct_gep(self.compile_type(&enum_type), enum_ptr, 0);
+                // builder.build_store(tag_ptr, Global::const_i32(variant_index as i32));
                 
                 // 如果有关联值，设置数据字段（第二个字段）
                 if let Some(val) = value {
@@ -722,15 +730,24 @@ impl Compiler {
                     let val_value = self.compile_expr(&val, ctx);
                     
                     // 设置数据字段
-                    let data_ptr = builder.build_struct_gep(self.compile_type(&enum_type), enum_ptr, 1);
-                    builder.build_store(data_ptr, val_value.value);
+                    enum_val = builder.build_struct_insert(enum_val, 1, &val_value.value);
+                    // let data_ptr = builder.build_struct_gep(self.compile_type(&enum_type), enum_ptr, 1);
+                    // builder.build_store(data_ptr, val_value.value);
                 }
-                
+                dbg!(&enum_type);
                 // 返回枚举实例
-                Value::new(enum_ptr, enum_type)
+                Value::new(enum_val, enum_type)
             }
             Expr::None => Value::new(Global::const_unit(), ty0),
             t => todo!("Unknown expr: {:?}", t),
         }
+    }
+    fn compile_add(&self,l:LLVMValue,r:LLVMValue,ctx:&Context) -> LLVMValue {
+        let builder = ctx.get_builder();
+        let ty = l.get_type();
+        if ty.is_float(){
+            return builder.build_fadd(l, r);
+        }
+        builder.build_add(l, r)
     }
 }

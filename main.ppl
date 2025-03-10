@@ -15,7 +15,7 @@ match(b) {
 }
 
 if let(Option.Some(x) = b) {
-    // x = x + 11.5
+    x = x + 11.5
     println(x)
 }
 //cmd("ls")

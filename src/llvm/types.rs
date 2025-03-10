@@ -132,6 +132,9 @@ impl LLVMType {
         let t = unsafe { LLVMInt32Type() };
         LLVMType::Int32(t)
     }
+    pub fn is_float(&self) -> bool {
+        matches!(self, LLVMType::Float(_))
+    }
     pub fn is_pointer(&self) -> bool {
         matches!(self, LLVMType::Pointer(_, _))
     }

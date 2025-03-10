@@ -251,7 +251,7 @@ impl Builder {
         };
         r.into()
     }
-    pub fn build_fadd(&self, l: LLVMValue, r: LLVMValue) -> LLVMValueRef {
+    pub fn build_fadd(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();
         unsafe {
             LLVMBuildFAdd(
@@ -260,7 +260,7 @@ impl Builder {
                 r.as_llvm_value_ref(),
                 name.as_ptr(),
             )
-        }
+        }.into()
     }
     pub fn build_mul(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();
