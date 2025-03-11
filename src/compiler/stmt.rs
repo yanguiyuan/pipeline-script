@@ -1,11 +1,11 @@
 use crate::compiler::Compiler;
 use crate::context::Context;
-
 use crate::core::value::Value;
 use crate::llvm::global::Global;
-use crate::parser::expr::Expr;
+use crate::parser::expr::{Expr, ExprNode};
 use crate::parser::r#type::Type;
-use crate::parser::stmt::{Stmt, StmtNode};
+use crate::parser::stmt::{MatchBranch, Stmt, StmtNode};
+use llvm_sys::prelude::LLVMBasicBlockRef;
 
 impl Compiler {
     pub(crate) fn compile_stmt(&self, stmt: &StmtNode, ctx: &Context) {
@@ -114,179 +114,224 @@ impl Compiler {
             }
             Stmt::Noop => {}
             Stmt::Match(expr, branches) => {
-                // 编译匹配的表达式
-                let value = self.compile_expr(expr, ctx);
-
-                // 创建匹配结束的基本块
-                let function = ctx.get_current_function();
-                let end_block = function.append_basic_block("match_end");
-
-                // 创建分支基本块
-                let mut branch_blocks = vec![];
-                for _ in branches.iter() {
-                    let block = function.append_basic_block("match_branch");
-                    branch_blocks.push(block);
-                }
-
-                // 为每个分支创建条件判断
-                for (i, branch) in branches.iter().enumerate() {
-                    let pattern = branch.get_pattern();
-
-                    // 检查模式是否是枚举变体
-                    if let Expr::EnumVariant(enum_name, variant_name, _) = &pattern.get_expr() {
-                        // 获取枚举类型
-                        let enum_type = match ctx.get_type_alias(enum_name) {
-                            Some(ty) => ty,
-                            None => {
-                                // 如果找不到枚举类型，使用默认行为
-                                println!("Warning: Enum type '{}' not found", enum_name);
-                                // 默认走else分支
-                                builder.build_br(end_block);
-                                // 设置当前基本块为if_let_end
-                                builder.position_at_end(end_block);
-                                return;
-                            }
-                        };
-
-                        // 获取变体索引
-                        let mut variant_index = 0;
-                        if let Type::Enum(_, variants) = &enum_type {
-                            for (j, (name, _)) in variants.iter().enumerate() {
-                                if name == variant_name {
-                                    variant_index = j;
-                                    break;
-                                }
-                            }
-                        }
-
-                        // 获取枚举值的标签（第一个字段）
-                        let tag = builder.build_struct_get(value.value, 0);
-                        // 创建条件：tag == variant_index
-                        let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
-
-                        // 创建下一个分支的基本块
-                        let next_block = if i < branches.len() - 1 {
-                            branch_blocks[i + 1]
-                        } else {
-                            end_block
-                        };
-
-                        // 创建条件分支
-                        builder.build_cond_br(cond, branch_blocks[i], next_block);
-                        // 编译分支体
-                        builder.position_at_end(branch_blocks[i]);
-
-                        // 如果模式有关联值，需要提取并绑定
-                        if let Expr::EnumVariant(_, _, Some(binding)) = &pattern.get_expr() {
-                            if let Expr::Variable(name) = &binding.get_expr() {
-                                // 获取枚举值的数据（第二个字段）
-                                let data_type =
-                                    self.compile_type(&value.ty).get_struct_field_type(1);
-                                let data = builder.build_struct_get(value.value, 1);
-
-                                // 将变量添加到上下文
-                                ctx.set_symbol(
-                                    name.clone(),
-                                    Value::new(data, Type::from(data_type)),
-                                );
-                            }
-                        }
-
-                        // 编译分支体
-                        for stmt in branch.get_body() {
-                            self.compile_stmt(stmt, ctx);
-                        }
-
-                        // 跳转到匹配结束的基本块
-                        builder.build_br(end_block);
-                    }
-                }
-
-                // 设置当前基本块为匹配结束的基本块
-                builder.position_at_end(end_block);
+                self.compile_match_statement(expr, branches, ctx);
             }
             Stmt::IfLet(pattern, expr, body, else_body) => {
-                // 编译匹配的表达式
-                let value = self.compile_expr_with_ptr(expr, ctx);
-
-                // 创建基本块
-                let function = ctx.get_current_function();
-                let then_block = function.append_basic_block("if_let_then");
-                let else_block = function.append_basic_block("if_let_else");
-                let end_block = function.append_basic_block("if_let_end");
-
-                // 检查模式是否是枚举变体
-                if let Expr::EnumVariant(enum_name, variant_name, _) = &pattern.get_expr() {
-                    // 获取枚举类型
-                    let enum_type = ctx.get_type_alias(enum_name).unwrap();
-
-                    // 获取变体索引
-                    let mut variant_index = 0;
-                    if let Type::Enum(_, variants) = &enum_type {
-                        for (j, (name, _)) in variants.iter().enumerate() {
-                            if name == variant_name {
-                                variant_index = j;
-                                break;
-                            }
-                        }
-                    }
-
-                    // 获取枚举值的标签（第一个字段）
-                    let element_type = value.ty.get_element_type().unwrap();
-                    let element_llvm_type = self.compile_type(element_type);
-                    let tag_ptr =
-                        builder.build_struct_gep(element_llvm_type.clone(), value.value, 0);
-                    let tag = builder.build_load(Global::i32_type(), tag_ptr);
-                    // let tag = builder.build_struct_get(value.value, 0);
-                    // 创建条件：tag == variant_index
-                    let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
-
-                    // 创建条件分支
-                    builder.build_cond_br(cond, then_block, else_block);
-
-                    // 编译then分支
-                    builder.position_at_end(then_block);
-
-                    // 如果模式有关联值，需要提取并绑定
-                    if let Expr::EnumVariant(_, _, Some(binding)) = &pattern.get_expr() {
-                        if let Expr::Variable(name) = &binding.get_expr() {
-                            // 获取枚举值的数据（第二个字段）
-                            let data_ptr =
-                                builder.build_struct_gep(element_llvm_type.clone(), value.value, 1);
-                            let data_type = element_llvm_type.get_struct_field_type(1);
-
-                            // 将变量添加到上下文
-                            ctx.set_symbol(
-                                name.clone(),
-                                Value::new(data_ptr, Type::Ref(Box::new(Type::from(data_type)))),
-                            );
-                        }
-                    }
-
-                    // 编译then分支体
-                    for stmt in body {
-                        self.compile_stmt(stmt, ctx);
-                    }
-
-                    // 跳转到结束基本块
-                    builder.build_br(end_block);
-
-                    // 编译else分支
-                    builder.position_at_end(else_block);
-                    if let Some(else_stmts) = else_body {
-                        for stmt in else_stmts {
-                            self.compile_stmt(stmt, ctx);
-                        }
-                    }
-
-                    // 跳转到结束基本块
-                    builder.build_br(end_block);
-
-                    // 设置当前基本块为结束基本块
-                    builder.position_at_end(end_block);
-                }
+                self.compile_if_let_statement(pattern, expr, body, else_body, ctx);
             }
             _ => todo!("compile stmt"),
+        }
+    }
+
+    // 编译match语句
+    fn compile_match_statement(&self, expr: &ExprNode, branches: &[MatchBranch], ctx: &Context) {
+        let builder = ctx.get_builder();
+        // 编译匹配的表达式
+        let value = self.compile_expr(expr, ctx);
+
+        // 创建匹配结束的基本块
+        let function = ctx.get_current_function();
+        let end_block = function.append_basic_block("match_end");
+
+        // 创建分支基本块
+        let mut branch_blocks = vec![];
+        for _ in branches.iter() {
+            let block = function.append_basic_block("match_branch");
+            branch_blocks.push(block);
+        }
+
+        // 为每个分支创建条件判断
+        for (i, branch) in branches.iter().enumerate() {
+            let pattern = branch.get_pattern();
+
+            // 检查模式是否是枚举变体
+            if let Expr::EnumVariant(enum_name, variant_name, binding) = &pattern.get_expr() {
+                self.compile_enum_match(
+                    enum_name,
+                    variant_name,
+                    binding,
+                    &value,
+                    &branch_blocks,
+                    i,
+                    branches.len(),
+                    branch.get_body(),
+                    end_block,
+                    ctx,
+                );
+            }
+        }
+
+        // 设置当前基本块为匹配结束的基本块
+        builder.position_at_end(end_block);
+    }
+
+    // 编译枚举匹配
+    fn compile_enum_match(
+        &self,
+        enum_name: &str,
+        variant_name: &str,
+        binding: &Option<Box<ExprNode>>,
+        value: &Value,
+        branch_blocks: &[LLVMBasicBlockRef],
+        branch_index: usize,
+        branches_count: usize,
+        body: &[StmtNode],
+        end_block: LLVMBasicBlockRef,
+        ctx: &Context,
+    ) {
+        let builder = ctx.get_builder();
+
+        // 获取枚举类型
+        let enum_type = match ctx.get_type_alias(enum_name) {
+            Some(ty) => ty,
+            None => {
+                // 如果找不到枚举类型，使用默认行为
+                println!("Warning: Enum type '{}' not found", enum_name);
+                // 默认走end分支
+                builder.build_br(end_block);
+                // 设置当前基本块为end_block
+                builder.position_at_end(end_block);
+                return;
+            }
+        };
+
+        // 获取变体索引
+        let mut variant_index = 0;
+        if let Type::Enum(_, variants) = &enum_type {
+            for (j, (name, _)) in variants.iter().enumerate() {
+                if name == variant_name {
+                    variant_index = j;
+                    break;
+                }
+            }
+        }
+
+        // 获取枚举值的标签（第一个字段）
+        let tag = builder.build_struct_get(value.value, 0);
+        // 创建条件：tag == variant_index
+        let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
+
+        // 创建下一个分支的基本块
+        let next_block = if branch_index < branches_count - 1 {
+            branch_blocks[branch_index + 1]
+        } else {
+            end_block
+        };
+
+        // 创建条件分支
+        builder.build_cond_br(cond, branch_blocks[branch_index], next_block);
+
+        // 编译分支体
+        builder.position_at_end(branch_blocks[branch_index]);
+
+        // 如果模式有关联值，需要提取并绑定
+        if let Some(binding) = binding {
+            if let Expr::Variable(name) = &binding.get_expr() {
+                // 获取枚举值的数据（第二个字段）
+                let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
+                let data = builder.build_struct_get(value.value, 1);
+
+                // 将变量添加到上下文
+                ctx.set_symbol(name.clone(), Value::new(data, Type::from(data_type)));
+            }
+        }
+
+        // 编译分支体
+        for stmt in body {
+            self.compile_stmt(stmt, ctx);
+        }
+
+        // 跳转到匹配结束的基本块
+        builder.build_br(end_block);
+    }
+
+    // 编译if-let语句
+    fn compile_if_let_statement(
+        &self,
+        pattern: &ExprNode,
+        expr: &ExprNode,
+        body: &[StmtNode],
+        else_body: &Option<Vec<StmtNode>>,
+        ctx: &Context,
+    ) {
+        let builder = ctx.get_builder();
+        // 编译匹配的表达式
+        let value = self.compile_expr_with_ptr(expr, ctx);
+
+        // 创建基本块
+        let function = ctx.get_current_function();
+        let then_block = function.append_basic_block("if_let_then");
+        let else_block = function.append_basic_block("if_let_else");
+        let end_block = function.append_basic_block("if_let_end");
+
+        // 检查模式是否是枚举变体
+        if let Expr::EnumVariant(enum_name, variant_name, binding) = &pattern.get_expr() {
+            // 获取枚举类型
+            let enum_type = ctx.get_type_alias(enum_name).unwrap();
+
+            // 获取变体索引
+            let mut variant_index = 0;
+            if let Type::Enum(_, variants) = &enum_type {
+                for (j, (name, _)) in variants.iter().enumerate() {
+                    if name == variant_name {
+                        variant_index = j;
+                        break;
+                    }
+                }
+            }
+
+            // 获取枚举值的标签（第一个字段）
+            let element_type = value.ty.get_element_type().unwrap();
+            let element_llvm_type = self.compile_type(element_type);
+            let tag_ptr = builder.build_struct_gep(element_llvm_type.clone(), value.value, 0);
+            let tag = builder.build_load(Global::i32_type(), tag_ptr);
+
+            // 创建条件：tag == variant_index
+            let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
+
+            // 创建条件分支
+            builder.build_cond_br(cond, then_block, else_block);
+
+            // 编译then分支
+            builder.position_at_end(then_block);
+
+            // 如果模式有关联值，需要提取并绑定
+            if let Some(binding) = binding {
+                if let Expr::Variable(name) = &binding.get_expr() {
+                    // 获取枚举值的数据（第二个字段）
+                    let data_ptr =
+                        builder.build_struct_gep(element_llvm_type.clone(), value.value, 1);
+                    let data_type = element_llvm_type.get_struct_field_type(1);
+
+                    // 将变量添加到上下文
+                    ctx.set_symbol(
+                        name.clone(),
+                        Value::new(data_ptr, Type::Ref(Box::new(Type::from(data_type)))),
+                    );
+                }
+            }
+
+            // 编译then分支体
+            for stmt in body {
+                self.compile_stmt(stmt, ctx);
+            }
+
+            // 跳转到结束基本块
+            builder.build_br(end_block);
+
+            // 编译else分支
+            builder.position_at_end(else_block);
+            if let Some(else_stmts) = else_body {
+                for stmt in else_stmts {
+                    self.compile_stmt(stmt, ctx);
+                }
+            }
+
+            // 跳转到结束基本块
+            builder.build_br(end_block);
+
+            // 设置当前基本块为结束基本块
+            builder.position_at_end(end_block);
         }
     }
 }

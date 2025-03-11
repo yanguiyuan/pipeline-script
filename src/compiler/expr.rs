@@ -74,8 +74,7 @@ impl Compiler {
         }
         let function = ctx.get_current_function();
         let a = function.get_param(name);
-        if a.is_some() {
-            let a = a.unwrap();
+        if let Some(a) = a {
             let builder = ctx.get_builder();
             if ty0.is_struct() {
                 let ptr = builder.build_alloca(name, &self.compile_type(ty0));
