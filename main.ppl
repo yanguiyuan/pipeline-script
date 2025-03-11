@@ -14,8 +14,7 @@ match(b) {
     }
 }
 
-if let(Option.Some(x) = b) {
-    x = x + 11.5
+if const(Option.Some(x) = b) {
     println(x)
 }
 //cmd("ls")
