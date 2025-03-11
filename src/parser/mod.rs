@@ -24,7 +24,6 @@ pub mod declaration;
 pub mod expr;
 pub mod function;
 pub mod module;
-mod peg;
 pub mod stmt;
 pub mod r#struct;
 pub mod r#type;
@@ -103,7 +102,6 @@ impl Parser {
                 Token::Keyword(k) => match k.as_str() {
                     t if t == self.var_keyword => self.parse_var_stmt(ctx).unwrap(),
                     t if t == self.val_keyword => self.parse_val_stmt(ctx).unwrap(),
-                    // "if" => self.parse_if_stmt(ctx).unwrap(),
                     "while" => self.parse_while_stmt(ctx)?,
                     "for" => self.parse_for_stmt(ctx)?,
                     "return" => self.parse_return_stmt(ctx)?,
@@ -137,6 +135,8 @@ impl Parser {
                         let (next_token, _) = self.token_stream.peek_nth(1);
                         if next_token.is_keyword("let") {
                             return self.parse_if_let_stmt(ctx);
+                        } else if next_token.is_keyword("const") {
+                            return self.parse_if_const_stmt(ctx);
                         } else {
                             return self.parse_if_stmt(ctx);
                         }
@@ -1218,6 +1218,41 @@ impl Parser {
 
         // 创建if let语句
         let if_let_stmt = Stmt::IfLet(Box::new(pattern), Box::new(expr), body, else_body);
+        Ok(StmtNode::new(if_let_stmt, pos))
+    }
+    pub fn parse_if_const_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
+        // 解析if关键字
+        let pos = self.parse_keyword("if")?;
+        let s = self.val_keyword.clone();
+        // 解析const关键字
+        self.parse_keyword(s.as_str())?;
+
+        // 解析左括号
+        self.parse_special_token(Token::BraceLeft)?;
+
+        // 解析模式
+        let pattern = self.parse_expr(ctx)?;
+
+        // 解析等号
+        self.parse_special_token(Token::Assign)?;
+
+        // 解析匹配的表达式
+        let expr = self.parse_expr(ctx)?;
+
+        // 解析右括号
+        self.parse_special_token(Token::BraceRight)?;
+
+        // 解析if分支体
+        let body = self.parse_block(ctx)?;
+
+        // 解析else分支（如果有）
+        let mut else_body = None;
+        if self.try_parse_token(Token::Keyword("else".to_string())) {
+            else_body = Some(self.parse_block(ctx)?);
+        }
+
+        // 创建if let语句
+        let if_let_stmt = Stmt::IfConst(Box::new(pattern), Box::new(expr), body, else_body);
         Ok(StmtNode::new(if_let_stmt, pos))
     }
 }

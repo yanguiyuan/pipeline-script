@@ -875,6 +875,69 @@ impl TypePostprocessor {
                     stmt.position(),
                 )
             }
+            Stmt::IfConst(pattern, expr, body, else_body) => {
+                // 处理模式和表达式
+                let processed_expr = self.process_expr(expr, ctx);
+                let ctx =
+                    Context::with_type(ctx, "default".into(), processed_expr.get_type().unwrap());
+                let ctx = Context::with_flag(&ctx, "pattern", true);
+                let processed_pattern = self.process_expr(pattern, &ctx);
+                ctx.set_flag("pattern", false);
+
+                // 创建新的上下文，用于处理if分支体
+                let if_ctx = ctx.clone();
+
+                // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
+                if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
+                    if let Expr::Variable(name) = &binding.get_expr() {
+                        // 获取关联值的类型
+                        if let Some(Type::Enum(_, variants)) = processed_expr.get_type() {
+                            // 查找变体的关联类型
+                            for (variant_name, variant_type) in variants {
+                                if let Expr::EnumVariant(_, pattern_variant, _) =
+                                    &processed_pattern.get_expr()
+                                {
+                                    if &variant_name == pattern_variant {
+                                        if let Some(ty) = variant_type {
+                                            // 将关联值添加到上下文中
+                                            if_ctx.set_symbol_type(name.clone(), ty.clone());
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 处理if分支体
+                let mut processed_body = vec![];
+                for body_stmt in body {
+                    processed_body.push(self.process_stmt(body_stmt, &if_ctx));
+                }
+
+                // 处理else分支体（如果有）
+                let processed_else_body = if let Some(else_stmts) = else_body {
+                    let mut processed_else = vec![];
+                    for else_stmt in else_stmts {
+                        processed_else.push(self.process_stmt(else_stmt, &ctx));
+                    }
+                    Some(processed_else)
+                } else {
+                    None
+                };
+
+                // 创建处理后的IfLet语句
+                StmtNode::new(
+                    Stmt::IfConst(
+                        Box::new(processed_pattern),
+                        Box::new(processed_expr),
+                        processed_body,
+                        processed_else_body,
+                    ),
+                    stmt.position(),
+                )
+            }
             _ => stmt.clone(),
         }
     }

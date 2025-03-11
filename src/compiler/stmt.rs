@@ -119,6 +119,9 @@ impl Compiler {
             Stmt::IfLet(pattern, expr, body, else_body) => {
                 self.compile_if_let_statement(pattern, expr, body, else_body, ctx);
             }
+            Stmt::IfConst(pattern, expr, body, else_body) => {
+                self.compile_if_const_statement(pattern, expr, body, else_body, ctx);
+            }
             _ => todo!("compile stmt"),
         }
     }
@@ -292,6 +295,67 @@ impl Compiler {
 
             // 如果模式有关联值，需要提取并绑定
             self.compile_match_branch_pointer_binding(binding, &element_llvm_type, &value, ctx);
+
+            // 编译then分支体
+            for stmt in body {
+                self.compile_stmt(stmt, ctx);
+            }
+
+            // 跳转到结束基本块
+            builder.build_br(end_block);
+
+            // 编译else分支
+            builder.position_at_end(else_block);
+            if let Some(else_stmts) = else_body {
+                for stmt in else_stmts {
+                    self.compile_stmt(stmt, ctx);
+                }
+            }
+
+            // 跳转到结束基本块
+            builder.build_br(end_block);
+
+            // 设置当前基本块为结束基本块
+            builder.position_at_end(end_block);
+        }
+    }
+    fn compile_if_const_statement(
+        &self,
+        pattern: &ExprNode,
+        expr: &ExprNode,
+        body: &[StmtNode],
+        else_body: &Option<Vec<StmtNode>>,
+        ctx: &Context,
+    ) {
+        let builder = ctx.get_builder();
+        // 编译匹配的表达式
+        let value = self.compile_expr(expr, ctx);
+
+        // 创建基本块
+        let function = ctx.get_current_function();
+        let then_block = function.append_basic_block("if_let_then");
+        let else_block = function.append_basic_block("if_let_else");
+        let end_block = function.append_basic_block("if_let_end");
+
+        // 检查模式是否是枚举变体
+        if let Expr::EnumVariant(enum_name, variant_name, binding) = &pattern.get_expr() {
+            // 获取变体索引
+            let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
+
+            // 获取枚举值的标签（第一个字段）
+            let tag = builder.build_struct_get(value.value, 0);
+
+            // 创建条件：tag == variant_index
+            let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
+
+            // 创建条件分支
+            builder.build_cond_br(cond, then_block, else_block);
+
+            // 编译then分支
+            builder.position_at_end(then_block);
+
+            // 如果模式有关联值，需要提取并绑定
+            self.compile_match_branch_binding(binding, &value, ctx);
 
             // 编译then分支体
             for stmt in body {

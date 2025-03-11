@@ -37,6 +37,12 @@ pub enum Stmt {
         Vec<StmtNode>,
         Option<Vec<StmtNode>>,
     ),
+    IfConst(
+        Box<ExprNode>,
+        Box<ExprNode>,
+        Vec<StmtNode>,
+        Option<Vec<StmtNode>>,
+    ),
     Noop,
 }
 #[derive(Debug, Clone)]
@@ -140,6 +146,7 @@ impl NodeTrait for StmtNode {
             Stmt::Noop => "Noop",
             Stmt::Match(_, _) => "Match",
             Stmt::IfLet(_, _, _, _) => "IfLet",
+            Stmt::IfConst(_, _, _, _) => "IfConst",
         }
     }
 
