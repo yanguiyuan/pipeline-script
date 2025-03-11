@@ -98,8 +98,8 @@ impl Engine {
         ctx.apply_mut_module(module_key, |module| {
             for i in self
                 .visitors
-            .iter()
-            .filter(|i| i.stage() == Stage::AfterTypeInfer)
+                .iter()
+                .filter(|i| i.stage() == Stage::AfterTypeInfer)
             {
                 run_visitor(module, &**i)
             }

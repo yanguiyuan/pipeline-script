@@ -31,7 +31,12 @@ pub enum Stmt {
     // Match语句，包含匹配的表达式和匹配分支
     Match(Box<ExprNode>, Vec<MatchBranch>),
     // If let语句，用于模式匹配
-    IfLet(Box<ExprNode>, Box<ExprNode>, Vec<StmtNode>, Option<Vec<StmtNode>>),
+    IfLet(
+        Box<ExprNode>,
+        Box<ExprNode>,
+        Vec<StmtNode>,
+        Option<Vec<StmtNode>>,
+    ),
     Noop,
 }
 #[derive(Debug, Clone)]
@@ -90,11 +95,11 @@ impl MatchBranch {
     pub fn new(pattern: ExprNode, body: Vec<StmtNode>) -> Self {
         Self { pattern, body }
     }
-    
+
     pub fn get_pattern(&self) -> &ExprNode {
         &self.pattern
     }
-    
+
     pub fn get_body(&self) -> &Vec<StmtNode> {
         &self.body
     }
@@ -223,15 +228,15 @@ impl StmtNode {
     pub fn new(stmt: Stmt, pos: Position) -> Self {
         Self { stmt, pos }
     }
-    
+
     pub fn get_stmt(&self) -> &Stmt {
         &self.stmt
     }
-    
+
     pub fn position(&self) -> Position {
         self.pos.clone()
     }
-    
+
     pub fn is_noop(&self) -> bool {
         self.stmt.is_noop()
     }

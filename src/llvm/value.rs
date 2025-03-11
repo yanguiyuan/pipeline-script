@@ -100,7 +100,6 @@ impl LLVMValue {
                 let element_type = unsafe { LLVMGetElementType(ty) };
                 LLVMType::Array(Box::new(LLVMType::from(element_type)), ty)
             }
-            LLVMValue::Float(_) => LLVMType::Float(ty),
             // LLVMValue::Struct(_)=>LLVMType::Struct(ty),
             t => panic!("{t:?}"),
         }

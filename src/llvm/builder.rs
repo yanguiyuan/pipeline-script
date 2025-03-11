@@ -260,7 +260,8 @@ impl Builder {
                 r.as_llvm_value_ref(),
                 name.as_ptr(),
             )
-        }.into()
+        }
+        .into()
     }
     pub fn build_mul(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();

@@ -82,7 +82,7 @@ impl VariableDeclaration {
         self.default = Some(default);
         self
     }
-    
+
     /// 克隆默认值表达式，如果存在
     pub fn clone_default(&self) -> Option<ExprNode> {
         self.default.clone()

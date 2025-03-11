@@ -155,7 +155,7 @@ impl NodeTrait for ExprNode {
                 } else {
                     vec![]
                 }
-            },
+            }
             Expr::None => vec![],
         }
     }
@@ -341,8 +341,8 @@ impl ExprNode {
     pub fn position(&self) -> Position {
         self.pos.clone()
     }
-    pub fn get_expr(&self) -> Expr {
-        self.expr.clone()
+    pub fn get_expr(&self) -> &Expr {
+        &self.expr
     }
     pub fn get_type(&self) -> Option<Type> {
         if let Some(t) = &self.ty {

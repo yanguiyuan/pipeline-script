@@ -18,7 +18,7 @@ impl Iterator for TokenStream {
     }
 }
 
-impl TokenStream{
+impl TokenStream {
     pub fn new(lexer: Lexer) -> Self {
         Self {
             tokenizer: lexer,
@@ -50,11 +50,11 @@ impl TokenStream{
                 None => self.peek.push((Token::Eof, Position::none())),
             }
         }
-        
+
         // 返回第n个元素的克隆
         self.peek[n].clone()
     }
-    
+
     // 获取从当前位置开始的n个token
     pub fn peek_n(&mut self, n: usize) -> Vec<(Token, Position)> {
         // 确保缓存中有足够的元素
@@ -64,7 +64,7 @@ impl TokenStream{
                 None => self.peek.push((Token::Eof, Position::none())),
             }
         }
-        
+
         // 返回前n个元素的克隆
         self.peek.iter().take(n).cloned().collect()
     }

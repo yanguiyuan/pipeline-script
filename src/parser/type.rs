@@ -116,7 +116,7 @@ impl Type {
     pub fn is_integer(&self) -> bool {
         matches!(self, Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64)
     }
-    pub fn get_enum_variant_type(&self,name:&str) -> Option<Type> {
+    pub fn get_enum_variant_type(&self, name: &str) -> Option<Type> {
         match self {
             Type::Enum(_, variants) => {
                 for (name0, t) in variants {
@@ -125,7 +125,7 @@ impl Type {
                     }
                 }
                 None
-            },
+            }
             _ => None,
         }
     }
@@ -145,7 +145,7 @@ impl Type {
             Type::Int32 => 5,
             Type::Pointer(t) if t.is_i32() => 6,
             Type::Int64 => 7,
-            Type::Pointer(t)|Type::Ref(t) if t.is_i64() => 8,
+            Type::Pointer(t) | Type::Ref(t) if t.is_i64() => 8,
             Type::Float => 9,
             Type::Pointer(t) if t.is_float() => 10,
             Type::Double => 11,
@@ -254,11 +254,11 @@ impl Type {
             Type::Pointer(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Struct(_, _) => Global::pointer_type(Global::i8_type()),
-            Type::Enum(_, t) => {
+            Type::Enum(_, _) => {
                 // 枚举类型编译为包含标签和数据的结构体
                 // 标签是一个整数，表示枚举变体的索引
                 // 数据是一个联合体，包含所有变体的数据
-                
+
                 // 创建枚举结构体类型
                 let fields = vec![
                     // 标签字段，用于区分不同的变体
@@ -266,9 +266,9 @@ impl Type {
                     // 数据字段，使用i64作为默认类型
                     Global::i64_type(),
                 ];
-                
+
                 Global::struct_type(fields)
-            },
+            }
             Type::Function(ret, args) => {
                 let mut v = vec![];
                 for t in args.iter() {
@@ -503,13 +503,10 @@ impl Type {
                 name,
                 ptr: _,
                 env: _,
-            } => {
-                format!("{}", name.as_deref().unwrap_or(""))
-            }
+            } => name.as_deref().unwrap_or("").to_string(),
             Type::VarArg => "..".to_string(),
-            Type::Generic(t, _) => {
-                format!("{}", t.as_str())
-            }
+            Type::Generic(t, _) => t.as_str().to_string(),
+
             Type::Map(k, v) => {
                 format!("Map<{},{}>", k.as_str(), v.as_str())
             }
@@ -520,19 +517,19 @@ impl Type {
                 } else {
                     result.push_str("Enum");
                 }
-                
+
                 if !variants.is_empty() {
-                    result.push_str("<");
+                    result.push('<');
                     for (i, (variant_name, variant_type)) in variants.iter().enumerate() {
                         if i > 0 {
-                            result.push_str(",");
+                            result.push(',');
                         }
                         result.push_str(variant_name);
                         if let Some(ty) = variant_type {
                             result.push_str(&format!("({})", ty.as_str()));
                         }
                     }
-                    result.push_str(">");
+                    result.push('>');
                 }
                 result
             }
@@ -559,14 +556,14 @@ impl Type {
     pub fn is_enum(&self) -> bool {
         matches!(self, Type::Enum(_, _))
     }
-    
+
     pub fn get_enum_name(&self) -> Option<&str> {
         match self {
             Type::Enum(name, _) => name.as_ref().map(|s| s.as_str()),
             _ => None,
         }
     }
-    
+
     pub fn get_enum_variants(&self) -> Option<&Vec<(String, Option<Type>)>> {
         match self {
             Type::Enum(_, variants) => Some(variants),

@@ -4,8 +4,8 @@ use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
     LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct,
     LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef,
-    LLVMInt16Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMSizeOf,
-    LLVMStructType, LLVMVoidType,LLVMInt1Type
+    LLVMInt16Type, LLVMInt1Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType,
+    LLVMSizeOf, LLVMStructType, LLVMVoidType,
 };
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef};
 use std::ffi::{c_uint, CString};
@@ -32,6 +32,7 @@ impl Global {
     pub fn const_unit() -> LLVMValue {
         LLVMValue::Unit
     }
+    #[allow(unused)]
     pub fn const_double(value: f64) -> LLVMValue {
         let v = unsafe { LLVMConstReal(LLVMDoubleType(), value) };
         LLVMValue::Double(v)
@@ -44,6 +45,7 @@ impl Global {
         let v = unsafe { LLVMConstInt(LLVMInt8Type(), value as u64, 0) };
         LLVMValue::Int8(v)
     }
+    #[allow(unused)]
     pub fn const_bool(value: bool) -> LLVMValue {
         let v = unsafe { LLVMConstInt(LLVMInt1Type(), value as u64, 0) };
         LLVMValue::Int1(v)

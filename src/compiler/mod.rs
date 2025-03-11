@@ -28,8 +28,8 @@ impl Compiler {
             llvm_module,
         }
     }
-    pub fn compile(&mut self,ctx:&Context) -> &mut LLVMModule {
-        let ctx = Context::with_type_table(&ctx, HashMap::new());
+    pub fn compile(&mut self, ctx: &Context) -> &mut LLVMModule {
+        let ctx = Context::with_type_table(ctx, HashMap::new());
         // 编译结构体
         for (name, item) in self.module.get_structs() {
             if !item.generics.is_empty() {
@@ -135,7 +135,4 @@ impl Compiler {
         }
         &mut self.llvm_module
     }
-   
 }
-
-

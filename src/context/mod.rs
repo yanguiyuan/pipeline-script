@@ -47,24 +47,21 @@ impl Context {
             ContextValue::ModuleSlotMap(Arc::new(RwLock::new(t))),
         )
     }
-    pub fn apply_mut_module(&self,key:DefaultKey,apply:impl Fn(&mut Module)){
+    pub fn apply_mut_module(&self, key: DefaultKey, apply: impl Fn(&mut Module)) {
         let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
-        match slot_map{
-            ContextValue::ModuleSlotMap(slot_map)=>{
+        match slot_map {
+            ContextValue::ModuleSlotMap(slot_map) => {
                 let mut slot_map = slot_map.write().unwrap();
                 let module = slot_map.get_mut(key).unwrap();
                 apply(module)
             }
-            _=>panic!("not a module slot map")
+            _ => panic!("not a module slot map"),
         }
     }
     pub fn get_module_slot_map(&self) -> Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>> {
         match self.get(ContextKey::ModuleSlotMap) {
             Some(ContextValue::ModuleSlotMap(slot_map)) => slot_map.clone(),
-            _ => {
-                let slot_map = Arc::new(RwLock::new(slotmap::SlotMap::new()));
-                slot_map
-            }
+            _ => Arc::new(RwLock::new(slotmap::SlotMap::new())),
         }
     }
 
@@ -318,13 +315,13 @@ impl Context {
     pub fn get_type_alias(&self, name: impl AsRef<str>) -> Option<Type> {
         let slot_map = self.get_module_slot_map();
         let slot_map = slot_map.read().unwrap();
-        
+
         for module in slot_map.values() {
             if let Some(ty) = module.get_type_alias(name.as_ref()) {
                 return Some(ty.clone());
             }
         }
-        
+
         None
     }
 }

@@ -92,7 +92,7 @@ impl TypePostprocessor {
                 args.push(new_arg);
             }
         }
-        
+
         args
     }
 

@@ -77,7 +77,9 @@ impl Parser {
         // let module = module_slot_map.get_mut(self.parent_module).unwrap();
         // module.register_submodule(&name, self.current_module);
         // self.current_module = self.parent_module;
-        ctx.apply_mut_module(self.parent_module, |m| m.register_submodule(&name, self.current_module));
+        ctx.apply_mut_module(self.parent_module, |m| {
+            m.register_submodule(&name, self.current_module)
+        });
         Ok(())
     }
     pub fn parse(&mut self, ctx: &Context) -> Result<DefaultKey> {
@@ -192,28 +194,28 @@ impl Parser {
     }
     fn parse_param_list(&mut self, ctx: &Context) -> Result<Vec<VariableDeclaration>> {
         let mut params = vec![];
-        
+
         loop {
             let (token, pos) = self.token_stream.peek();
-            
+
             match token {
                 Token::Identifier(_) => {
                     // 解析参数名
                     let (id, _) = self.parse_identifier()?;
-                    
+
                     // 解析类型
                     self.parse_special_token(Token::Colon)?;
                     let ty = self.parse_type()?;
-                    
+
                     // 检查是否有默认值
                     let mut var_decl = VariableDeclaration::new(id).with_type(ty);
-                    
+
                     if self.try_parse_token(Token::Assign) {
                         // 解析默认值表达式
                         let default_expr = self.parse_expr(ctx)?;
                         var_decl = var_decl.with_default(default_expr);
                     }
-                    
+
                     // 添加参数
                     params.push(var_decl);
                 }
@@ -223,14 +225,16 @@ impl Parser {
                 Token::BraceRight | Token::Vertical => {
                     break;
                 }
-                t => return Err(Error::UnexpectedToken(
-                    t.to_string(),
-                    "Identifier, comma, or closing brace".into(),
-                    pos,
-                )),
+                t => {
+                    return Err(Error::UnexpectedToken(
+                        t.to_string(),
+                        "Identifier, comma, or closing brace".into(),
+                        pos,
+                    ))
+                }
             }
         }
-        
+
         Ok(params)
     }
     fn parse_continue_stmt(&mut self) -> Result<StmtNode> {
@@ -277,16 +281,18 @@ impl Parser {
         // let mut module_slot_map = module_slot_map.write().unwrap();
         // let module = module_slot_map.get_mut(self.current_module).unwrap();
         // module.register_struct(&struct_name, struct_declaration);
-        ctx.apply_mut_module(self.current_module, |m| m.register_struct(&struct_name, struct_declaration.clone()));
+        ctx.apply_mut_module(self.current_module, |m| {
+            m.register_struct(&struct_name, struct_declaration.clone())
+        });
         Ok(())
     }
     fn parse_enum(&mut self, ctx: &Context) -> Result<()> {
         // 解析enum关键字
         let _ = self.parse_keyword("enum")?;
-        
+
         // 解析枚举名称
         let (enum_name, _) = self.parse_identifier()?;
-        
+
         // 解析泛型参数
         let mut generic = vec![];
         if self.try_parse_token(Token::Less) {
@@ -299,10 +305,10 @@ impl Parser {
             }
             self.parse_special_token(Token::Greater)?;
         }
-        
+
         // 解析枚举体
         self.parse_special_token(Token::ParenLeft)?;
-        
+
         // 解析枚举变体
         let mut variants = vec![];
         loop {
@@ -314,7 +320,7 @@ impl Parser {
                 }
                 Token::Identifier(_) => {
                     let (variant_name, _) = self.parse_identifier()?;
-                    
+
                     // 检查是否有关联类型
                     let mut variant_type = None;
                     if self.try_parse_token(Token::BraceLeft) {
@@ -323,9 +329,9 @@ impl Parser {
                         self.parse_special_token(Token::BraceRight)?;
                         variant_type = Some(ty);
                     }
-                    
+
                     variants.push((variant_name, variant_type));
-                    
+
                     // 检查是否有逗号
                     if self.try_parse_token(Token::Comma) {
                         continue;
@@ -336,18 +342,20 @@ impl Parser {
                 }
             }
         }
-        
+
         // 创建枚举类型并注册到模块
         let enum_type = Type::Enum(Some(enum_name.clone()), variants);
-        
+
         // 注册枚举类型到当前模块
         // let module_slot_map = ctx.get_module_slot_map();
         // let mut module_slot_map = module_slot_map.write().unwrap();
         // let module = module_slot_map.get_mut(self.current_module).unwrap();
-        
+
         // 注册枚举类型为别名
         // module.register_type_alias(&enum_name, enum_type);
-        ctx.apply_mut_module(self.current_module, |m| m.register_type_alias(&enum_name, enum_type.clone()));
+        ctx.apply_mut_module(self.current_module, |m| {
+            m.register_type_alias(&enum_name, enum_type.clone())
+        });
         Ok(())
     }
     fn parse_trait(&mut self) {}
@@ -359,7 +367,9 @@ impl Parser {
         // let mut module_slot_map = module_slot_map.write().unwrap();
         // let module = module_slot_map.get_mut(self.current_module).unwrap();
         // module.register_function(&fun.name(), fun);
-        ctx.apply_mut_module(self.current_module, |m| m.register_function(&fun.name(), fun.clone()));
+        ctx.apply_mut_module(self.current_module, |m| {
+            m.register_function(&fun.name(), fun.clone())
+        });
         Ok(())
     }
     fn try_parse_token(&mut self, token: Token) -> bool {
@@ -574,24 +584,24 @@ impl Parser {
         // 解析左括号
         let mut total_pos = self.parse_special_token(Token::BraceLeft)?;
         let mut args = vec![];
-        
+
         loop {
             let (peek, peek_pos) = self.token_stream.peek();
             total_pos += peek_pos;
-            
+
             match peek {
                 // 如果是右括号，结束解析
                 Token::BraceRight => {
                     let right_pos = self.parse_special_token(Token::BraceRight)?;
                     total_pos += right_pos;
-                    
+
                     // 检查是否有外置闭包
                     if self.token_stream.peek().0 == Token::ParenLeft {
                         let body = self.parse_block(ctx)?;
                         let expr = Expr::Closure(vec![], body, vec![]);
                         args.push(Argument::new(ExprNode::from(expr)));
                     }
-                    
+
                     break;
                 }
                 // 如果是逗号，继续解析
@@ -601,7 +611,6 @@ impl Parser {
                 }
                 // 如果是标识符，检查是否是命名参数
                 Token::Identifier(name) => {
-                    
                     // 检查下一个token是否是赋值符号
                     let next_token = self.token_stream.peek_nth(1).0;
                     if next_token == Token::Assign {
@@ -623,23 +632,23 @@ impl Parser {
                 }
             }
         }
-        
+
         Ok((args, total_pos))
     }
     fn parse_generic_list(&mut self) -> Result<Vec<Type>> {
         let mut list = vec![];
-        
+
         // 解析开始符号
         self.parse_special_token(Token::Less)?;
-        
+
         // 解析第一个类型
         let ty = self.parse_type()?;
         list.push(ty);
-        
+
         // 解析剩余的类型
         loop {
             let (peek, _) = self.token_stream.peek();
-            
+
             match peek {
                 // 如果是 '|'，则继续解析下一个类型
                 Token::Vertical => {
@@ -653,14 +662,16 @@ impl Parser {
                     break;
                 }
                 // 其他情况，报错
-                t => return Err(Error::UnexpectedToken(
-                    t.to_string(),
-                    "| or >".into(),
-                    Position::none(),
-                )),
+                t => {
+                    return Err(Error::UnexpectedToken(
+                        t.to_string(),
+                        "| or >".into(),
+                        Position::none(),
+                    ))
+                }
             }
         }
-        
+
         Ok(list)
     }
     pub fn parse_primary_expr(&mut self, ctx: &Context) -> Result<ExprNode> {
@@ -680,36 +691,29 @@ impl Parser {
                 // 检查是否是枚举变体访问
                 if self.try_parse_token(Token::Dot) {
                     let (variant_name, variant_pos) = self.parse_identifier()?;
-                    
+
                     // 检查是否有关联值
                     if self.try_parse_token(Token::BraceLeft) {
                         // 解析关联值表达式
                         let value_expr = self.parse_expr(ctx)?;
                         self.parse_special_token(Token::BraceRight)?;
-                        
+
                         // 创建枚举变体表达式
-                        let enum_variant = Expr::EnumVariant(
-                            id.clone(), 
-                            variant_name, 
-                            Some(Box::new(value_expr))
-                        );
-                        
+                        let enum_variant =
+                            Expr::EnumVariant(id.clone(), variant_name, Some(Box::new(value_expr)));
+
                         return Ok(ExprNode::new(enum_variant).with_position(pos + variant_pos));
                     } else {
                         // 没有关联值的枚举变体
-                        let enum_variant = Expr::EnumVariant(
-                            id.clone(), 
-                            variant_name, 
-                            None
-                        );
-                        
+                        let enum_variant = Expr::EnumVariant(id.clone(), variant_name, None);
+
                         return Ok(ExprNode::new(enum_variant).with_position(pos + variant_pos));
                     }
                 }
-                
+
                 // 检查是否是函数调用
                 let peek = self.token_stream.peek().0;
-                if peek == Token::BraceLeft   {
+                if peek == Token::BraceLeft {
                     let (args, p0) = self.parse_fn_args(ctx)?;
                     return Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
                         name: id,
@@ -719,7 +723,7 @@ impl Parser {
                     }))
                     .with_position(pos + p0));
                 }
-                
+
                 let mut generics = vec![];
                 loop {
                     let (peek, _) = self.token_stream.peek();
@@ -954,7 +958,7 @@ impl Parser {
         F: FnOnce(&Token) -> Option<T>,
     {
         let (token, pos) = self.token_stream.next_token();
-        
+
         match validator(&token) {
             Some(value) => Ok((value, pos)),
             None => Err(Error::UnexpectedToken(
@@ -964,7 +968,7 @@ impl Parser {
             )),
         }
     }
-    
+
     pub fn parse_identifier(&mut self) -> Result<(String, Position)> {
         self.parse_token("Identifier", |token| {
             if let Token::Identifier(id) = token {
@@ -974,7 +978,7 @@ impl Parser {
             }
         })
     }
-    
+
     pub fn parse_keyword(&mut self, keyword: &str) -> Result<Position> {
         let expected = format!("Keyword({})", keyword);
         let (_, pos) = self.parse_token(&expected, |token| {
@@ -990,16 +994,11 @@ impl Parser {
         })?;
         Ok(pos)
     }
-    
+
     pub fn parse_special_token(&mut self, token: Token) -> Result<Position> {
         let expected = token.to_string();
-        let (_, pos) = self.parse_token(&expected, |t| {
-            if t == &token {
-                Some(())
-            } else {
-                None
-            }
-        })?;
+        let (_, pos) =
+            self.parse_token(&expected, |t| if t == &token { Some(()) } else { None })?;
         Ok(pos)
     }
 
@@ -1012,10 +1011,10 @@ impl Parser {
         self.parse_special_token(Token::Greater)?;
         Ok(constructor(Box::new(el_ty)))
     }
-    
+
     pub fn parse_simple_type(&mut self) -> Result<Type> {
         let (token, p0) = self.token_stream.next_token();
-        
+
         match &token {
             Token::Dot => {
                 let _ = self.parse_special_token(Token::Dot)?;
@@ -1043,7 +1042,7 @@ impl Parser {
                 "Fn" => {
                     self.parse_special_token(Token::BraceLeft)?;
                     let mut param_type = vec![];
-                    
+
                     loop {
                         let peek = self.token_stream.peek().0;
                         match peek {
@@ -1067,7 +1066,7 @@ impl Parser {
                             }
                         }
                     }
-                    
+
                     Ok(Type::Function(Box::new(Type::Unit), param_type))
                 }
                 name => Ok(Type::Alias(name.into())),
@@ -1087,26 +1086,26 @@ impl Parser {
     }
     pub fn parse_type(&mut self) -> Result<Type> {
         let ty = self.parse_simple_type()?;
-        
+
         // 检查是否有泛型参数
         if !self.try_parse_token(Token::Less) {
             return Ok(ty);
         }
-        
+
         // 解析泛型参数列表
         let mut list = vec![];
         let t0 = self.parse_type()?;
         list.push(t0);
-        
+
         // 解析结束符
         self.parse_special_token(Token::Greater)?;
-        
+
         Ok(Type::Generic(Box::new(ty), list))
     }
 
     pub fn parse_type_name(&mut self) -> Result<(String, Position)> {
         let (token, p0) = self.token_stream.next_token();
-        
+
         match &token {
             Token::BracketLeft => {
                 let p1 = self.parse_special_token(Token::BracketRight)?;
@@ -1131,15 +1130,15 @@ impl Parser {
     pub fn parse_match_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
         // 解析match关键字
         let pos = self.parse_keyword("match")?;
-        
+
         // 解析匹配的表达式
         self.parse_special_token(Token::BraceLeft)?;
         let expr = self.parse_expr(ctx)?;
         self.parse_special_token(Token::BraceRight)?;
-        
+
         // 解析匹配体
         self.parse_special_token(Token::ParenLeft)?;
-        
+
         // 解析匹配分支
         let mut branches = vec![];
         loop {
@@ -1152,13 +1151,13 @@ impl Parser {
                 _ => {
                     // 解析模式
                     let pattern = self.parse_expr(ctx)?;
-                    
+
                     // 解析箭头 (->)
                     self.parse_special_token(Token::Arrow)?;
-                    
+
                     // 解析分支体
                     let mut body = vec![];
-                    
+
                     // 检查是否是代码块
                     let (token, _) = self.token_stream.peek();
                     if token == Token::ParenLeft {
@@ -1168,10 +1167,10 @@ impl Parser {
                         let stmt = self.parse_stmt(ctx)?;
                         body.push(stmt);
                     }
-                    
+
                     // 添加分支
                     branches.push(MatchBranch::new(pattern, body));
-                    
+
                     // 检查是否有逗号
                     if self.try_parse_token(Token::Comma) {
                         continue;
@@ -1179,7 +1178,7 @@ impl Parser {
                 }
             }
         }
-        
+
         // 创建match语句
         let match_stmt = Stmt::Match(Box::new(expr), branches);
         Ok(StmtNode::new(match_stmt, pos))
@@ -1189,34 +1188,34 @@ impl Parser {
     pub fn parse_if_let_stmt(&mut self, ctx: &Context) -> Result<StmtNode> {
         // 解析if关键字
         let pos = self.parse_keyword("if")?;
-        
+
         // 解析let关键字
         self.parse_keyword("let")?;
-        
+
         // 解析左括号
         self.parse_special_token(Token::BraceLeft)?;
-        
+
         // 解析模式
         let pattern = self.parse_expr(ctx)?;
-        
+
         // 解析等号
         self.parse_special_token(Token::Assign)?;
-        
+
         // 解析匹配的表达式
         let expr = self.parse_expr(ctx)?;
-        
+
         // 解析右括号
         self.parse_special_token(Token::BraceRight)?;
-        
+
         // 解析if分支体
         let body = self.parse_block(ctx)?;
-        
+
         // 解析else分支（如果有）
         let mut else_body = None;
         if self.try_parse_token(Token::Keyword("else".to_string())) {
             else_body = Some(self.parse_block(ctx)?);
         }
-        
+
         // 创建if let语句
         let if_let_stmt = Stmt::IfLet(Box::new(pattern), Box::new(expr), body, else_body);
         Ok(StmtNode::new(if_let_stmt, pos))

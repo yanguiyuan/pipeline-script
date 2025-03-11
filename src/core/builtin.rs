@@ -135,7 +135,3 @@ pub extern "C" fn set_env(key: *mut c_char, value: *mut c_char) {
     let value = unsafe { CStr::from_ptr(value).to_str().unwrap() };
     std::env::set_var(key, value);
 }
-#[allow(improper_ctypes_definitions)]
-pub extern "C" fn call(f: fn(i32)) {
-    f(4)
-}

@@ -4,16 +4,16 @@ use crate::context::Context;
 use crate::lexer::position::Position;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::expr::StructExpr;
-use crate::parser::expr::{Expr, ExprNode, FnCallExpr};
+use crate::parser::expr::{Expr, ExprNode};
+use crate::parser::function::Function;
 use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
-use crate::parser::stmt::{IfBranchStmt, IfStmt, MatchBranch, Stmt, StmtNode};
+use crate::parser::stmt::{IfBranchStmt, MatchBranch, Stmt, StmtNode};
 use crate::postprocessor::id::id;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use crate::parser::function::Function;
 mod helper;
 pub struct TypePostprocessor {
     module: Module,
@@ -120,7 +120,11 @@ impl TypePostprocessor {
         }
     }
 
-    fn register_processed_functions(&mut self, functions: &HashMap<String, Function>, ctx: &Context) {
+    fn register_processed_functions(
+        &mut self,
+        functions: &HashMap<String, Function>,
+        ctx: &Context,
+    ) {
         for (name, f) in functions.iter() {
             if f.is_template && name != "sizeof" {
                 continue;
@@ -132,8 +136,10 @@ impl TypePostprocessor {
                 self.process_non_extern_function(f, ctx)
             };
 
-            if let Some(ret) = ctx.get_symbol_type(name)
-                .and_then(|ty| ty.get_function_return_type()) {
+            if let Some(ret) = ctx
+                .get_symbol_type(name)
+                .and_then(|ty| ty.get_function_return_type())
+            {
                 let mut new_f = new_f;
                 new_f.set_return_type(ret);
                 self.module.register_function(name, new_f);
@@ -160,39 +166,44 @@ impl TypePostprocessor {
         let ctx = Context::with_local(&ctx, locals);
 
         let mut new_f = f.clone();
-        
+
         // 处理函数参数的默认值
         for i in 0..new_f.args().len() {
             let arg = &new_f.args()[i];
-            
+
             // 先检查参数是否有默认值和类型
             if arg.has_default() && arg.r#type().is_some() {
                 let param_type = arg.r#type().unwrap();
                 let param_name = arg.name();
-                
+
                 // 创建类型上下文
                 let ctx_with_type = Context::with_value(
                     &ctx,
                     ContextKey::Type("default".into()),
                     ContextValue::Type(param_type.clone()),
                 );
-                
+
                 // 获取默认值表达式并处理
                 let default_expr = arg.clone_default().unwrap();
                 let processed_expr = self.process_expr(&default_expr, &ctx_with_type);
-                
+
                 // 检查类型是否匹配
                 let default_type = processed_expr.get_type().unwrap();
                 if default_type != param_type {
                     if param_type.is_integer() && default_type.is_integer() {
                         // 整数类型之间可以进行隐式转换，继续处理
                     } else {
-                        eprintln!("函数 '{}' 参数 '{}' 的默认值类型 {:?} 与参数类型 {:?} 不匹配",
-                            f.name(), param_name, default_type, param_type);
+                        eprintln!(
+                            "函数 '{}' 参数 '{}' 的默认值类型 {:?} 与参数类型 {:?} 不匹配",
+                            f.name(),
+                            param_name,
+                            default_type,
+                            param_type
+                        );
                         panic!("参数默认值类型不匹配");
                     }
                 }
-                
+
                 // 更新默认值表达式
                 let arg = &mut new_f.args_mut()[i];
                 if let Some(default_expr_mut) = arg.get_mut_default() {
@@ -200,8 +211,9 @@ impl TypePostprocessor {
                 }
             }
         }
-        
-        let processed_body: Vec<_> = f.body()
+
+        let processed_body: Vec<_> = f
+            .body()
             .iter()
             .map(|stmt| self.process_stmt(stmt, &ctx))
             .collect();
@@ -218,14 +230,15 @@ impl TypePostprocessor {
     }
 
     fn process_struct(&self, s: &Struct, ctx: &Context) -> Struct {
-        let fields = s.get_fields()
+        let fields = s
+            .get_fields()
             .iter()
             .map(|i| {
                 let ty = Self::process_type(&i.field_type, ctx);
                 StructField::new(i.name.clone(), ty)
             })
             .collect();
-        
+
         Struct::new(s.name.clone(), fields, s.generics.clone())
     }
     fn process_type(ty: &Type, ctx: &Context) -> Type {
@@ -250,7 +263,7 @@ impl TypePostprocessor {
         }
     }
     fn process_expr(&mut self, expr: &ExprNode, ctx: &Context) -> ExprNode {
-        match expr.get_expr() {
+        match expr.get_expr().clone() {
             Expr::Closure(mut l, body, _) => {
                 let (new_body, captures, param_type) = self.process_closure_body(&l, &body, ctx);
                 let closure_var_name = format!("Closure{}", id());
@@ -294,12 +307,10 @@ impl TypePostprocessor {
                 // 处理闭包函数
                 if fc_type.is_closure() {
                     self.handle_closure_function(&fc_name, &fc_type, ctx);
-                    fc_type = fc_type
-                        .get_closure_fn_gen_type()
-                        .unwrap_or_else(|| {
-                            eprintln!("无法获取闭包函数 '{}' 的类型", fc_name);
-                            panic!("闭包函数类型获取失败");
-                        });
+                    fc_type = fc_type.get_closure_fn_gen_type().unwrap_or_else(|| {
+                        eprintln!("无法获取闭包函数 '{}' 的类型", fc_name);
+                        panic!("闭包函数类型获取失败");
+                    });
                 }
 
                 // 处理模板函数实例化
@@ -323,39 +334,49 @@ impl TypePostprocessor {
                 // 获取左右操作数的类型
                 let l_type = l.get_type().unwrap();
                 let r_type = r.get_type().unwrap();
-                
+
                 // 如果类型相同，直接返回
                 if l_type == r_type {
-                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(l_type);
+                    return ExprNode::new(Expr::Binary(op.clone(), Box::new(l), Box::new(r)))
+                        .with_type(l_type);
                 }
-                
+
                 // 处理数值类型之间的转换
                 if l_type.is_integer() && r_type.is_integer() {
                     // 整数类型间的转换 - 选择更大的类型
                     let result_type = self.get_wider_integer_type(&l_type, &r_type);
-                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(result_type);
-                } else if (l_type.is_integer() && (r_type == Type::Float || r_type == Type::Double)) ||
-                          ((l_type == Type::Float || l_type == Type::Double) && r_type.is_integer()) {
+                    return ExprNode::new(Expr::Binary(op.clone(), Box::new(l), Box::new(r)))
+                        .with_type(result_type);
+                } else if (l_type.is_integer() && (r_type == Type::Float || r_type == Type::Double))
+                    || ((l_type == Type::Float || l_type == Type::Double) && r_type.is_integer())
+                {
                     // 整数和浮点数之间的转换 - 选择浮点类型
                     let result_type = if l_type == Type::Double || r_type == Type::Double {
                         Type::Double
                     } else {
                         Type::Float
                     };
-                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(result_type);
+                    return ExprNode::new(Expr::Binary(op.clone(), Box::new(l), Box::new(r)))
+                        .with_type(result_type);
                 } else if l_type == Type::Float && r_type == Type::Double {
                     // Float 和 Double 之间的转换 - 选择 Double
-                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(Type::Double);
+                    return ExprNode::new(Expr::Binary(op.clone(), Box::new(l), Box::new(r)))
+                        .with_type(Type::Double);
                 } else if l_type == Type::Double && r_type == Type::Float {
                     // Double 和 Float 之间的转换 - 选择 Double
-                    return ExprNode::new(Expr::Binary(op, Box::new(l), Box::new(r))).with_type(Type::Double);
+                    return ExprNode::new(Expr::Binary(op.clone(), Box::new(l), Box::new(r)))
+                        .with_type(Type::Double);
                 }
-                
+
                 // 对于不支持的类型组合，输出更详细的错误信息
-                eprintln!("类型不匹配: 左操作数类型 {:?}, 右操作数类型 {:?}, 操作符 {:?}", 
-                          l_type, r_type, op);
-                panic!("二元操作符类型不匹配: 无法对 {:?} 和 {:?} 执行 {:?} 操作", 
-                       l_type, r_type, op);
+                eprintln!(
+                    "类型不匹配: 左操作数类型 {:?}, 右操作数类型 {:?}, 操作符 {:?}",
+                    l_type, r_type, op
+                );
+                panic!(
+                    "二元操作符类型不匹配: 无法对 {:?} 和 {:?} 执行 {:?} 操作",
+                    l_type, r_type, op
+                );
             }
             Expr::String(s) => ExprNode::new(Expr::String(s)).with_type(Type::String),
             Expr::Int(i) => {
@@ -370,13 +391,11 @@ impl TypePostprocessor {
             Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
                 let ty = ctx.get_symbol_type(&name);
-                dbg!(&name);
                 let ty = ty.unwrap();
-                dbg!(&ty);
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
-                ExprNode::new(Expr::Variable(name)).with_type(ty)
+                ExprNode::new(Expr::Variable(name.clone())).with_type(ty)
             }
             Expr::Struct(se) => {
                 // 提前获取结构体名称和泛型信息
@@ -453,7 +472,11 @@ impl TypePostprocessor {
 
                 // 获取最终类型
                 let final_type = {
-                    let struct_name_to_lookup = if need_register { &new_name } else { &struct_name };
+                    let struct_name_to_lookup = if need_register {
+                        &new_name
+                    } else {
+                        &struct_name
+                    };
                     let struct_val = self.module.get_struct(struct_name_to_lookup).unwrap();
                     Self::process_type(&struct_val.get_type(), ctx)
                 };
@@ -466,31 +489,32 @@ impl TypePostprocessor {
                     let element_type = match ctx.get(ContextKey::Type("default".into())) {
                         Some(ContextValue::Type(ty)) => match ty.get_element_type() {
                             Some(element_ty) => element_ty.clone(),
-                            None => Type::Int64
+                            None => Type::Int64,
                         },
-                        _ => Type::Int64
+                        _ => Type::Int64,
                     };
-                    
-                    return ExprNode::new(Expr::Array(vec![])).with_type(Type::Array(Box::new(element_type)));
+
+                    return ExprNode::new(Expr::Array(vec![]))
+                        .with_type(Type::Array(Box::new(element_type)));
                 }
-                
+
                 let mut v = vec![];
-                
+
                 // 获取元素类型（从上下文或默认为Int64）
                 let element_type = match ctx.get(ContextKey::Type("default".into())) {
                     Some(ContextValue::Type(ty)) => ty.get_element_type().unwrap().clone(),
-                    _ => Type::Int64
+                    _ => Type::Int64,
                 };
-                
+
                 // 使用带有正确元素类型的上下文处理数组元素
                 let ctx = Context::with_type(ctx, "default".into(), element_type.clone());
-                
+
                 // 处理所有数组元素
                 for i in v0.iter() {
                     let i = self.process_expr(i, &ctx);
                     v.push(i);
                 }
-                
+
                 ExprNode::new(Expr::Array(v)).with_type(Type::Array(Box::new(element_type)))
             }
             Expr::Index(target, index) => {
@@ -513,19 +537,20 @@ impl TypePostprocessor {
                 } else {
                     ty.get_struct_field(name.clone()).unwrap().1.clone()
                 };
-                ExprNode::new(Expr::Member(Box::new(target), name)).with_type(ty)
+                ExprNode::new(Expr::Member(Box::new(target), name.clone())).with_type(ty)
             }
             Expr::EnumVariant(enum_name, variant_name, value) => {
                 // 克隆枚举名称
                 let enum_name_clone = enum_name.clone();
-                let is_pattern =ctx.get_flag("pattern").unwrap_or(false);
+                let is_pattern = ctx.get_flag("pattern").unwrap_or(false);
                 // 获取枚举类型
-                let enum_type = if is_pattern{
-                    ctx.get(ContextKey::Type("default".into())).unwrap_or_else(|| {
-                        panic!("未找到枚举类型: {}", enum_name_clone);
-                    }).as_type()
+                let enum_type = if is_pattern {
+                    ctx.get(ContextKey::Type("default".into()))
+                        .unwrap_or_else(|| {
+                            panic!("未找到枚举类型: {}", enum_name_clone);
+                        })
+                        .as_type()
                 } else {
-                    dbg!(&enum_name_clone);
                     ctx.get_type_alias(&enum_name_clone).unwrap_or_else(|| {
                         panic!("未找到枚举类型: {}", enum_name_clone);
                     })
@@ -534,21 +559,19 @@ impl TypePostprocessor {
                 // 处理关联值
                 let processed_value = match value {
                     Some(v) => {
-                        println!("处理关联值");
                         // v目前只能是变量，直接处理
 
                         let processed = if is_pattern {
-                            let inner_type = enum_type.get_enum_variant_type(&variant_name).unwrap();
+                            let inner_type =
+                                enum_type.get_enum_variant_type(&variant_name).unwrap();
                             ctx.try_add_local(v.get_variable_name().unwrap());
-                             v.clone().with_type(inner_type)
-                        }else{
+                            v.clone().with_type(inner_type)
+                        } else {
                             self.process_expr(&v, ctx)
                         };
 
-                        dbg!(&processed);
-
                         let value_type = processed.get_type().unwrap();
-                        
+
                         // 检查是否需要泛型实例化
                         if let Type::Enum(Some(name), variants) = &enum_type {
                             // 查找变体的关联类型
@@ -559,16 +582,16 @@ impl TypePostprocessor {
                                     break;
                                 }
                             }
-                            
+
                             // 如果变体有关联类型，并且是泛型参数
                             if let Some(Type::Alias(type_param)) = variant_type {
                                 // 创建泛型映射
                                 let mut generic_map = HashMap::new();
                                 generic_map.insert(type_param.clone(), value_type.clone());
-                                
+
                                 // 创建实例化后的枚举类型名称
                                 let new_enum_name = format!("{}<{}>", name, value_type.as_str());
-                                
+
                                 // 实例化变体类型
                                 let mut new_variants = vec![];
                                 for (var_name, var_type) in variants {
@@ -587,34 +610,36 @@ impl TypePostprocessor {
                                     };
                                     new_variants.push((var_name.clone(), new_var_type));
                                 }
-                                
-                                // 创建实例化后的枚举类型
-                                let new_enum_type = Type::Enum(Some(new_enum_name.clone()), new_variants);
-                                dbg!(&new_enum_type);
-                                // 注册新的枚举类型
-                                self.module.register_type_alias(&new_enum_name, new_enum_type.clone());
 
-                                dbg!(&new_enum_name);
+                                // 创建实例化后的枚举类型
+                                let new_enum_type =
+                                    Type::Enum(Some(new_enum_name.clone()), new_variants);
+                                // 注册新的枚举类型
+                                self.module
+                                    .register_type_alias(&new_enum_name, new_enum_type.clone());
+
                                 // 返回实例化后的枚举变体表达式
                                 return ExprNode::new(Expr::EnumVariant(
                                     new_enum_name,
                                     variant_name.clone(),
-                                    Some(Box::new(processed.clone()))
-                                )).with_type(new_enum_type);
+                                    Some(Box::new(processed.clone())),
+                                ))
+                                .with_type(new_enum_type);
                             }
                         }
-                        
+
                         Some(Box::new(processed.clone()))
-                    },
-                    None => None
+                    }
+                    None => None,
                 };
-                
+
                 // 创建枚举变体表达式
                 ExprNode::new(Expr::EnumVariant(
                     enum_name.clone(),
                     variant_name.clone(),
-                    processed_value
-                )).with_type(enum_type)
+                    processed_value,
+                ))
+                .with_type(enum_type)
             }
             _ => expr.clone(),
         }
@@ -651,7 +676,10 @@ impl TypePostprocessor {
                 let actual_type = actual.get_type().unwrap();
                 match expect {
                     None => {
-                        ctx.set_symbol_type(decl.name.clone(), Type::Ref(Box::new(actual_type.clone())));
+                        ctx.set_symbol_type(
+                            decl.name.clone(),
+                            Type::Ref(Box::new(actual_type.clone())),
+                        );
                         let mut new_decl = decl.clone();
                         new_decl.set_default(actual);
                         new_decl.set_type(Type::Ref(Box::new(actual_type.clone())));
@@ -668,11 +696,11 @@ impl TypePostprocessor {
             }
 
             Stmt::Return(expr) => {
-                let expr = self.process_expr(&expr, ctx);
+                let expr = self.process_expr(expr, ctx);
                 StmtNode::new(Stmt::Return(Box::new(expr)), stmt.position())
             }
             Stmt::EvalExpr(expr) => {
-                let expr = self.process_expr(&expr, ctx);
+                let expr = self.process_expr(expr, ctx);
                 StmtNode::new(Stmt::EvalExpr(Box::new(expr)), stmt.position())
             }
             Stmt::If(if_stmt) => {
@@ -699,26 +727,23 @@ impl TypePostprocessor {
                 StmtNode::new(Stmt::If(new_if_stmt), stmt.position())
             }
             Stmt::Assign(target, expr) => {
-                let target = self.process_expr(&target, ctx);
-                let expr = self.process_expr(&expr, ctx);
+                let target = self.process_expr(target, ctx);
+                let expr = self.process_expr(expr, ctx);
                 StmtNode::new(
                     Stmt::Assign(Box::new(target), Box::new(expr)),
                     stmt.position(),
                 )
             }
             Stmt::While(expr, body) => {
-                let expr = self.process_expr(&expr, ctx);
+                let expr = self.process_expr(expr, ctx);
                 let body = body
                     .iter()
                     .map(|x| self.process_stmt(x, ctx))
                     .collect::<Vec<_>>();
-                StmtNode::new(
-                    Stmt::While(Box::new(expr), body),
-                    stmt.position(),
-                )
+                StmtNode::new(Stmt::While(Box::new(expr), body), stmt.position())
             }
             Stmt::ForIn(var, expr, body) => {
-                let expr = self.process_expr(&expr, ctx);
+                let expr = self.process_expr(expr, ctx);
                 let ty = expr.get_type().unwrap();
                 let element_type = ty.get_element_type().unwrap();
                 ctx.try_add_local(var.clone());
@@ -735,77 +760,33 @@ impl TypePostprocessor {
             Stmt::Match(expr, branches) => {
                 // 处理匹配的表达式
                 let processed_expr = self.process_expr(expr, ctx);
-                let ctx = Context::with_type(&ctx, "default".into(),processed_expr.get_type().unwrap());
+                let ctx =
+                    Context::with_type(ctx, "default".into(), processed_expr.get_type().unwrap());
                 // 处理匹配分支
                 let mut processed_branches = vec![];
                 for branch in branches {
-                    let ctx = Context::with_flag(&ctx, "pattern",true);
+                    let ctx = Context::with_flag(&ctx, "pattern", true);
                     // 处理模式
                     let processed_pattern = self.process_expr(branch.get_pattern(), &ctx);
 
                     // 创建新的上下文，用于处理分支体
-                    let mut branch_ctx = ctx.clone();
-                    
+                    let branch_ctx = ctx.clone();
+
                     // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
                     if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
                         if let Expr::Variable(name) = &binding.get_expr() {
                             // 获取关联值的类型
-                            if let Some(enum_type) = processed_expr.get_type() {
-                                if let Type::Enum(_, variants) = &enum_type {
-                                    // 查找变体的关联类型
-                                    for (variant_name, variant_type) in variants {
-                                        if let Expr::EnumVariant(_, pattern_variant, _) = &processed_pattern.get_expr() {
-                                            if variant_name == pattern_variant {
-                                                if let Some(ty) = variant_type {
-                                                    // 将关联值添加到上下文中
-                                                    branch_ctx.set_symbol_type(name.clone(), ty.clone());
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // 处理分支体
-                    let mut processed_body = vec![];
-                    for body_stmt in branch.get_body() {
-                        processed_body.push(self.process_stmt(body_stmt, &branch_ctx));
-                    }
-                    
-                    // 创建处理后的分支
-                    processed_branches.push(MatchBranch::new(processed_pattern, processed_body));
-                }
-                
-                // 创建处理后的Match语句
-                StmtNode::new(Stmt::Match(Box::new(processed_expr), processed_branches), stmt.position())
-            }
-            Stmt::IfLet(pattern, expr, body, else_body) => {
-                // 处理模式和表达式
-                let processed_expr = self.process_expr(expr, &ctx);
-                let ctx = Context::with_type(&ctx, "default".into(),processed_expr.get_type().unwrap());
-                let ctx = Context::with_flag(&ctx, "pattern",true);
-                let processed_pattern = self.process_expr(pattern, &ctx);
-                ctx.set_flag("pattern",false);
-
-                // 创建新的上下文，用于处理if分支体
-                let if_ctx = ctx.clone();
-                
-                // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
-                if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
-                    if let Expr::Variable(name) = &binding.get_expr() {
-                        // 获取关联值的类型
-                        if let Some(enum_type) = processed_expr.get_type() {
-                            if let Type::Enum(_, variants) = &enum_type {
+                            if let Some(Type::Enum(_, variants)) = processed_expr.get_type() {
                                 // 查找变体的关联类型
                                 for (variant_name, variant_type) in variants {
-                                    if let Expr::EnumVariant(_, pattern_variant, _) = &processed_pattern.get_expr() {
-                                        if variant_name == pattern_variant {
+                                    if let Expr::EnumVariant(_, pattern_variant, _) =
+                                        &processed_pattern.get_expr()
+                                    {
+                                        if &variant_name == pattern_variant {
                                             if let Some(ty) = variant_type {
                                                 // 将关联值添加到上下文中
-                                                if_ctx.set_symbol_type(name.clone(), ty.clone());
+                                                branch_ctx
+                                                    .set_symbol_type(name.clone(), ty.clone());
                                                 break;
                                             }
                                         }
@@ -814,14 +795,64 @@ impl TypePostprocessor {
                             }
                         }
                     }
+
+                    // 处理分支体
+                    let mut processed_body = vec![];
+                    for body_stmt in branch.get_body() {
+                        processed_body.push(self.process_stmt(body_stmt, &branch_ctx));
+                    }
+
+                    // 创建处理后的分支
+                    processed_branches.push(MatchBranch::new(processed_pattern, processed_body));
                 }
-                
+
+                // 创建处理后的Match语句
+                StmtNode::new(
+                    Stmt::Match(Box::new(processed_expr), processed_branches),
+                    stmt.position(),
+                )
+            }
+            Stmt::IfLet(pattern, expr, body, else_body) => {
+                // 处理模式和表达式
+                let processed_expr = self.process_expr(expr, ctx);
+                let ctx =
+                    Context::with_type(ctx, "default".into(), processed_expr.get_type().unwrap());
+                let ctx = Context::with_flag(&ctx, "pattern", true);
+                let processed_pattern = self.process_expr(pattern, &ctx);
+                ctx.set_flag("pattern", false);
+
+                // 创建新的上下文，用于处理if分支体
+                let if_ctx = ctx.clone();
+
+                // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
+                if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
+                    if let Expr::Variable(name) = &binding.get_expr() {
+                        // 获取关联值的类型
+                        if let Some(Type::Enum(_, variants)) = processed_expr.get_type() {
+                            // 查找变体的关联类型
+                            for (variant_name, variant_type) in variants {
+                                if let Expr::EnumVariant(_, pattern_variant, _) =
+                                    &processed_pattern.get_expr()
+                                {
+                                    if &variant_name == pattern_variant {
+                                        if let Some(ty) = variant_type {
+                                            // 将关联值添加到上下文中
+                                            if_ctx.set_symbol_type(name.clone(), ty.clone());
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // 处理if分支体
                 let mut processed_body = vec![];
                 for body_stmt in body {
                     processed_body.push(self.process_stmt(body_stmt, &if_ctx));
                 }
-                
+
                 // 处理else分支体（如果有）
                 let processed_else_body = if let Some(else_stmts) = else_body {
                     let mut processed_else = vec![];
@@ -832,16 +863,16 @@ impl TypePostprocessor {
                 } else {
                     None
                 };
-                
+
                 // 创建处理后的IfLet语句
                 StmtNode::new(
                     Stmt::IfLet(
                         Box::new(processed_pattern),
                         Box::new(processed_expr),
                         processed_body,
-                        processed_else_body
+                        processed_else_body,
                     ),
-                    stmt.position()
+                    stmt.position(),
                 )
             }
             _ => stmt.clone(),
@@ -852,7 +883,7 @@ impl TypePostprocessor {
         if !t1.is_integer() || !t2.is_integer() {
             panic!("get_wider_integer_type 只能用于整数类型");
         }
-        
+
         // 按照位宽排序: Int64 > Int32 > Int16 > Int8
         if *t1 == Type::Int64 || *t2 == Type::Int64 {
             Type::Int64

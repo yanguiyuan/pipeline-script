@@ -231,11 +231,11 @@ impl Module {
     pub fn register_type_alias(&mut self, name: &str, ty: crate::parser::r#type::Type) {
         self.type_aliases.insert(name.to_string(), ty);
     }
-    
+
     pub fn get_type_alias(&self, name: &str) -> Option<&crate::parser::r#type::Type> {
         self.type_aliases.get(name)
     }
-    
+
     pub fn get_type_aliases(&self) -> &HashMap<String, crate::parser::r#type::Type> {
         &self.type_aliases
     }

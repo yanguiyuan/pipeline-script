@@ -38,7 +38,7 @@ impl Lexer {
             keywords: vec![
                 "let", "fn", "fun", "return", "if", "while", "import", "else", "val", "var",
                 "break", "continue", "for", "in", "class", "static", "trait", "struct", "extern",
-                "module","const","enum","match"
+                "module", "const", "enum", "match",
             ],
         }
     }

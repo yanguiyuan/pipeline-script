@@ -45,6 +45,12 @@ impl Struct {
         }
         Type::Struct(Some(self.name.clone()), m)
     }
+    pub fn get_props(&self) -> Vec<(String, Type)> {
+        self.fields
+            .iter()
+            .map(|f| (f.name.clone(), f.field_type.clone()))
+            .collect()
+    }
     pub fn get_name(&self) -> &str {
         &self.name
     }

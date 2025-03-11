@@ -160,7 +160,7 @@ impl LLVMType {
                 element_type.size()
             }
             LLVMType::Function(_, _, _) => 8, // 函数指针大小为8字节
-            LLVMType::Unit(_) => 0, // Unit类型大小为0
+            LLVMType::Unit(_) => 0,           // Unit类型大小为0
         }
     }
 }

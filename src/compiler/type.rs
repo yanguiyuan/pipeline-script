@@ -4,7 +4,7 @@ use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::parser::r#type::Type;
 impl Compiler {
-    pub(crate)  fn compile_type(&self, ty: &Type) -> LLVMType {
+    pub(crate) fn compile_type(&self, ty: &Type) -> LLVMType {
         match ty {
             Type::Int8 => Global::i8_type(),
             Type::Int16 => Global::i16_type(),
@@ -23,24 +23,22 @@ impl Compiler {
                 // 标签是一个整数，表示枚举变体的索引
                 // 数据是一个联合体，包含所有变体的数据
                 if let Some(name) = name {
-                   let t =self.llvm_module.get_struct(name);
-                   if let Some((_, t)) = t {
-                    return t.clone();
-                   }
+                    let t = self.llvm_module.get_struct(name);
+                    if let Some((_, t)) = t {
+                        return t.clone();
+                    }
                 }
                 // 创建枚举结构体类型
                 let mut fields = vec![
                     // 标签字段，用于区分不同的变体
                     Global::i32_type(),
                 ];
-                
+
                 // 查找所有变体中最大的数据类型
                 let mut max_data_type: Option<LLVMType> = None;
                 for (_, variant_type) in variants.iter() {
-                    dbg!(&variant_type);
                     if let Some(t) = variant_type {
                         let llvm_type = self.compile_type(t);
-                        dbg!(&llvm_type);
                         if let Some(max_type) = &max_data_type {
                             // 简单比较，选择大小更大的类型
                             if llvm_type.size() > max_type.size() {
@@ -51,7 +49,7 @@ impl Compiler {
                         }
                     }
                 }
-                
+
                 // 添加数据字段
                 if let Some(data_type) = max_data_type {
                     fields.push(data_type);
@@ -59,10 +57,10 @@ impl Compiler {
                     // 如果没有变体有数据，添加一个空字段
                     fields.push(Global::unit_type());
                 }
-                
+
                 // 创建命名结构体类型
                 if let Some(name) = name {
-                     self.ctx.create_named_struct_type(name, fields)
+                    self.ctx.create_named_struct_type(name, fields)
                 } else {
                     Global::struct_type(fields)
                 }
@@ -87,7 +85,6 @@ impl Compiler {
                             self.ctx.create_named_struct_type(name, v)
                         }
                     }
-
                 }
             },
             Type::Function(ret, args) => {
@@ -120,9 +117,9 @@ impl Compiler {
                     Global::pointer_type(Global::struct_type(env_ty)),
                 ]))
             }
-            Type::Float=>Global::float_type(),
+            Type::Float => Global::float_type(),
             Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
-            Type::Alias(_)=>Global::i8_type(),
+            Type::Alias(_) => Global::i8_type(),
             _ => panic!("Unknown type: {:?}", ty),
         }
     }
@@ -136,5 +133,5 @@ impl Compiler {
             }
             Some(t) => t,
         }
-    }  
+    }
 }
