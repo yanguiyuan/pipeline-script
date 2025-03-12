@@ -135,6 +135,9 @@ impl Type {
     pub fn is_double(&self) -> bool {
         matches!(self, Type::Double)
     }
+    pub fn is_generic(&self) -> bool {
+        matches!(self, Type::Generic(_, _))
+    }
     pub fn id(&self) -> i32 {
         match self {
             Type::Unit => 0,

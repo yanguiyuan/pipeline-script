@@ -28,7 +28,7 @@ impl TypePostprocessor {
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let mut module = module_slot_map.get_mut(module).unwrap().clone();
-
+        dbg!(&module);
         drop(module_slot_map);
         self.module.set_name(module.get_name());
         let submodule = module.get_submodules();
@@ -97,21 +97,35 @@ impl TypePostprocessor {
             if f.has_binding() {
                 f.insert_arg(
                     0,
-                    VariableDeclaration::new("this")
+                    VariableDeclaration::new("self")
                         .with_type(ctx.get_alias_type(f.get_binding()).unwrap()),
                 );
             }
         }
     }
 
-    fn process_function_types(&self, functions: &HashMap<String, Function>, ctx: &Context) {
+    fn  process_function_types(&self, functions: &HashMap<String, Function>, ctx: &Context) {
         for (name, f) in functions.iter() {
             let mut ty = f.get_type();
             if let Some(return_type) = ty.get_function_return_type() {
                 if return_type.is_alias() {
                     if let Some(alias) = return_type.get_alias_name() {
+                        dbg!(&alias);
                         if let Some(new_return_ty) = ctx.get_alias_type(&alias) {
                             ty = ty.with_return_type(new_return_ty);
+                        }
+                    }
+                }
+                if let Type::Generic(b, l) = return_type{
+                    if let Some(alis) = b.get_alias_name(){
+                        if let Some(return_alias) = ctx.get_type_alias(&alis){
+                            let mut alias_map = HashMap::new();
+                            for (index,generic) in return_alias.get_generic_list().iter().enumerate(){
+                                alias_map.insert(generic.clone(),l.get(index).unwrap().clone());
+                            }
+                            let mut new_return_type = return_alias.get_type().clone();
+                            new_return_type.try_replace_alias(&alias_map);
+                            ty = ty.with_return_type(new_return_type);
                         }
                     }
                 }
@@ -553,7 +567,7 @@ impl TypePostprocessor {
                 } else {
                     ctx.get_type_alias(&enum_name_clone).unwrap_or_else(|| {
                         panic!("未找到枚举类型: {}", enum_name_clone);
-                    })
+                    }).get_type().clone()
                 };
 
                 // 处理关联值
@@ -616,7 +630,7 @@ impl TypePostprocessor {
                                     Type::Enum(Some(new_enum_name.clone()), new_variants);
                                 // 注册新的枚举类型
                                 self.module
-                                    .register_type_alias(&new_enum_name, new_enum_type.clone());
+                                    .register_type_alias(&new_enum_name, new_enum_type.clone(),vec![]);
 
                                 // 返回实例化后的枚举变体表达式
                                 return ExprNode::new(Expr::EnumVariant(

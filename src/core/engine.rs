@@ -93,6 +93,7 @@ impl Engine {
         });
         let mut type_preprocessor = TypePostprocessor::new();
         let module = type_preprocessor.process(module_key, &ctx);
+        dbg!(&module);
         let mut compiler = Compiler::new(module.clone());
         ctx.register_module(module);
         ctx.apply_mut_module(module_key, |module| {

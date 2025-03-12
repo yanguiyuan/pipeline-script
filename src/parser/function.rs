@@ -18,7 +18,7 @@ pub struct Function {
     body: Vec<StmtNode>,
     #[allow(unused)]
     is_generic: bool,
-    binding_struct: Option<String>,
+    binding_type: Option<String>,
     #[allow(unused)]
     pub(crate) is_extern: bool,
     struct_generics: Vec<Type>,
@@ -31,10 +31,7 @@ impl NodeTrait for Function {
     fn get_data(&self, key: &str) -> Option<Data> {
         match key {
             "name" => Some(Data::String(self.name.clone())),
-            "binding_struct" => self
-                .binding_struct
-                .as_ref()
-                .map(|s| Data::String(s.clone())),
+            "binding_struct" => self.binding_type.as_ref().map(|s| Data::String(s.clone())),
             _ => None,
         }
     }
@@ -73,7 +70,7 @@ impl Function {
             body,
             is_template: false,
             generic_list: vec![],
-            binding_struct: None,
+            binding_type: None,
             is_generic: false,
             is_extern,
             struct_generics: vec![],
@@ -116,16 +113,16 @@ impl Function {
         self.args.len()
     }
     pub fn has_binding(&self) -> bool {
-        self.binding_struct.is_some()
+        self.binding_type.is_some()
     }
     pub fn get_binding(&self) -> String {
-        self.binding_struct.clone().unwrap()
+        self.binding_type.clone().unwrap()
     }
     pub fn insert_arg(&mut self, index: usize, vd: VariableDeclaration) {
         self.args.insert(index, vd)
     }
-    pub fn set_binding_struct(&mut self, binding_struct: impl Into<String>) {
-        self.binding_struct = Some(binding_struct.into());
+    pub fn set_binding_type(&mut self, binding_struct: impl Into<String>) {
+        self.binding_type = Some(binding_struct.into());
     }
     pub fn set_name(&mut self, name: String) {
         self.name = name;
@@ -175,7 +172,7 @@ impl Default for Function {
             is_generic: false,
             args: vec![],
             generic_list: vec![],
-            binding_struct: None,
+            binding_type: None,
             body: vec![],
             is_extern: false,
             is_template: false,

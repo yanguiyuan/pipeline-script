@@ -49,7 +49,7 @@ impl Compiler {
         }
         // 编译枚举
         for (name, item) in self.module.get_type_aliases().iter() {
-            let t = self.compile_type(item);
+            let t = self.compile_type(item.get_type());
             self.llvm_module.register_struct(name, HashMap::new(), t);
         }
         // 编译函数声明

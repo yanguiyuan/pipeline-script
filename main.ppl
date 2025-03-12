@@ -22,3 +22,11 @@ if const(Option.Some(x) = b) {
 fn next()->Option<Int64>{
     return Option.None
 }
+fn Option.is_some()->Bool{
+    return true
+}
+let a = next()
+
+if let(Option.None = a){
+    println("None")
+}

@@ -9,6 +9,7 @@ use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
 use crate::parser::module::Module;
 use crate::parser::r#type::Type;
+use crate::parser::type_alias::TypeAlias;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -312,7 +313,7 @@ impl Context {
             _ => panic!("not a symbol type"),
         }
     }
-    pub fn get_type_alias(&self, name: impl AsRef<str>) -> Option<Type> {
+    pub fn get_type_alias(&self, name: impl AsRef<str>) -> Option<TypeAlias> {
         let slot_map = self.get_module_slot_map();
         let slot_map = slot_map.read().unwrap();
 

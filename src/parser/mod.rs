@@ -27,6 +27,7 @@ pub mod module;
 pub mod stmt;
 pub mod r#struct;
 pub mod r#type;
+pub mod type_alias;
 
 pub struct Parser {
     token_stream: TokenStream,
@@ -346,15 +347,10 @@ impl Parser {
         // 创建枚举类型并注册到模块
         let enum_type = Type::Enum(Some(enum_name.clone()), variants);
 
-        // 注册枚举类型到当前模块
-        // let module_slot_map = ctx.get_module_slot_map();
-        // let mut module_slot_map = module_slot_map.write().unwrap();
-        // let module = module_slot_map.get_mut(self.current_module).unwrap();
-
         // 注册枚举类型为别名
-        // module.register_type_alias(&enum_name, enum_type);
         ctx.apply_mut_module(self.current_module, |m| {
-            m.register_type_alias(&enum_name, enum_type.clone())
+            let generic = generic.iter().map(|it| it.as_str()).collect();
+            m.register_type_alias(&enum_name, enum_type.clone(), generic)
         });
         Ok(())
     }
@@ -400,7 +396,7 @@ impl Parser {
 
         if self.try_parse_token(Token::Dot) {
             let (name0, _) = self.parse_identifier()?;
-            fun.set_binding_struct(&name);
+            fun.set_binding_type(&name);
             fun.set_binding_struct_generics(struct_generics.clone());
             name = format!("{}.{}", name, name0);
         }

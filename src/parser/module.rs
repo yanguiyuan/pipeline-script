@@ -13,6 +13,8 @@ use crate::postprocessor::module_merger::ModuleMerger;
 use crate::postprocessor::run_visitor;
 use slotmap::DefaultKey;
 
+use super::type_alias::TypeAlias;
+
 #[derive(Clone, Debug)]
 pub struct Module {
     name: String,
@@ -21,7 +23,7 @@ pub struct Module {
     structs: HashMap<String, r#struct::Struct>,
     global_block: Vec<StmtNode>,
     submodules: HashMap<String, DefaultKey>,
-    type_aliases: HashMap<String, crate::parser::r#type::Type>,
+    type_aliases: HashMap<String, TypeAlias>,
 }
 impl NodeTrait for Module {
     fn get_id(&self) -> &str {
@@ -111,9 +113,6 @@ impl Module {
     pub fn get_class(&self, class_name: &str) -> Option<&Class> {
         return self.classes.get(class_name);
     }
-    // pub fn get_functions_ref(&self) -> &HashMap<String, Function> {
-    //     &self.functions
-    // }
     pub fn get_functions(&self) -> HashMap<String, Function> {
         self.functions.clone()
     }
@@ -133,9 +132,6 @@ impl Module {
     pub fn get_global_block(&self) -> &Vec<StmtNode> {
         &self.global_block
     }
-    // pub fn get_mut_global_block(&mut self) -> &mut Vec<StmtNode> {
-    //     &mut self.global_block
-    // }
     pub fn get_classes(&self) -> &HashMap<String, Class> {
         &self.classes
     }
@@ -228,15 +224,21 @@ impl Module {
     pub fn set_name(&mut self, name: impl Into<String>) {
         self.name = name.into();
     }
-    pub fn register_type_alias(&mut self, name: &str, ty: crate::parser::r#type::Type) {
-        self.type_aliases.insert(name.to_string(), ty);
+    pub fn register_type_alias(
+        &mut self,
+        name: &str,
+        ty: crate::parser::r#type::Type,
+        generic_list: Vec<String>,
+    ) {
+        self.type_aliases
+            .insert(name.to_string(), TypeAlias::new(ty, generic_list));
     }
 
-    pub fn get_type_alias(&self, name: &str) -> Option<&crate::parser::r#type::Type> {
+    pub fn get_type_alias(&self, name: &str) -> Option<&TypeAlias> {
         self.type_aliases.get(name)
     }
 
-    pub fn get_type_aliases(&self) -> &HashMap<String, crate::parser::r#type::Type> {
+    pub fn get_type_aliases(&self) -> &HashMap<String, TypeAlias> {
         &self.type_aliases
     }
 }

@@ -36,7 +36,7 @@ impl Compiler {
                 let t = val.r#type().unwrap();
                 let alloc = builder.build_alloca(
                     val.name(),
-                    &self.compile_type(t.get_element_type().unwrap()),
+                    &ctx.get_type(t.get_element_type().unwrap()).unwrap(),
                 );
 
                 if let Some(default_expr) = val.get_default() {
@@ -156,7 +156,7 @@ impl Compiler {
         let enum_type = ctx.get_type_alias(enum_name).unwrap();
         // 获取变体索引
         let mut variant_index = 0;
-        if let Type::Enum(_, variants) = &enum_type {
+        if let Type::Enum(_, variants) = enum_type.get_type(){
             for (j, (name, _)) in variants.iter().enumerate() {
                 if name == variant_name {
                     variant_index = j;
@@ -280,7 +280,7 @@ impl Compiler {
 
             // 获取枚举值的标签（第一个字段）
             let element_type = value.ty.get_element_type().unwrap();
-            let element_llvm_type = self.compile_type(element_type);
+            let element_llvm_type = ctx.get_type(element_type).unwrap();
             let tag_ptr = builder.build_struct_gep(element_llvm_type.clone(), value.value, 0);
             let tag = builder.build_load(Global::i32_type(), tag_ptr);
 
