@@ -4,19 +4,25 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="CargoProjects">
-    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
+    <cargoProject FILE="$PROJECT_DIR$/Cargo.toml">
+      <package file="$PROJECT_DIR$">
+        <enabledFeature name="default" />
+      </package>
+    </cargoProject>
   </component>
   <component name="ChangeListManager">
     <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 模块中闭包引用问题">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/stmt.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/types.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.ll" beforeDir="false" afterPath="$PROJECT_DIR$/test.ll" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/global.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/global.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -255,6 +261,8 @@
       <workItem from="1741491625437" duration="2730000" />
       <workItem from="1741504947749" duration="13939000" />
       <workItem from="1741619502782" duration="2407000" />
+      <workItem from="1741878418666" duration="4931000" />
+      <workItem from="1742015856762" duration="82000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -426,12 +434,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
-          <line>739</line>
+          <line>743</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/parser/mod.rs</url>
-          <line>1167</line>
+          <line>1171</line>
           <option name="timeStamp" value="21" />
         </line-breakpoint>
       </breakpoints>

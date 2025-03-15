@@ -120,6 +120,7 @@ impl Compiler {
             Type::Float => Global::float_type(),
             Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Alias(_) => Global::i8_type(),
+            Type::Bool => Global::i1_type(),
             _ => panic!("Unknown type: {:?}", ty),
         }
     }

@@ -1,3 +1,6 @@
+use self::expr::ExprNode;
+use self::stmt::StmtNode;
+use crate::context::Context;
 use crate::core::error::Error;
 use crate::core::result::Result;
 use crate::lexer::iter::TokenStream;
@@ -7,22 +10,20 @@ use crate::lexer::Lexer;
 use crate::parser::declaration::VariableDeclaration;
 use crate::parser::expr::{Argument, Expr, FnCallExpr, Op, StructExpr};
 use crate::parser::function::Function;
+use crate::parser::helper::is_enum;
 use crate::parser::module::Module;
 use crate::parser::r#struct::{Struct, StructField};
 use crate::parser::r#type::Type;
 use crate::parser::stmt::{IfBranchStmt, IfStmt, MatchBranch, Stmt};
-use std::collections::HashMap;
-
-use self::expr::ExprNode;
-use self::stmt::StmtNode;
-use crate::context::Context;
 use slotmap::DefaultKey;
+use std::collections::HashMap;
 use std::vec;
 
 mod class;
 pub mod declaration;
 pub mod expr;
 pub mod function;
+mod helper;
 pub mod module;
 pub mod stmt;
 pub mod r#struct;
@@ -65,18 +66,9 @@ impl Parser {
             if stmt.is_noop() {
                 break;
             }
-            // let module_slot_map = ctx.get_module_slot_map();
-            // let mut module_slot_map = module_slot_map.write().unwrap();
-            // let module = module_slot_map.get_mut(self.current_module).unwrap();
-            // module.add_stmt(stmt);
             ctx.apply_mut_module(self.current_module, |m| m.add_stmt(stmt.clone()));
         }
         self.parse_special_token(Token::ParenRight)?;
-        // let module_slot_map = ctx.get_module_slot_map();
-        // let mut module_slot_map = module_slot_map.write().unwrap();
-        // let module = module_slot_map.get_mut(self.parent_module).unwrap();
-        // module.register_submodule(&name, self.current_module);
-        // self.current_module = self.parent_module;
         ctx.apply_mut_module(self.parent_module, |m| {
             m.register_submodule(&name, self.current_module)
         });
@@ -359,10 +351,6 @@ impl Parser {
         let mut fun = self.parse_function_declaration(ctx)?;
         let block = self.parse_block(ctx)?;
         fun.set_body(block);
-        // let module_slot_map = ctx.get_module_slot_map();
-        // let mut module_slot_map = module_slot_map.write().unwrap();
-        // let module = module_slot_map.get_mut(self.current_module).unwrap();
-        // module.register_function(&fun.name(), fun);
         ctx.apply_mut_module(self.current_module, |m| {
             m.register_function(&fun.name(), fun.clone())
         });
@@ -377,16 +365,34 @@ impl Parser {
         false
     }
     fn parse_function_declaration(&mut self, ctx: &Context) -> Result<Function> {
+        // 初始化函数对象
         let mut fun = Function::default();
-        let fun_name = self.function_keyword.clone();
-        let _ = self.parse_keyword(&fun_name)?;
+
+        // 1. 解析函数关键字
+        let fun_name = self.function_keyword.clone(); // 先克隆避免后续引用冲突
+        self.parse_keyword(&fun_name)?;
+
+        // 2. 解析函数名
         let (mut name, _) = self.parse_identifier()?;
-        // 解析结构体泛型参数
-        let mut struct_generics = vec![];
-        if self.try_parse_token(Token::Less) {
+
+        // 3. 解析结构体泛型参数
+        let type_generics = self.parse_type_generics()?;
+
+        // 4. 处理绑定类型（如果有）
+        let has_binding = self.try_parse_token(Token::Dot);
+        if has_binding {
+            let (method_name, _) = self.parse_identifier()?;
+            fun.set_binding_type(&name);
+            fun.set_type_generics(type_generics.clone());
+            name = format!("{}.{}", name, method_name);
+        }
+
+        // 5. 解析方法泛型（仅当有绑定类型时）
+        let mut method_generics = vec![];
+        if has_binding && self.try_parse_token(Token::Less) {
             loop {
                 let ty = self.parse_type()?;
-                struct_generics.push(ty);
+                method_generics.push(ty);
                 if !self.try_parse_token(Token::Comma) {
                     break;
                 }
@@ -394,45 +400,44 @@ impl Parser {
             self.parse_special_token(Token::Greater)?;
         }
 
-        if self.try_parse_token(Token::Dot) {
-            let (name0, _) = self.parse_identifier()?;
-            fun.set_binding_type(&name);
-            fun.set_binding_struct_generics(struct_generics.clone());
-            name = format!("{}.{}", name, name0);
-        }
-        // 解析泛型
-        let mut list = vec![];
+        // 6. 确定是否为模板函数
+        let is_template = !method_generics.is_empty() || !type_generics.is_empty();
+        fun = fun.with_template(is_template);
+
+        // 7. 解析参数列表
+        self.parse_special_token(Token::BraceLeft)?;
+        let param_list = self.parse_param_list(ctx)?;
+        self.parse_special_token(Token::BraceRight)?;
+
+        // 8. 解析返回类型
+        let return_type = if self.try_parse_token(Token::Arrow) {
+            self.parse_type()?
+        } else {
+            "Unit".into()
+        };
+
+        // 9. 构建并返回函数对象
+        Ok(fun
+            .with_name(name)
+            .with_args(param_list)
+            .with_generic_list(type_generics) // 使用类型泛型作为最终泛型列表
+            .with_return_type(return_type))
+    }
+    fn parse_type_generics(&mut self) -> Result<Vec<Type>> {
+        let mut type_generics = vec![];
+
         if self.try_parse_token(Token::Less) {
             loop {
                 let ty = self.parse_type()?;
-                list.push(ty);
+                type_generics.push(ty);
                 if !self.try_parse_token(Token::Comma) {
                     break;
                 }
             }
             self.parse_special_token(Token::Greater)?;
         }
-        let mut is_template = false;
-        if !list.is_empty() || !struct_generics.is_empty() {
-            is_template = true;
-        }
-        fun = fun.with_template(is_template);
-        let _ = self.parse_special_token(Token::BraceLeft)?;
-        let param_list = self.parse_param_list(ctx)?;
-        let _ = self.parse_special_token(Token::BraceRight)?;
-        if self.try_parse_token(Token::Arrow) {
-            let ret_ty = self.parse_type().unwrap();
-            return Ok(fun
-                .with_name(name)
-                .with_args(param_list)
-                .with_generic_list(list)
-                .with_return_type(ret_ty));
-        }
-        Ok(fun
-            .with_name(name)
-            .with_args(param_list)
-            .with_generic_list(list)
-            .with_return_type("Unit".into()))
+
+        Ok(type_generics)
     }
     fn parse_block(&mut self, ctx: &Context) -> Result<Vec<StmtNode>> {
         let mut result = vec![];
@@ -685,11 +690,12 @@ impl Parser {
             }
             Token::Identifier(id) => {
                 // 检查是否是枚举变体访问
-                if self.try_parse_token(Token::Dot) {
+                if is_enum(ctx, &id) && self.try_parse_token(Token::Dot) {
                     let (variant_name, variant_pos) = self.parse_identifier()?;
 
                     // 检查是否有关联值
                     if self.try_parse_token(Token::BraceLeft) {
+                        dbg!("parse enum variant");
                         // 解析关联值表达式
                         let value_expr = self.parse_expr(ctx)?;
                         self.parse_special_token(Token::BraceRight)?;

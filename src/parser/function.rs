@@ -21,7 +21,7 @@ pub struct Function {
     binding_type: Option<String>,
     #[allow(unused)]
     pub(crate) is_extern: bool,
-    struct_generics: Vec<Type>,
+    type_generics: Vec<Type>,
 }
 impl NodeTrait for Function {
     fn get_id(&self) -> &str {
@@ -73,7 +73,7 @@ impl Function {
             binding_type: None,
             is_generic: false,
             is_extern,
-            struct_generics: vec![],
+            type_generics: vec![],
         }
     }
     pub fn name(&self) -> String {
@@ -159,8 +159,8 @@ impl Function {
         }
         Type::Function(Box::new(self.return_type.clone()), args)
     }
-    pub fn set_binding_struct_generics(&mut self, struct_generics: Vec<Type>) {
-        self.struct_generics = struct_generics;
+    pub fn set_type_generics(&mut self, type_generics: Vec<Type>) {
+        self.type_generics = type_generics;
     }
 }
 
@@ -176,7 +176,7 @@ impl Default for Function {
             body: vec![],
             is_extern: false,
             is_template: false,
-            struct_generics: vec![],
+            type_generics: vec![],
         }
     }
 }

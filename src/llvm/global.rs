@@ -69,6 +69,10 @@ impl Global {
         let t = unsafe { LLVMInt8Type() };
         LLVMType::Int8(t)
     }
+    pub fn i1_type() -> LLVMType {
+        let t = unsafe { LLVMInt1Type() };
+        LLVMType::Int1(t)
+    }
     pub fn i16_type() -> LLVMType {
         let t = unsafe { LLVMInt16Type() };
         LLVMType::Int16(t)

@@ -31,6 +31,7 @@ impl TypePostprocessor {
                 .first()
                 .expect("Method call must have 'this' argument");
             let this = self.process_expr(&this.value, ctx);
+            dbg!(&this);
             let this_type = this
                 .get_type()
                 .expect("Failed to get type for 'this' argument");
@@ -42,8 +43,8 @@ impl TypePostprocessor {
             } else {
                 // 结构体方法调用
                 let this_type_name = this_type
-                    .get_struct_name()
-                    .expect("Failed to get struct name");
+                    .get_composite_type_name()
+                    .expect("Failed to get composite type name");
                 fc_name = format!("{}.{}", this_type_name, fc_name);
             }
         }
@@ -102,24 +103,19 @@ impl TypePostprocessor {
         fc: &FnCallExpr,
         fc_name: &str,
         ctx: &Context,
-    ) -> Type {
+    ) -> (String, Type) {
         // 生成实例化后的函数名
         let instance_name = fc
             .generics
             .iter()
             .fold(fc_name.to_string(), |name, ty| format!("{}${:?}", name, ty));
-
+        dbg!(&fc);
         // 获取模板函数定义
-        let mut template = self
-            .module
-            .get_function(&fc.name)
+        let mut template = get_function_from_context(ctx, fc_name)
             .expect("Template function not found")
             .clone();
-
+        dbg!(&template);
         // 创建新的上下文
-        let (symbol_types, locals) = self.prepare_template_context(&template);
-        let ctx = self.create_template_context(ctx, symbol_types, locals);
-
         // 处理泛型参数
         for (index, generic) in template.generic_list.iter().enumerate() {
             ctx.set_alias_type(
@@ -127,6 +123,8 @@ impl TypePostprocessor {
                 fc.generics[index].clone(),
             );
         }
+        let (symbol_types, locals) = self.prepare_template_context(&template, ctx);
+        let ctx = self.create_template_context(ctx, symbol_types, locals);
 
         // 处理函数体
         let new_body = template
@@ -137,7 +135,15 @@ impl TypePostprocessor {
 
         // 处理返回类型
         let return_type = Self::process_type(template.return_type(), &ctx);
-
+        // 处理函数参数泛型
+        for var in template.args_mut() {
+            let old_type = var.r#type().unwrap();
+            if old_type.is_alias() {
+                let alias_name = old_type.get_alias_name().unwrap();
+                let new_type = ctx.get_alias_type(alias_name).unwrap();
+                var.set_type(new_type);
+            }
+        }
         // 更新模板函数
         template.set_name(instance_name.clone());
         template.is_template = false;
@@ -148,19 +154,23 @@ impl TypePostprocessor {
         // 注册实例化后的函数
         self.module.register_function(&instance_name, template);
 
-        return_type
+        (instance_name, return_type)
     }
 
     // 准备模板函数上下文
     pub(crate) fn prepare_template_context(
         &self,
         template: &Function,
+        ctx: &Context,
     ) -> (HashMap<String, Type>, Vec<String>) {
         let mut symbol_types = HashMap::new();
         let mut locals = vec![];
 
         for arg in template.args() {
-            let ty = arg.r#type().unwrap();
+            let mut ty = arg.r#type().unwrap();
+            if ty.is_alias() {
+                ty = ctx.get_alias_type(ty.get_alias_name().unwrap()).unwrap();
+            }
             symbol_types.insert(arg.name(), ty);
             locals.push(arg.name());
         }
@@ -186,6 +196,7 @@ impl TypePostprocessor {
 
     // 解析函数类型
     pub(crate) fn resolve_function_type(&self, fc_name: &str, ctx: &Context) -> (Type, Type) {
+        dbg!(&fc_name);
         let fc_type = ctx
             .get_symbol_type(fc_name)
             .expect("Failed to get function type");
@@ -364,4 +375,16 @@ impl TypePostprocessor {
 
         closure_struct
     }
+}
+
+fn get_function_from_context(ctx: &Context, name: &str) -> Option<Function> {
+    let modules = ctx.get_module_slot_map();
+    let readable_modules = modules.read().unwrap();
+    for (_, module) in readable_modules.iter() {
+        let function = module.get_function(name);
+        if function.is_some() {
+            return function;
+        }
+    }
+    None
 }

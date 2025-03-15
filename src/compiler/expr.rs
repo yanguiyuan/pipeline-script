@@ -460,6 +460,7 @@ impl Compiler {
             (function.get_type(), false)
         } else {
             let current_function = ctx.get_current_function();
+            dbg!(name);
             let function_index = current_function.get_param_index(name).unwrap();
             let function_decl = ctx
                 .get_current_function_type()

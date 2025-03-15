@@ -87,8 +87,10 @@ impl TypePostprocessor {
 
     fn process_module_functions(&mut self, module: &Module, ctx: &Context) {
         let mut functions = module.get_functions();
+
         self.process_function_bindings(&mut functions, ctx);
         self.process_function_types(&functions, ctx);
+        dbg!(&functions);
         self.register_processed_functions(&functions, ctx);
     }
 
@@ -97,17 +99,22 @@ impl TypePostprocessor {
             if f.has_binding() {
                 f.insert_arg(
                     0,
-                    VariableDeclaration::new("self")
-                        .with_type(ctx.get_alias_type(f.get_binding()).unwrap()),
+                    VariableDeclaration::new("self").with_type(
+                        ctx.get_type_alias(f.get_binding())
+                            .unwrap()
+                            .get_type()
+                            .clone(),
+                    ),
                 );
             }
         }
     }
 
-    fn  process_function_types(&self, functions: &HashMap<String, Function>, ctx: &Context) {
+    fn process_function_types(&mut self, functions: &HashMap<String, Function>, ctx: &Context) {
         for (name, f) in functions.iter() {
             let mut ty = f.get_type();
             if let Some(return_type) = ty.get_function_return_type() {
+                dbg!(&return_type);
                 if return_type.is_alias() {
                     if let Some(alias) = return_type.get_alias_name() {
                         dbg!(&alias);
@@ -116,16 +123,32 @@ impl TypePostprocessor {
                         }
                     }
                 }
-                if let Type::Generic(b, l) = return_type{
-                    if let Some(alis) = b.get_alias_name(){
-                        if let Some(return_alias) = ctx.get_type_alias(&alis){
+                if let Type::Generic(b, l) = return_type {
+                    if let Some(alis) = b.get_alias_name() {
+                        if let Some(return_alias) = ctx.get_type_alias(&alis) {
                             let mut alias_map = HashMap::new();
-                            for (index,generic) in return_alias.get_generic_list().iter().enumerate(){
-                                alias_map.insert(generic.clone(),l.get(index).unwrap().clone());
+                            for (index, generic) in
+                                return_alias.get_generic_list().iter().enumerate()
+                            {
+                                alias_map.insert(generic.clone(), l.get(index).unwrap().clone());
                             }
                             let mut new_return_type = return_alias.get_type().clone();
                             new_return_type.try_replace_alias(&alias_map);
+                            let new_name = format!(
+                                "{}<{}>",
+                                new_return_type.get_composite_type_name().unwrap(),
+                                l.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(",")
+                            );
+
+                            new_return_type.set_composite_type_name(Some(new_name.clone()));
+                            // 注册一个新实例类型，并且实例化所有绑定的成员函数
+                            self.module.register_type_alias(
+                                new_name.as_str(),
+                                new_return_type.clone(),
+                                vec![],
+                            );
                             ty = ty.with_return_type(new_return_type);
+                            dbg!(&ty);
                         }
                     }
                 }
@@ -149,7 +172,7 @@ impl TypePostprocessor {
             } else {
                 self.process_non_extern_function(f, ctx)
             };
-
+            dbg!(&new_f);
             if let Some(ret) = ctx
                 .get_symbol_type(name)
                 .and_then(|ty| ty.get_function_return_type())
@@ -307,7 +330,7 @@ impl TypePostprocessor {
             }
             Expr::FnCall(fc) => {
                 // 处理方法调用的情况
-                let (fc_name, fc_args) = self.process_method_call(&fc, ctx);
+                let (mut fc_name, fc_args) = self.process_method_call(&fc, ctx);
 
                 // 创建新的函数调用对象
                 let mut new_fc = fc.clone();
@@ -326,10 +349,11 @@ impl TypePostprocessor {
                         panic!("闭包函数类型获取失败");
                     });
                 }
-
+                dbg!(&fc_name);
                 // 处理模板函数实例化
                 if !fc.generics.is_empty() && &fc.name != "sizeof" {
-                    fc_return_type = self.instantiate_template_function(&fc, &fc_name, ctx);
+                    (fc_name, fc_return_type) =
+                        self.instantiate_template_function(&fc, &fc_name, ctx);
                 }
 
                 // 处理函数参数
@@ -345,6 +369,8 @@ impl TypePostprocessor {
             Expr::Binary(op, l, r) => {
                 let l = self.process_expr(&l, ctx);
                 let r = self.process_expr(&r, ctx);
+                dbg!(&l);
+                dbg!(&r);
                 // 获取左右操作数的类型
                 let l_type = l.get_type().unwrap();
                 let r_type = r.get_type().unwrap();
@@ -565,9 +591,12 @@ impl TypePostprocessor {
                         })
                         .as_type()
                 } else {
-                    ctx.get_type_alias(&enum_name_clone).unwrap_or_else(|| {
-                        panic!("未找到枚举类型: {}", enum_name_clone);
-                    }).get_type().clone()
+                    ctx.get_type_alias(&enum_name_clone)
+                        .unwrap_or_else(|| {
+                            panic!("未找到枚举类型: {}", enum_name_clone);
+                        })
+                        .get_type()
+                        .clone()
                 };
 
                 // 处理关联值
@@ -629,8 +658,11 @@ impl TypePostprocessor {
                                 let new_enum_type =
                                     Type::Enum(Some(new_enum_name.clone()), new_variants);
                                 // 注册新的枚举类型
-                                self.module
-                                    .register_type_alias(&new_enum_name, new_enum_type.clone(),vec![]);
+                                self.module.register_type_alias(
+                                    &new_enum_name,
+                                    new_enum_type.clone(),
+                                    vec![],
+                                );
 
                                 // 返回实例化后的枚举变体表达式
                                 return ExprNode::new(Expr::EnumVariant(
@@ -701,9 +733,9 @@ impl TypePostprocessor {
                     }
                     Some(ty) => {
                         let mut new_decl = decl.clone();
-                        ctx.set_symbol_type(decl.name.clone(), Type::Ref(Box::new(ty)));
+                        ctx.set_symbol_type(decl.name.clone(), Type::Ref(Box::new(ty.clone())));
                         new_decl.set_default(actual);
-                        dbg!(&new_decl);
+                        new_decl.set_type(Type::Ref(Box::new(ty)));
                         StmtNode::new(Stmt::VarDecl(new_decl), stmt.position())
                     }
                 }

@@ -34,10 +34,8 @@ impl Compiler {
             }
             Stmt::VarDecl(val) => {
                 let t = val.r#type().unwrap();
-                let alloc = builder.build_alloca(
-                    val.name(),
-                    &ctx.get_type(t.get_element_type().unwrap()).unwrap(),
-                );
+                let element_type = t.get_element_type().unwrap();
+                let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
 
                 if let Some(default_expr) = val.get_default() {
                     let default_value = self.compile_expr(default_expr, ctx);
@@ -156,7 +154,7 @@ impl Compiler {
         let enum_type = ctx.get_type_alias(enum_name).unwrap();
         // 获取变体索引
         let mut variant_index = 0;
-        if let Type::Enum(_, variants) = enum_type.get_type(){
+        if let Type::Enum(_, variants) = enum_type.get_type() {
             for (j, (name, _)) in variants.iter().enumerate() {
                 if name == variant_name {
                     variant_index = j;

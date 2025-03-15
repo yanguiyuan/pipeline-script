@@ -113,6 +113,22 @@ impl Type {
             _ => None,
         }
     }
+    pub fn get_composite_type_name(&self) -> Option<&str> {
+        match self {
+            Type::Struct(name, _) => name.as_deref(),
+            Type::Array(_) => Some("Array"),
+            Type::Enum(name, _) => name.as_deref(),
+            _ => None,
+        }
+    }
+    pub fn set_composite_type_name(&mut self, name: Option<String>) {
+        match self {
+            Type::Struct(n, _) => *n = name,
+            Type::Array(_) => panic!("Array type cannot be set name"),
+            Type::Enum(n, _) => *n = name,
+            _ => panic!("Not a composite type"),
+        }
+    }
     pub fn is_integer(&self) -> bool {
         matches!(self, Type::Int8 | Type::Int16 | Type::Int32 | Type::Int64)
     }
@@ -548,13 +564,6 @@ impl Type {
             Type::Any => "Any".to_string(),
             Type::Unit => "Unit".to_string(),
         }
-    }
-    /// 获取函数名称，仅在类型是由特定函数生成的函数类型时有效
-    pub fn get_function_name(&self) -> Option<&str> {
-        // 这个方法实际上不能简单地从类型中获取函数名称
-        // 因为标准函数类型 Type::Function 并不存储函数名
-        // 我们将返回 None，由调用代码处理这种情况
-        None
     }
     pub fn is_enum(&self) -> bool {
         matches!(self, Type::Enum(_, _))
