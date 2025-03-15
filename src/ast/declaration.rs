@@ -1,7 +1,7 @@
 use crate::ast::data::Data;
 
-use super::expr::ExprNode;
-use crate::parser::r#type::Type;
+use crate::ast::expr::ExprNode;
+use crate::ast::r#type::Type;
 #[derive(Clone, Debug)]
 pub struct VariableDeclaration {
     pub name: String,

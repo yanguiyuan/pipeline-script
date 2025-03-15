@@ -1,6 +1,6 @@
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
-use crate::parser::r#type::Type;
+use crate::ast::r#type::Type;
 #[derive(Clone, Debug)]
 pub struct Struct {
     pub name: String,

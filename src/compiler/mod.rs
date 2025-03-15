@@ -10,7 +10,7 @@ use crate::llvm::context::LLVMContext;
 use crate::llvm::global::Global;
 use crate::llvm::module::LLVMModule;
 
-use crate::parser::module::Module;
+use crate::ast::module::Module;
 
 pub struct Compiler {
     module: Module,

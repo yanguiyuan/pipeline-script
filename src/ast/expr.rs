@@ -1,9 +1,9 @@
 use crate::ast::data::Data;
 use crate::ast::NodeTrait;
 use crate::lexer::position::Position;
-use crate::parser::declaration::VariableDeclaration;
-use crate::parser::r#type::Type;
-use crate::parser::stmt::StmtNode;
+use crate::ast::declaration::VariableDeclaration;
+use crate::ast::r#type::Type;
+use crate::ast::stmt::StmtNode;
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};

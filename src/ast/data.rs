@@ -1,4 +1,4 @@
-use crate::parser::r#type::Type;
+use crate::ast::r#type::Type;
 
 #[derive(Debug, Clone)]
 pub enum Data {

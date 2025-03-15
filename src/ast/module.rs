@@ -1,9 +1,9 @@
 use std::any::Any;
 
-use crate::parser::class::Class;
-use crate::parser::function::Function;
-use crate::parser::r#struct;
-use crate::parser::stmt::StmtNode;
+use crate::ast::class::Class;
+use crate::ast::function::Function;
+use crate::ast::r#struct::Struct;
+use crate::ast::stmt::StmtNode;
 use std::collections::HashMap;
 
 use crate::ast::data::Data;
@@ -13,14 +13,14 @@ use crate::postprocessor::module_merger::ModuleMerger;
 use crate::postprocessor::run_visitor;
 use slotmap::DefaultKey;
 
-use super::type_alias::TypeAlias;
+use crate::ast::type_alias::TypeAlias;
 
 #[derive(Clone, Debug)]
 pub struct Module {
     name: String,
     functions: HashMap<String, Function>,
     classes: HashMap<String, Class>,
-    structs: HashMap<String, r#struct::Struct>,
+    structs: HashMap<String, Struct>,
     global_block: Vec<StmtNode>,
     submodules: HashMap<String, DefaultKey>,
     type_aliases: HashMap<String, TypeAlias>,
@@ -97,13 +97,13 @@ impl Module {
             type_aliases: HashMap::new(),
         }
     }
-    pub fn register_struct(&mut self, name: &str, s: r#struct::Struct) {
+    pub fn register_struct(&mut self, name: &str, s: Struct) {
         self.structs.insert(name.into(), s);
     }
-    pub fn get_structs(&self) -> &HashMap<String, r#struct::Struct> {
+    pub fn get_structs(&self) -> &HashMap<String, Struct> {
         &self.structs
     }
-    pub fn get_struct(&self, name: &str) -> Option<&r#struct::Struct> {
+    pub fn get_struct(&self, name: &str) -> Option<&Struct> {
         self.structs.get(name)
     }
     pub fn add_stmt(&mut self, stmt: StmtNode) {
@@ -227,7 +227,7 @@ impl Module {
     pub fn register_type_alias(
         &mut self,
         name: &str,
-        ty: crate::parser::r#type::Type,
+        ty: crate::ast::r#type::Type,
         generic_list: Vec<String>,
     ) {
         self.type_aliases

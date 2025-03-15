@@ -2,6 +2,16 @@ use crate::ast::data::Data;
 use std::any::Any;
 use std::collections::HashMap;
 pub mod data;
+pub mod class;
+pub mod stmt;
+pub mod r#struct;
+pub mod r#type;
+pub mod declaration;
+pub mod module;
+pub mod expr;
+pub mod function;
+pub mod type_alias;
+
 pub trait NodeTrait {
     fn get_id(&self) -> &str;
     fn get_data(&self, key: &str) -> Option<Data>;

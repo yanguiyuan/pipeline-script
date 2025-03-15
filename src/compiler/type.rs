@@ -2,7 +2,7 @@ use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
-use crate::parser::r#type::Type;
+use crate::ast::r#type::Type;
 impl Compiler {
     pub(crate) fn compile_type(&self, ty: &Type) -> LLVMType {
         match ty {

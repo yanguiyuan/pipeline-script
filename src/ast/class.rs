@@ -1,5 +1,5 @@
-use crate::parser::declaration::VariableDeclaration;
-use crate::parser::function::Function;
+use crate::ast::declaration::VariableDeclaration;
+use crate::ast::function::Function;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]

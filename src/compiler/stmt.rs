@@ -2,9 +2,9 @@ use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::core::value::Value;
 use crate::llvm::global::Global;
-use crate::parser::expr::{Expr, ExprNode};
-use crate::parser::r#type::Type;
-use crate::parser::stmt::{MatchBranch, Stmt, StmtNode};
+use crate::ast::expr::{Expr, ExprNode};
+use crate::ast::r#type::Type;
+use crate::ast::stmt::{MatchBranch, Stmt, StmtNode};
 use llvm_sys::prelude::LLVMBasicBlockRef;
 
 impl Compiler {

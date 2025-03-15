@@ -1,5 +1,5 @@
-use self::expr::ExprNode;
-use self::stmt::StmtNode;
+use crate::ast::expr::ExprNode;
+use crate::ast::stmt::StmtNode;
 use crate::context::Context;
 use crate::core::error::Error;
 use crate::core::result::Result;
@@ -7,28 +7,19 @@ use crate::lexer::iter::TokenStream;
 use crate::lexer::position::Position;
 use crate::lexer::token::Token;
 use crate::lexer::Lexer;
-use crate::parser::declaration::VariableDeclaration;
-use crate::parser::expr::{Argument, Expr, FnCallExpr, Op, StructExpr};
-use crate::parser::function::Function;
+use crate::ast::declaration::VariableDeclaration;
+use crate::ast::expr::{Argument, Expr, FnCallExpr, Op, StructExpr};
+use crate::ast::function::Function;
 use crate::parser::helper::is_enum;
-use crate::parser::module::Module;
-use crate::parser::r#struct::{Struct, StructField};
-use crate::parser::r#type::Type;
-use crate::parser::stmt::{IfBranchStmt, IfStmt, MatchBranch, Stmt};
+use crate::ast::module::Module;
+use crate::ast::r#struct::{Struct, StructField};
+use crate::ast::r#type::Type;
+use crate::ast::stmt::{IfBranchStmt, IfStmt, MatchBranch, Stmt};
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::vec;
 
-mod class;
-pub mod declaration;
-pub mod expr;
-pub mod function;
 mod helper;
-pub mod module;
-pub mod stmt;
-pub mod r#struct;
-pub mod r#type;
-pub mod type_alias;
 
 pub struct Parser {
     token_stream: TokenStream,
@@ -80,10 +71,6 @@ impl Parser {
             if stmt.is_noop() {
                 break;
             }
-            // let module_slot_map = ctx.get_module_slot_map();
-            // let mut module_slot_map = module_slot_map.write().unwrap();
-            // let module = module_slot_map.get_mut(self.module).unwrap();
-            // module.add_stmt(stmt);
             ctx.apply_mut_module(self.module, |m| m.add_stmt(stmt.clone()));
         }
         Ok(self.module)
@@ -270,10 +257,6 @@ impl Parser {
             }
         }
         let struct_declaration = Struct::new(struct_name.clone(), fields, generic.clone());
-        // let module_slot_map = ctx.get_module_slot_map();
-        // let mut module_slot_map = module_slot_map.write().unwrap();
-        // let module = module_slot_map.get_mut(self.current_module).unwrap();
-        // module.register_struct(&struct_name, struct_declaration);
         ctx.apply_mut_module(self.current_module, |m| {
             m.register_struct(&struct_name, struct_declaration.clone())
         });

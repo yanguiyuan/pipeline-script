@@ -6,8 +6,8 @@ use crate::llvm::global::Global;
 use crate::llvm::value::LLVMValue;
 
 use crate::core::value::Value;
-use crate::parser::expr::{Expr, ExprNode, Op};
-use crate::parser::r#type::Type;
+use crate::ast::expr::{Expr, ExprNode, Op};
+use crate::ast::r#type::Type;
 use std::collections::HashMap;
 
 impl Compiler {
@@ -302,7 +302,7 @@ impl Compiler {
 
     fn compile_struct(
         &self,
-        s: &crate::parser::expr::StructExpr,
+        s: &crate::ast::expr::StructExpr,
         ty0: &Type,
         ctx: &Context,
     ) -> Value {
@@ -398,7 +398,7 @@ impl Compiler {
 
     // ===== 函数调用处理 =====
 
-    fn compile_fn_call(&self, fc: &crate::parser::expr::FnCallExpr, ctx: &Context) -> Value {
+    fn compile_fn_call(&self, fc: &crate::ast::expr::FnCallExpr, ctx: &Context) -> Value {
         let binding = ctx.get(ContextKey::Builder).unwrap();
         let builder = binding.as_builder();
         let mut name = fc.name.clone();
@@ -472,7 +472,7 @@ impl Compiler {
 
     fn build_param_index_map(
         &self,
-        func_args: &[crate::parser::declaration::VariableDeclaration],
+        func_args: &[crate::ast::declaration::VariableDeclaration],
     ) -> HashMap<String, usize> {
         let mut param_name_to_index = HashMap::new();
         for (i, param) in func_args.iter().enumerate() {
@@ -483,8 +483,8 @@ impl Compiler {
 
     fn process_function_args(
         &self,
-        fc: &crate::parser::expr::FnCallExpr,
-        args: &[crate::parser::expr::Argument],
+        fc: &crate::ast::expr::FnCallExpr,
+        args: &[crate::ast::expr::Argument],
         param_name_to_index: &HashMap<String, usize>,
         function_decl: &Type,
         ctx: &Context,
@@ -544,7 +544,7 @@ impl Compiler {
     fn process_default_args(
         &self,
         mut arg_values: Vec<Option<LLVMValue>>,
-        fc: &crate::parser::expr::FnCallExpr,
+        fc: &crate::ast::expr::FnCallExpr,
         ctx: &Context,
     ) -> Vec<Option<LLVMValue>> {
         // 获取函数定义

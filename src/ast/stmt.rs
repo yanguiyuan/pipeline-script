@@ -1,8 +1,8 @@
-use super::expr::{Expr, ExprNode};
+use crate::ast::expr::{Expr, ExprNode};
 use crate::ast::data::Data;
 use crate::ast::NodeTrait;
 use crate::lexer::position::Position;
-use crate::parser::declaration::VariableDeclaration;
+use crate::ast::declaration::VariableDeclaration;
 use std::any::Any;
 use std::collections::HashMap;
 

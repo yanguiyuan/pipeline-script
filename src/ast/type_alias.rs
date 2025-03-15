@@ -1,4 +1,4 @@
-use super::r#type::Type;
+use crate::ast::r#type::Type;
 
 #[derive(Clone, Debug)]
 pub struct TypeAlias {

@@ -1,12 +1,12 @@
 use crate::ast::data::Data;
 use crate::ast::NodeTrait;
-use crate::parser::declaration::VariableDeclaration;
-use crate::parser::r#type::Type;
+use crate::ast::declaration::VariableDeclaration;
+use crate::ast::r#type::Type;
 use std::any::Any;
 use std::collections::HashMap;
 use std::vec;
 
-use super::stmt::StmtNode;
+use crate::ast::stmt::StmtNode;
 #[derive(Clone, Debug)]
 pub struct Function {
     name: String,
