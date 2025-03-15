@@ -27,6 +27,10 @@ pub extern "C" fn println(obj: Any) {
                 let value = obj.ptr as *mut i32;
                 print!("{}", *value);
             }
+            5 => {
+                let v = obj.ptr as *mut i32;
+                print!("{}", *v);
+            }
             7 | 8 => {
                 let v = obj.ptr as *mut i64;
                 // let v =  *v ;

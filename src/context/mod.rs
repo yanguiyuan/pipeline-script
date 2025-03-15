@@ -162,6 +162,21 @@ impl Context {
             ContextValue::LocalVariable(Arc::new(RwLock::new(local))),
         )
     }
+    pub fn get_type_binding_functions(&self,name:&str)->Vec<crate::ast::function::Function>{
+        let slot_map = self.get_module_slot_map();
+        let slot_map = slot_map.read().unwrap();
+        let mut result = Vec::new();
+        
+        for module in slot_map.values() {
+            for (_, function) in module.get_functions() {
+                if function.has_binding() && function.get_binding() == name {
+                    result.push(function);
+                }
+            }
+        }
+        
+        result
+    }
 
     pub fn with_capture(parent: &Context) -> Self {
         Self::with_value(

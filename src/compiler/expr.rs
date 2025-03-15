@@ -61,6 +61,7 @@ impl Compiler {
                 self.compile_enum_variant(variant_name, value, &ty0, ctx)
             }
             Expr::None => Value::new(Global::const_unit(), ty0),
+            Expr::Boolean(b) => Value::new(Global::const_bool(*b), ty0),
             t => todo!("Unknown expr: {:?}", t),
         }
     }

@@ -159,6 +159,9 @@ impl Function {
         }
         Type::Function(Box::new(self.return_type.clone()), args)
     }
+    pub fn set_template(&mut self, is_template: bool) {
+        self.is_template = is_template;
+    }
     pub fn set_type_generics(&mut self, type_generics: Vec<Type>) {
         self.type_generics = type_generics;
     }

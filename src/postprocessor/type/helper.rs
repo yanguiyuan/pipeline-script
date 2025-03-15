@@ -48,7 +48,6 @@ impl TypePostprocessor {
                 fc_name = format!("{}.{}", this_type_name, fc_name);
             }
         }
-
         (fc_name, fc_args)
     }
 

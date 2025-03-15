@@ -11,27 +11,14 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: 模块中闭包引用问题">
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="refactor: parser中的expr,stmt,function等结构体移动到ast包">
+      <change afterPath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/data.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/data.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/function.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/stmt.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/type.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/class.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/class.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/declaration.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/declaration.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/function.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/module.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/stmt.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/struct.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/struct.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/type.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/type_alias.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/type_alias.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/builtin.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
     </list>
@@ -274,7 +261,7 @@
       <workItem from="1741619502782" duration="2407000" />
       <workItem from="1741878418666" duration="4931000" />
       <workItem from="1742015856762" duration="82000" />
-      <workItem from="1742017453567" duration="471000" />
+      <workItem from="1742017453567" duration="14938000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -388,7 +375,15 @@
       <option name="project" value="LOCAL" />
       <updated>1740241870461</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="refactor: parser中的expr,stmt,function等结构体移动到ast包">
+      <option name="closed" value="true" />
+      <created>1742018050851</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1742018050851</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -419,7 +414,8 @@
     <MESSAGE value="fix: 模块内函数调用" />
     <MESSAGE value="fix: 闭包相关初次提交" />
     <MESSAGE value="fix: 模块中闭包引用问题" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: 模块中闭包引用问题" />
+    <MESSAGE value="refactor: parser中的expr,stmt,function等结构体移动到ast包" />
+    <option name="LAST_COMMIT_MESSAGE" value="refactor: parser中的expr,stmt,function等结构体移动到ast包" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
