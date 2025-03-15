@@ -7,6 +7,18 @@ use std::collections::HashMap;
 use std::vec;
 
 use crate::ast::stmt::StmtNode;
+
+/// 表示方法中self参数的类型
+#[derive(Clone, Debug, PartialEq)]
+pub enum SelfType {
+    /// 无self参数
+    None,
+    /// 值类型self参数
+    Value,
+    /// 引用类型self参数
+    Reference,
+}
+
 #[derive(Clone, Debug)]
 pub struct Function {
     name: String,
@@ -22,6 +34,8 @@ pub struct Function {
     #[allow(unused)]
     pub(crate) is_extern: bool,
     type_generics: Vec<Type>,
+    /// 方法的self参数类型
+    self_type: SelfType,
 }
 impl NodeTrait for Function {
     fn get_id(&self) -> &str {
@@ -74,6 +88,7 @@ impl Function {
             is_generic: false,
             is_extern,
             type_generics: vec![],
+            self_type: SelfType::None,
         }
     }
     pub fn name(&self) -> String {
@@ -165,6 +180,27 @@ impl Function {
     pub fn set_type_generics(&mut self, type_generics: Vec<Type>) {
         self.type_generics = type_generics;
     }
+    
+    /// 获取方法的self参数类型
+    pub fn self_type(&self) -> &SelfType {
+        &self.self_type
+    }
+    
+    /// 设置方法的self参数类型
+    pub fn set_self_type(&mut self, self_type: SelfType) {
+        self.self_type = self_type;
+    }
+    
+    /// 链式设置方法的self参数类型
+    pub fn with_self_type(mut self, self_type: SelfType) -> Self {
+        self.self_type = self_type;
+        self
+    }
+    
+    /// 检查方法是否有self参数
+    pub fn has_self(&self) -> bool {
+        self.self_type != SelfType::None
+    }
 }
 
 impl Default for Function {
@@ -180,6 +216,7 @@ impl Default for Function {
             is_extern: false,
             is_template: false,
             type_generics: vec![],
+            self_type: SelfType::None,
         }
     }
 }

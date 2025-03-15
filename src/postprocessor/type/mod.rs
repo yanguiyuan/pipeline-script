@@ -76,6 +76,9 @@ impl TypePostprocessor {
         for (name, st) in module.get_structs() {
             ctx.set_alias_type(name.clone(), st.get_type());
         }
+        for (name, st) in module.get_functions() {
+            ctx.set_symbol_type(name.clone(), st.get_type());
+        }
     }
 
     fn process_module_structs(&mut self, module: &Module, ctx: &Context) {
@@ -87,12 +90,12 @@ impl TypePostprocessor {
 
     fn process_module_functions(&mut self, module: &Module, ctx: &Context) {
         let mut functions = module.get_functions();
-        self.process_function_bindings(&mut functions, ctx);
+        // self.process_function_bindings(&mut functions, ctx);
         self.process_function_types(&functions, ctx);
         self.register_processed_functions(&functions, ctx);
     }
 
-    fn process_function_bindings(&self, functions: &mut HashMap<String, Function>, ctx: &Context) {
+    fn process_function_bindings(&self, functions: &mut HashMap<String,Function>, ctx: &Context) {
         for f in functions.values_mut() {
             if f.has_binding() {
                 f.insert_arg(
@@ -122,10 +125,6 @@ impl TypePostprocessor {
                 // 返回类型为泛型，需要实例化
                 if let Type::Generic(b, l) = return_type {
                     if let Some(alias) = b.get_alias_name() {
-                        
-                        dbg!(&functions);
-                        dbg!(&l);
-                        
                         // 获取类型模版
                         if let Some(return_alias) = ctx.get_type_alias(&alias) {
                             let mut alias_map = HashMap::new();
@@ -137,6 +136,7 @@ impl TypePostprocessor {
                             
                             // 实例化所有绑定函数
                             let functions = ctx.get_type_binding_functions(alias.as_str());
+                            dbg!(&functions);
                             self.instantiate_binding_functions(ctx,alias.as_str(), &functions, &l, &alias_map);
                             dbg!(&self.module);
                             let mut new_return_type = return_alias.get_type().clone();
@@ -161,6 +161,7 @@ impl TypePostprocessor {
                     }
                 }
             }
+            dbg!(f);
             ctx.set_symbol_type(name.clone(), ty);
         }
     }
@@ -636,7 +637,7 @@ impl TypePostprocessor {
             base_type_name,
             concrete_types.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(",")
         );
-
+        // self.process_function_bindings(functions,ctx)
         for function in functions {
             let function_name = function.name();
             // 解析原始函数名，分离类型名和方法名
@@ -658,6 +659,18 @@ impl TypePostprocessor {
             
             // 处理函数参数中的类型别名
             for arg in instantiated_function.args_mut() {
+                if arg.name() == "self" {
+                    let self_type = arg.r#type().unwrap();
+                    let alias = self_type.get_alias_name().unwrap();
+                    let type_alias = ctx.get_type_alias(&alias).unwrap();
+                    let mut alias_type = type_alias.get_type().clone();
+                    if alias_type.is_enum(){
+                        alias_type.set_enum_name(instantiated_type_name.clone());
+                    }
+                    alias_type.try_replace_alias(alias_map);
+                    arg.set_type(alias_type);
+                    continue;
+                }
                 if let Some(arg_type) = arg.r#type() {
                     let mut new_type = arg_type.clone();
                     new_type.try_replace_alias(alias_map);
@@ -672,8 +685,15 @@ impl TypePostprocessor {
             instantiated_function.set_return_type(return_type);
             instantiated_function.set_template(false);
             let mut new_body = vec![];
+            let ctx = Context::with_local(ctx, vec![]);
+            dbg!(&instantiated_function);
+            for i in instantiated_function.args(){
+                ctx.set_symbol_type(i.name(), i.r#type().unwrap());
+                ctx.try_add_local(i.name())
+            }
+            
             for i in instantiated_function.body(){
-                let new_stmt = self.process_stmt(i, ctx);
+                let new_stmt = self.process_stmt(i, &ctx);
                 new_body.push(new_stmt);
             }
             instantiated_function.set_body(new_body);

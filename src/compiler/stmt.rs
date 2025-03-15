@@ -309,9 +309,11 @@ impl Compiler {
                     self.compile_stmt(stmt, ctx);
                 }
             }
-
-            // 跳转到结束基本块
-            builder.build_br(end_block);
+            if !ctx.get_flag("return").unwrap() {
+                // 跳转到结束基本块
+                builder.build_br(end_block);
+            }
+            
 
             // 设置当前基本块为结束基本块
             builder.position_at_end(end_block);
@@ -359,9 +361,10 @@ impl Compiler {
             for stmt in body {
                 self.compile_stmt(stmt, ctx);
             }
-
-            // 跳转到结束基本块
-            builder.build_br(end_block);
+            if!ctx.get_flag("return").unwrap() {
+                // 跳转到结束基本块
+                builder.build_br(end_block);
+            }
 
             // 编译else分支
             builder.position_at_end(else_block);

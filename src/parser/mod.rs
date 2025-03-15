@@ -389,7 +389,87 @@ impl Parser {
 
         // 7. 解析参数列表
         self.parse_special_token(Token::BraceLeft)?;
-        let param_list = self.parse_param_list(ctx)?;
+        
+        // 7.1 检查是否有self参数（仅当有绑定类型时）
+        let mut self_type = crate::ast::function::SelfType::None;
+        let mut self_param = None;
+        
+        if has_binding {
+            // 检查第一个参数是否是self相关参数
+            let (token, _) = self.token_stream.peek();
+            
+            match token {
+                Token::Identifier(id) if id == "self" => {
+                    // 消费self标识符
+                    self.parse_identifier()?;
+                    
+                    // 设置self类型为值类型
+                    self_type = crate::ast::function::SelfType::Value;
+                    
+                    // 创建self参数
+                    let binding_type = fun.get_binding();
+                    let self_var = VariableDeclaration::new("self".to_string())
+                        .with_type(Type::Alias(binding_type));
+                    self_param = Some(self_var);
+                    
+                    // 检查是否有逗号，表示后面还有其他参数
+                    if self.try_parse_token(Token::Comma) {
+                        // 继续解析其他参数
+                    }
+                },
+                Token::BitAnd => {
+                    // 消费&符号
+                    self.parse_special_token(Token::BitAnd)?;
+                    
+                    // 检查是否是self
+                    let (token, _) = self.token_stream.peek();
+                   if let Token::Identifier(id) = &token {
+                        if id == "self" {
+                            // 消费self标识符
+                            self.parse_identifier()?;
+                            
+                            // 设置self类型为引用类型
+                            self_type = crate::ast::function::SelfType::Reference;
+                            
+                            // 创建&self参数
+                            let binding_type = fun.get_binding();
+                            let self_var = VariableDeclaration::new("self".to_string())
+                                .with_type(Type::Pointer(Box::new(Type::Alias(binding_type))));
+                            self_param = Some(self_var);
+                        } else {
+                            return Err(Error::UnexpectedToken(
+                                id.clone(),
+                                "self".into(),
+                                Position::none(),
+                            ));
+                        }
+                    } else {
+                        return Err(Error::UnexpectedToken(
+                            token.to_string(),
+                            "mut or self".into(),
+                            Position::none(),
+                        ));
+                    }
+                    
+                    // 检查是否有逗号，表示后面还有其他参数
+                    if self.try_parse_token(Token::Comma) {
+                        // 继续解析其他参数
+                    }
+                },
+                _ => {
+                    // 没有self参数，继续正常解析
+                }
+            }
+        }
+        
+        // 7.2 解析其他参数
+        let mut param_list = self.parse_param_list(ctx)?;
+        
+        // 如果有self参数，将其添加到参数列表的开头
+        if let Some(self_var) = self_param {
+            param_list.insert(0, self_var);
+        }
+        
         self.parse_special_token(Token::BraceRight)?;
 
         // 8. 解析返回类型
@@ -404,7 +484,8 @@ impl Parser {
             .with_name(name)
             .with_args(param_list)
             .with_generic_list(type_generics) // 使用类型泛型作为最终泛型列表
-            .with_return_type(return_type))
+            .with_return_type(return_type)
+            .with_self_type(self_type)) // 设置self参数类型
     }
     fn parse_type_generics(&mut self) -> Result<Vec<Type>> {
         let mut type_generics = vec![];

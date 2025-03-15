@@ -417,6 +417,12 @@ impl Type {
             _ => {}
         }
     }
+    pub fn set_enum_name(&mut self, name: String) {
+        match self {
+            Type::Enum(n, _) => *n = Some(name),
+            _ => panic!("Not an enum type"),
+        }
+    }
     pub fn has_alias(&self) -> bool {
         // 递归判断是否存在Alias
         match self {

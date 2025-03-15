@@ -453,6 +453,9 @@ impl Compiler {
         }
 
         let v = builder.build_call(llvm_func, llvm_args.as_mut_slice(), "");
+        if name == "panic" || name == "exit" {
+            builder.build_unreachable();
+        }
         Value::new(v, ty.clone())
     }
 

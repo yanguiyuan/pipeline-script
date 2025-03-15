@@ -139,3 +139,10 @@ pub extern "C" fn set_env(key: *mut c_char, value: *mut c_char) {
     let value = unsafe { CStr::from_ptr(value).to_str().unwrap() };
     std::env::set_var(key, value);
 }
+
+#[allow(unused)]
+pub extern "C" fn panic(ptr: *mut c_char) {
+    let s = unsafe { CStr::from_ptr(ptr).to_str().unwrap() };
+    println!("panic: {}", s);
+    std::process::exit(1);
+}

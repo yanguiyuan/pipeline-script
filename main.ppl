@@ -1,6 +1,6 @@
 import core
 
-
+extern fn panic(msg: String)
 enum Option<T> {
     None,
     Some(T)
@@ -16,8 +16,15 @@ fn Option<T>.is_some(self)->Bool{
     }
     return true
 }
-let a = next()
-let b = a.is_some()
-if(b){
-    println("Is some")
+
+fn Option<T>.unwrap(self)->T{
+    println("Unwrap")
+    if const(Option.Some(r) = self){
+        return r
+    }
+    panic("Unwrap None")
 }
+
+let a = next()
+let b = a.unwrap()
+println(b)
