@@ -1,15 +1,15 @@
 use crate::ast::data::Data;
 use std::any::Any;
 use std::collections::HashMap;
-pub mod data;
 pub mod class;
+pub mod data;
+pub mod declaration;
+pub mod expr;
+pub mod function;
+pub mod module;
 pub mod stmt;
 pub mod r#struct;
 pub mod r#type;
-pub mod declaration;
-pub mod module;
-pub mod expr;
-pub mod function;
 pub mod type_alias;
 
 pub trait NodeTrait {

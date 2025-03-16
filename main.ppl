@@ -1,5 +1,7 @@
 import core
+fn Pointer<T>.create(n: Int64) -> Pointer<T> {
 
+}
 struct Vec<T> {
     data: Pointer<T>,
     len: Int64,

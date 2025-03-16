@@ -1,6 +1,7 @@
-use crate::ast::expr::{Argument, Expr, ExprNode, FnCallExpr, Op, StructExpr};
+use crate::ast::expr::{Argument, Expr, ExprNode, FunctionCall, Op, StructExpr};
 use crate::context::Context;
 use crate::core::error::Error;
+use crate::lexer::position::Position;
 use crate::lexer::token::Token;
 use crate::parser::helper::is_enum;
 use crate::parser::Parser;
@@ -23,38 +24,7 @@ impl Parser {
             Token::Identifier(id) => {
                 // 检查是否是枚举变体访问
                 if is_enum(ctx, &id) && self.try_parse_token(Token::Dot) {
-                    let (variant_name, variant_pos) = self.parse_identifier()?;
-
-                    // 检查是否有关联值
-                    if self.try_parse_token(Token::BraceLeft) {
-                        // 解析关联值表达式
-                        let value_expr = self.parse_expr(ctx)?;
-                        self.parse_special_token(Token::BraceRight)?;
-
-                        // 创建枚举变体表达式
-                        let enum_variant =
-                            Expr::EnumVariant(id.clone(), variant_name, Some(Box::new(value_expr)));
-
-                        return Ok(ExprNode::new(enum_variant).with_position(pos + variant_pos));
-                    } else {
-                        // 没有关联值的枚举变体
-                        let enum_variant = Expr::EnumVariant(id.clone(), variant_name, None);
-
-                        return Ok(ExprNode::new(enum_variant).with_position(pos + variant_pos));
-                    }
-                }
-
-                // 检查是否是函数调用
-                let peek = self.token_stream.peek().0;
-                if peek == Token::BraceLeft {
-                    let (args, p0) = self.parse_fn_args(ctx)?;
-                    return Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
-                        name: id,
-                        args,
-                        is_method: false,
-                        generics: vec![],
-                    }))
-                    .with_position(pos + p0));
+                    return self.parse_enum_variant(ctx, &id, pos);
                 }
 
                 let mut generics = vec![];
@@ -65,22 +35,24 @@ impl Parser {
                             let _ = self.parse_special_token(Token::ScopeSymbol)?;
                             let list = self.parse_generic_list()?;
                             let (args, _) = self.parse_fn_args(ctx)?;
-                            return Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                            return Ok(ExprNode::from(Expr::FnCall(FunctionCall {
                                 name: id,
                                 args,
                                 is_method: false,
                                 generics: list,
+                                type_generics: vec![],
                             }))
                             .with_position(pos));
                         }
                         Token::BraceLeft => {
                             let (args, p0) = self.parse_fn_args(ctx)?;
                             pos += p0;
-                            return Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                            return Ok(ExprNode::from(Expr::FnCall(FunctionCall {
                                 name: id,
                                 args,
                                 is_method: false,
                                 generics,
+                                type_generics: vec![],
                             }))
                             .with_position(pos));
                         }
@@ -122,6 +94,20 @@ impl Parser {
                             ))
                             .with_position(pos));
                         }
+                        Token::Dot => {
+                            let _ = self.parse_special_token(Token::Dot)?;
+                            let (static_method, p1) = self.parse_identifier()?;
+                            pos += p1;
+                            let (args, p2) = self.parse_fn_args(ctx)?;
+                            pos += p2;
+                            return Ok(ExprNode::from(Expr::FnCall(FunctionCall {
+                                name: format!("{}.{}", id, static_method),
+                                args,
+                                is_method: true,
+                                generics: vec![],
+                                type_generics: generics,
+                            })));
+                        }
                         _ => return Ok(ExprNode::from(Expr::Variable(id)).with_position(pos)),
                     }
                 }
@@ -133,7 +119,7 @@ impl Parser {
             Token::BraceLeft => {
                 let expr = self.parse_expr(ctx)?;
                 self.parse_special_token(Token::BraceRight)?;
-                Ok(ExprNode::from(Expr::BraceExpr(Box::new(expr))).with_position(pos))
+                Ok(ExprNode::from(Expr::Brace(Box::new(expr))).with_position(pos))
             }
             Token::BitAnd => {
                 let expr = self.parse_primary_expr(ctx)?;
@@ -169,6 +155,32 @@ impl Parser {
             )),
         }
     }
+    fn parse_enum_variant(
+        &mut self,
+        ctx: &Context,
+        enum_name: &str,
+        pos: Position,
+    ) -> crate::core::result::Result<ExprNode> {
+        let (variant_name, variant_pos) = self.parse_identifier()?;
+
+        // 检查是否有关联值
+        if self.try_parse_token(Token::BraceLeft) {
+            // 解析关联值表达式
+            let value_expr = self.parse_expr(ctx)?;
+            self.parse_special_token(Token::BraceRight)?;
+
+            // 创建枚举变体表达式
+            let enum_variant =
+                Expr::EnumVariant(enum_name.into(), variant_name, Some(Box::new(value_expr)));
+
+            Ok(ExprNode::new(enum_variant).with_position(pos + variant_pos))
+        } else {
+            // 没有关联值的枚举变体
+            let enum_variant = Expr::EnumVariant(enum_name.into(), variant_name, None);
+
+            Ok(ExprNode::new(enum_variant).with_position(pos + variant_pos))
+        }
+    }
     pub fn parse_fact_expr(&mut self, ctx: &Context) -> crate::core::result::Result<ExprNode> {
         let expr = self.parse_chain_expr(ctx)?;
         let p0 = expr.position();
@@ -177,12 +189,14 @@ impl Parser {
             Token::BraceLeft => {
                 let (mut args, p1) = self.parse_fn_args(ctx)?;
                 let p1 = p1 + p0;
+                dbg!(&expr);
                 args.insert(0, Argument::new(expr.get_member_root()));
-                Ok(ExprNode::from(Expr::FnCall(FnCallExpr {
+                Ok(ExprNode::from(Expr::FnCall(FunctionCall {
                     name: expr.get_member_name(),
                     generics: vec![],
                     is_method: true,
                     args,
+                    type_generics: vec![],
                 }))
                 .with_position(p1))
             }
@@ -287,7 +301,7 @@ impl Parser {
         }
     }
     pub fn parse_chain_expr(&mut self, ctx: &Context) -> crate::core::result::Result<ExprNode> {
-        let mut expr = self.parse_primary_expr(ctx)?;
+        let mut expr = self.parse_primary_expr(ctx).unwrap();
 
         loop {
             let (peek, _) = self.token_stream.peek();

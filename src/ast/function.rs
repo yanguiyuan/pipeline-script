@@ -1,7 +1,7 @@
 use crate::ast::data::Data;
-use crate::ast::NodeTrait;
 use crate::ast::declaration::VariableDeclaration;
 use crate::ast::r#type::Type;
+use crate::ast::NodeTrait;
 use std::any::Any;
 use std::collections::HashMap;
 use std::vec;
@@ -19,13 +19,24 @@ pub enum SelfType {
     Reference,
 }
 
+impl SelfType {
+    pub fn is_value(&self) -> bool {
+        matches!(self, SelfType::Value)
+    }
+    pub fn is_reference(&self) -> bool {
+        matches!(self, SelfType::Reference)
+    }
+    pub fn is_none(&self) -> bool {
+        matches!(self, SelfType::None)
+    }
+}
 #[derive(Clone, Debug)]
 pub struct Function {
     name: String,
     return_type: Type,
     // 泛型模版，用来区分实例和模版，模版不用于生成llvm ir
     pub is_template: bool,
-    pub generic_list: Vec<Type>,
+    pub function_generics: Vec<Type>,
     args: Vec<VariableDeclaration>,
     body: Vec<StmtNode>,
     #[allow(unused)]
@@ -33,7 +44,8 @@ pub struct Function {
     binding_type: Option<String>,
     #[allow(unused)]
     pub(crate) is_extern: bool,
-    type_generics: Vec<Type>,
+    // 只有在是绑定方法时（self_type不为None）才会有值
+    pub type_generics: Vec<Type>,
     /// 方法的self参数类型
     self_type: SelfType,
 }
@@ -83,7 +95,7 @@ impl Function {
             args,
             body,
             is_template: false,
-            generic_list: vec![],
+            function_generics: vec![],
             binding_type: None,
             is_generic: false,
             is_extern,
@@ -109,8 +121,8 @@ impl Function {
     pub fn return_type(&self) -> &Type {
         &self.return_type
     }
-    pub fn with_generic_list(mut self, list: Vec<Type>) -> Self {
-        self.generic_list = list;
+    pub fn with_function_generics(mut self, list: Vec<Type>) -> Self {
+        self.function_generics = list;
         self
     }
     pub fn with_extern(mut self, is_extern: bool) -> Self {
@@ -121,8 +133,8 @@ impl Function {
         self.is_template = is_template;
         self
     }
-    pub fn add_generic(&mut self, g: Type) {
-        self.generic_list.push(g);
+    pub fn add_function_generic(&mut self, g: Type) {
+        self.function_generics.push(g);
     }
     pub fn args_count(&self) -> usize {
         self.args.len()
@@ -180,23 +192,23 @@ impl Function {
     pub fn set_type_generics(&mut self, type_generics: Vec<Type>) {
         self.type_generics = type_generics;
     }
-    
+
     /// 获取方法的self参数类型
     pub fn self_type(&self) -> &SelfType {
         &self.self_type
     }
-    
+
     /// 设置方法的self参数类型
     pub fn set_self_type(&mut self, self_type: SelfType) {
         self.self_type = self_type;
     }
-    
+
     /// 链式设置方法的self参数类型
     pub fn with_self_type(mut self, self_type: SelfType) -> Self {
         self.self_type = self_type;
         self
     }
-    
+
     /// 检查方法是否有self参数
     pub fn has_self(&self) -> bool {
         self.self_type != SelfType::None
@@ -210,7 +222,7 @@ impl Default for Function {
             return_type: Type::Unit,
             is_generic: false,
             args: vec![],
-            generic_list: vec![],
+            function_generics: vec![],
             binding_type: None,
             body: vec![],
             is_extern: false,

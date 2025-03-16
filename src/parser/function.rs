@@ -69,7 +69,7 @@ impl Parser {
     }
     pub(crate) fn parse_function(&mut self, ctx: &Context) -> crate::core::result::Result<()> {
         let mut fun = self.parse_function_declaration(ctx)?;
-        let block = self.parse_block(ctx)?;
+        let block = self.parse_block(ctx).unwrap();
         fun.set_body(block);
         ctx.apply_mut_module(self.current_module, |m| {
             m.register_function(&fun.name(), fun.clone())
@@ -92,32 +92,22 @@ impl Parser {
         let (mut name, _) = self.parse_identifier()?;
 
         // 3. 解析结构体泛型参数
-        let type_generics = self.parse_type_generics()?;
+        let first_generics = self.parse_type_generics()?;
 
         // 4. 处理绑定类型（如果有）
         let has_binding = self.try_parse_token(Token::Dot);
         if has_binding {
             let (method_name, _) = self.parse_identifier()?;
             fun.set_binding_type(&name);
-            fun.set_type_generics(type_generics.clone());
+            fun.set_type_generics(first_generics.clone());
             name = format!("{}.{}", name, method_name);
         }
 
         // 5. 解析方法泛型（仅当有绑定类型时）
-        let mut method_generics = vec![];
-        if has_binding && self.try_parse_token(Token::Less) {
-            loop {
-                let ty = self.parse_type()?;
-                method_generics.push(ty);
-                if !self.try_parse_token(Token::Comma) {
-                    break;
-                }
-            }
-            self.parse_special_token(Token::Greater)?;
-        }
+        let second_generics = self.parse_type_generics().unwrap();
 
         // 6. 确定是否为模板函数
-        let is_template = !method_generics.is_empty() || !type_generics.is_empty();
+        let is_template = !second_generics.is_empty() || !first_generics.is_empty();
         fun = fun.with_template(is_template);
 
         // 7. 解析参数列表
@@ -179,7 +169,7 @@ impl Parser {
                     } else {
                         return Err(Error::UnexpectedToken(
                             token.to_string(),
-                            "mut or self".into(),
+                            "&self".into(),
                             Position::none(),
                         ));
                     }
@@ -211,12 +201,17 @@ impl Parser {
         } else {
             "Unit".into()
         };
-
+        let function_generics = if has_binding {
+            // 如果有绑定类型，使用绑定类型的泛型参数
+            second_generics
+        } else {
+            first_generics
+        };
         // 9. 构建并返回函数对象
         Ok(fun
             .with_name(name)
             .with_args(param_list)
-            .with_generic_list(type_generics) // 使用类型泛型作为最终泛型列表
+            .with_function_generics(function_generics) // 使用类型泛型作为最终泛型列表
             .with_return_type(return_type)
             .with_self_type(self_type)) // 设置self参数类型
     }

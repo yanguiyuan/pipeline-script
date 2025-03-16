@@ -62,7 +62,7 @@ impl Engine {
     pub fn register_preprocessor(&mut self, preprocessor: impl Preprocessor + 'static) {
         self.preprocessors.push(Box::new(preprocessor));
     }
-    pub fn register_preluded_scripts(&mut self, scripts: &[&str]) {
+    pub fn register_precluded_scripts(&mut self, scripts: &[&str]) {
         for script in scripts {
             self.prelude_scripts.push(script.to_string());
         }

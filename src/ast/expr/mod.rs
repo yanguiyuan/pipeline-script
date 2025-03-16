@@ -1,9 +1,12 @@
+mod function_call;
+
 use crate::ast::data::Data;
-use crate::ast::NodeTrait;
-use crate::lexer::position::Position;
 use crate::ast::declaration::VariableDeclaration;
+pub use crate::ast::expr::function_call::FunctionCall;
 use crate::ast::r#type::Type;
 use crate::ast::stmt::StmtNode;
+use crate::ast::NodeTrait;
+use crate::lexer::position::Position;
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -14,31 +17,7 @@ pub struct ExprNode {
     pos: Position,
     ty: Option<Type>,
 }
-// impl NodeTrait for Box<ExprNode> {
-//     fn get_id(&self) -> &str {
-//         self.get_id()
-//     }
-//
-//     fn get_data(&self, key: &str) -> Option<Data> {
-//         self.get_data(key)
-//     }
-//
-//     fn set_data(&mut self, key: &str, value: Data) {
-//         self.set_data(key, value)
-//     }
-//
-//     fn get_children(&self) -> Vec<&dyn NodeTrait> {
-//         self.get_children()
-//     }
-//
-//     fn get_mut_children(&mut self) -> Vec<&mut dyn NodeTrait> {
-//         self.get_mut_children()
-//     }
-//
-//     fn get_extra(&self) -> &HashMap<String, Box<dyn Any>> {
-//         self.get_extra()
-//     }
-// }
+
 impl NodeTrait for ExprNode {
     fn get_id(&self) -> &str {
         match self.expr {
@@ -46,7 +25,7 @@ impl NodeTrait for ExprNode {
             Expr::Int(_) => "Expr:Int",
             Expr::Float(_) => "Expr:Float",
             Expr::Boolean(_) => "Expr:Boolean",
-            Expr::BraceExpr(_) => "Expr:BraceExpr",
+            Expr::Brace(_) => "Expr:Brace",
             Expr::FnCall(_) => "Expr:FnCall",
             Expr::Variable(_) => "Expr:Variable",
             Expr::Binary(_, _, _) => "Expr:Binary",
@@ -106,7 +85,7 @@ impl NodeTrait for ExprNode {
             Expr::Int(_) => vec![],
             Expr::Float(_) => vec![],
             Expr::Boolean(_) => vec![],
-            Expr::BraceExpr(expr) => vec![&mut **expr],
+            Expr::Brace(expr) => vec![&mut **expr],
             Expr::FnCall(call) => {
                 let mut children: Vec<&mut dyn NodeTrait> = vec![];
                 for arg in call.args.iter_mut() {
@@ -204,8 +183,8 @@ pub enum Expr {
     Int(i64),
     Float(f32),
     Boolean(bool),
-    BraceExpr(Box<ExprNode>),
-    FnCall(FnCallExpr),
+    Brace(Box<ExprNode>),
+    FnCall(FunctionCall),
     Variable(String),
     Binary(Op, Box<ExprNode>, Box<ExprNode>),
     Unary(Op, Box<ExprNode>),
@@ -284,13 +263,7 @@ impl Display for Op {
         }
     }
 }
-#[derive(Debug, Clone)]
-pub struct FnCallExpr {
-    pub name: String,
-    pub generics: Vec<Type>,
-    pub is_method: bool,
-    pub args: Vec<Argument>,
-}
+
 #[derive(Debug, Clone)]
 pub struct Argument {
     name: Option<String>,

@@ -28,6 +28,7 @@ impl TypePostprocessor {
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let mut module = module_slot_map.get_mut(module).unwrap().clone();
+        dbg!(&module);
         drop(module_slot_map);
         self.module.set_name(module.get_name());
         let submodule = module.get_submodules();
@@ -82,6 +83,9 @@ impl TypePostprocessor {
 
     fn process_module_structs(&mut self, module: &Module, ctx: &Context) {
         for (name, st) in module.get_structs() {
+            if !st.generics.is_empty() {
+                continue;
+            }
             let st = self.process_struct(st, ctx);
             self.module.register_struct(name, st.clone());
         }
@@ -262,6 +266,7 @@ impl TypePostprocessor {
     }
 
     fn process_struct(&self, s: &Struct, ctx: &Context) -> Struct {
+        dbg!(&s);
         let fields = s
             .get_fields()
             .iter()
@@ -275,10 +280,20 @@ impl TypePostprocessor {
     }
     fn process_type(ty: &Type, ctx: &Context) -> Type {
         match ty {
+            Type::Generic(name, _) => {
+                if let Some(alias) = name.get_alias_name() {
+                    if let Some(alias) = ctx.get_alias_type(&alias) {
+                        dbg!(&alias);
+                        return Self::process_type(&alias, ctx);
+                    }
+                }
+                ty.clone()
+            }
             Type::Alias(name) => {
                 dbg!(&name);
                 let ty = ctx.get_alias_type(name).unwrap();
-                Self::process_type(&ty, ctx)
+                dbg!(&ty);
+                ty
             }
             Type::Struct(name, s) => {
                 let mut fields = vec![];
@@ -287,6 +302,10 @@ impl TypePostprocessor {
                     fields.push((name.clone(), ty.clone()))
                 }
                 Type::Struct(name.clone(), fields)
+            }
+            Type::Pointer(ty) => {
+                let ty = Self::process_type(ty, ctx);
+                Type::Pointer(Box::new(ty))
             }
             Type::Array(ty) => {
                 let ty = Self::process_type(ty, ctx);

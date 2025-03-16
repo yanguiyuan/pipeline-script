@@ -5,9 +5,9 @@ use crate::context::Context;
 use crate::llvm::global::Global;
 use crate::llvm::value::LLVMValue;
 
-use crate::core::value::Value;
 use crate::ast::expr::{Expr, ExprNode, Op};
 use crate::ast::r#type::Type;
+use crate::core::value::Value;
 use std::collections::HashMap;
 
 impl Compiler {
@@ -301,12 +301,7 @@ impl Compiler {
         Value::new(v, ty0.clone())
     }
 
-    fn compile_struct(
-        &self,
-        s: &crate::ast::expr::StructExpr,
-        ty0: &Type,
-        ctx: &Context,
-    ) -> Value {
+    fn compile_struct(&self, s: &crate::ast::expr::StructExpr, ty0: &Type, ctx: &Context) -> Value {
         let builder = ctx.get_builder();
         let (field_index_map, _) = self.llvm_module.get_struct(s.get_name()).unwrap();
         let mut props: Vec<(usize, Value)> = s
@@ -399,7 +394,7 @@ impl Compiler {
 
     // ===== 函数调用处理 =====
 
-    fn compile_fn_call(&self, fc: &crate::ast::expr::FnCallExpr, ctx: &Context) -> Value {
+    fn compile_fn_call(&self, fc: &crate::ast::expr::FunctionCall, ctx: &Context) -> Value {
         let binding = ctx.get(ContextKey::Builder).unwrap();
         let builder = binding.as_builder();
         let mut name = fc.name.clone();
@@ -487,7 +482,7 @@ impl Compiler {
 
     fn process_function_args(
         &self,
-        fc: &crate::ast::expr::FnCallExpr,
+        fc: &crate::ast::expr::FunctionCall,
         args: &[crate::ast::expr::Argument],
         param_name_to_index: &HashMap<String, usize>,
         function_decl: &Type,
@@ -548,7 +543,7 @@ impl Compiler {
     fn process_default_args(
         &self,
         mut arg_values: Vec<Option<LLVMValue>>,
-        fc: &crate::ast::expr::FnCallExpr,
+        fc: &crate::ast::expr::FunctionCall,
         ctx: &Context,
     ) -> Vec<Option<LLVMValue>> {
         // 获取函数定义

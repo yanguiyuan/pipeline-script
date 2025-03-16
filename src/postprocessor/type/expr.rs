@@ -1,14 +1,15 @@
-use std::collections::HashMap;
 use crate::ast::expr::{Expr, ExprNode, StructExpr};
 use crate::ast::r#struct::Struct;
 use crate::ast::r#type::Type;
-use crate::context::Context;
 use crate::context::key::ContextKey;
 use crate::context::value::ContextValue;
+use crate::context::Context;
 use crate::postprocessor::id::id;
+use crate::postprocessor::r#type::helper::get_struct_from_context;
 use crate::postprocessor::r#type::TypePostprocessor;
+use std::collections::HashMap;
 
-impl TypePostprocessor{
+impl TypePostprocessor {
     pub(crate) fn process_expr(&mut self, expr: &ExprNode, ctx: &Context) -> ExprNode {
         match expr.get_expr().clone() {
             Expr::Closure(mut l, body, _) => {
@@ -36,17 +37,24 @@ impl TypePostprocessor{
                     closure_var_name.clone(),
                     closure_struct,
                 )))
-                    .with_type(actual.get_type().unwrap())
+                .with_type(actual.get_type().unwrap())
             }
             Expr::FnCall(fc) => {
                 // 处理方法调用的情况
                 let (mut fc_name, fc_args) = self.process_method_call(&fc, ctx);
-
+                if !fc.type_generics.is_empty() {
+                    let function_type;
+                    // 实例化函数
+                    (fc_name, function_type) =
+                        self.instantiate_template_function(&fc, &fc_name, ctx);
+                    ctx.set_symbol_type(fc_name.clone(), function_type);
+                }
                 // 创建新的函数调用对象
                 let mut new_fc = fc.clone();
 
                 // 获取函数类型信息
                 let (mut fc_type, mut fc_return_type) = self.resolve_function_type(&fc_name, ctx);
+                dbg!(&fc_type);
 
                 // 处理泛型参数
                 let new_generics = self.process_generics(&fc.generics, ctx);
@@ -78,8 +86,6 @@ impl TypePostprocessor{
             Expr::Binary(op, l, r) => {
                 let l = self.process_expr(&l, ctx);
                 let r = self.process_expr(&r, ctx);
-                dbg!(&l);
-                dbg!(&r);
                 // 获取左右操作数的类型
                 let l_type = l.get_type().unwrap();
                 let mut r_type = r.get_type().unwrap();
@@ -91,7 +97,7 @@ impl TypePostprocessor{
                 }
 
                 // 处理数值类型之间的转换
-                if r_type.is_ref(){
+                if r_type.is_ref() {
                     r_type = r_type.get_element_type().unwrap().clone();
                 }
                 if l_type.is_integer() && r_type.is_integer() {
@@ -151,13 +157,19 @@ impl TypePostprocessor{
                 ExprNode::new(Expr::Variable(name.clone())).with_type(ty)
             }
             Expr::Struct(se) => {
+                dbg!(&se);
                 // 提前获取结构体名称和泛型信息
                 let struct_name = se.name.clone();
-                let generics = se.get_generics().clone();
-
+                let generics = se
+                    .get_generics()
+                    .iter()
+                    .map(|ty| Self::process_type(ty, ctx))
+                    .collect::<Vec<_>>();
+                let struct_val = get_struct_from_context(ctx, &struct_name).unwrap();
                 // 分离结构体数据获取和后续操作
                 let (generic_map, fields_info) = {
-                    let struct_val = self.module.get_struct(&struct_name).unwrap();
+                    // 获取模版结构体
+
                     let gm = struct_val
                         .get_generics()
                         .iter()
@@ -198,7 +210,6 @@ impl TypePostprocessor{
                     let new_name = format!("{}<{}>", struct_name, type_params);
 
                     // 重新获取结构体定义来处理字段（短期借用）
-                    let struct_val = self.module.get_struct(&struct_name).unwrap();
                     let new_fields = struct_val
                         .get_fields()
                         .iter()
@@ -384,7 +395,7 @@ impl TypePostprocessor{
                                     variant_name.clone(),
                                     Some(Box::new(processed.clone())),
                                 ))
-                                    .with_type(new_enum_type);
+                                .with_type(new_enum_type);
                             }
                         }
 
@@ -399,7 +410,7 @@ impl TypePostprocessor{
                     variant_name.clone(),
                     processed_value,
                 ))
-                    .with_type(enum_type)
+                .with_type(enum_type)
             }
             _ => expr.clone(),
         }

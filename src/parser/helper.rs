@@ -77,7 +77,7 @@ impl Parser {
                     break;
                 }
                 _ => {
-                    result.push(self.parse_stmt(ctx)?);
+                    result.push(self.parse_stmt(ctx).unwrap());
                 }
             }
         }

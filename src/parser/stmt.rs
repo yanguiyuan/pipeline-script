@@ -195,7 +195,7 @@ impl Parser {
         if self.token_stream.peek().0 == Token::ParenRight {
             return Ok(StmtNode::new(Stmt::Return(Box::new(Expr::None.into())), p0));
         }
-        let expr = self.parse_expr(ctx)?;
+        let expr = self.parse_expr(ctx).expect("parse return stmt error");
         Ok(StmtNode::new(Stmt::Return(Box::new(expr)), p0))
     }
     pub fn parse_while_stmt(&mut self, ctx: &Context) -> crate::core::result::Result<StmtNode> {
@@ -267,9 +267,9 @@ impl Parser {
                 Token::Keyword(k) => match k.as_str() {
                     t if t == self.var_keyword => self.parse_var_stmt(ctx).unwrap(),
                     t if t == self.val_keyword => self.parse_val_stmt(ctx).unwrap(),
-                    "while" => self.parse_while_stmt(ctx)?,
-                    "for" => self.parse_for_stmt(ctx)?,
-                    "return" => self.parse_return_stmt(ctx)?,
+                    "while" => self.parse_while_stmt(ctx).unwrap(),
+                    "for" => self.parse_for_stmt(ctx).unwrap(),
+                    "return" => self.parse_return_stmt(ctx).unwrap(),
                     "break" => self.parse_break_stmt()?,
                     "continue" => self.parse_continue_stmt()?,
                     "struct" => {

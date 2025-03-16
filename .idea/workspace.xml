@@ -11,17 +11,23 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="fix: if let和if const中的return和panic不可达问题">
-      <change afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/parser/ptype.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat: 泛型结构体绑定方法支持">
+      <change afterPath="$PROJECT_DIR$/src/ast/expr/function_call.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/ast/expr/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/core.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/builtin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/expr.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/function.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plugin/format_string.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/format_string.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
     </list>
@@ -267,7 +273,7 @@
       <workItem from="1742017453567" duration="15864000" />
       <workItem from="1742048281657" duration="6138000" />
       <workItem from="1742105423930" duration="6062000" />
-      <workItem from="1742117796303" duration="2817000" />
+      <workItem from="1742117796303" duration="15114000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -397,7 +403,15 @@
       <option name="project" value="LOCAL" />
       <updated>1742053978192</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="refactor: 拆分parser模块">
+      <option name="closed" value="true" />
+      <created>1742128727375</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1742128727375</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -430,7 +444,10 @@
     <MESSAGE value="fix: 模块中闭包引用问题" />
     <MESSAGE value="refactor: parser中的expr,stmt,function等结构体移动到ast包" />
     <MESSAGE value="fix: if let和if const中的return和panic不可达问题" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix: if let和if const中的return和panic不可达问题" />
+    <MESSAGE value="refactor: 拆分parser模块" />
+    <MESSAGE value="feat: 泛型结构体绑定方法支持" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 泛型结构体绑定方法支持" />
+    <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="true" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

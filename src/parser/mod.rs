@@ -114,17 +114,7 @@ impl Parser {
         let (enum_name, _) = self.parse_identifier()?;
 
         // 解析泛型参数
-        let mut generic = vec![];
-        if self.try_parse_token(Token::Less) {
-            loop {
-                let ty = self.parse_type()?;
-                generic.push(ty);
-                if !self.try_parse_token(Token::Comma) {
-                    break;
-                }
-            }
-            self.parse_special_token(Token::Greater)?;
-        }
+        let generic = self.parse_type_generics().unwrap();
 
         // 解析枚举体
         self.parse_special_token(Token::ParenLeft)?;
