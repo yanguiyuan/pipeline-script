@@ -1,20 +1,19 @@
-use crate::context::key::ContextKey;
-use crate::context::value::ContextValue;
-use crate::context::Context;
-use crate::lexer::position::Position;
-use crate::ast::declaration::VariableDeclaration;
-use crate::ast::expr::StructExpr;
 use crate::ast::expr::Expr;
+use crate::ast::expr::StructExpr;
 use crate::ast::function::Function;
 use crate::ast::module::Module;
 use crate::ast::r#struct::{Struct, StructField};
 use crate::ast::r#type::Type;
 use crate::ast::stmt::{IfBranchStmt, MatchBranch, Stmt, StmtNode};
+use crate::context::key::ContextKey;
+use crate::context::value::ContextValue;
+use crate::context::Context;
+use crate::lexer::position::Position;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-mod helper;
 mod expr;
+mod helper;
 
 pub struct TypePostprocessor {
     module: Module,
@@ -89,26 +88,9 @@ impl TypePostprocessor {
     }
 
     fn process_module_functions(&mut self, module: &Module, ctx: &Context) {
-        let mut functions = module.get_functions();
-        // self.process_function_bindings(&mut functions, ctx);
+        let functions = module.get_functions();
         self.process_function_types(&functions, ctx);
         self.register_processed_functions(&functions, ctx);
-    }
-
-    fn process_function_bindings(&self, functions: &mut HashMap<String,Function>, ctx: &Context) {
-        for f in functions.values_mut() {
-            if f.has_binding() {
-                f.insert_arg(
-                    0,
-                    VariableDeclaration::new("self").with_type(
-                        ctx.get_type_alias(f.get_binding())
-                            .unwrap()
-                            .get_type()
-                            .clone(),
-                    ),
-                );
-            }
-        }
     }
 
     fn process_function_types(&mut self, functions: &HashMap<String, Function>, ctx: &Context) {
@@ -133,11 +115,17 @@ impl TypePostprocessor {
                             {
                                 alias_map.insert(generic.clone(), l.get(index).unwrap().clone());
                             }
-                            
+
                             // 实例化所有绑定函数
                             let functions = ctx.get_type_binding_functions(alias.as_str());
                             dbg!(&functions);
-                            self.instantiate_binding_functions(ctx,alias.as_str(), &functions, &l, &alias_map);
+                            self.instantiate_binding_functions(
+                                ctx,
+                                alias.as_str(),
+                                &functions,
+                                &l,
+                                &alias_map,
+                            );
                             dbg!(&self.module);
                             let mut new_return_type = return_alias.get_type().clone();
                             new_return_type.try_replace_alias(&alias_map);
@@ -154,14 +142,13 @@ impl TypePostprocessor {
                                 new_return_type.clone(),
                                 vec![],
                             );
-                            
+
                             ty = ty.with_return_type(new_return_type);
                             dbg!(&ty);
                         }
                     }
                 }
             }
-            dbg!(f);
             ctx.set_symbol_type(name.clone(), ty);
         }
     }
@@ -289,6 +276,7 @@ impl TypePostprocessor {
     fn process_type(ty: &Type, ctx: &Context) -> Type {
         match ty {
             Type::Alias(name) => {
+                dbg!(&name);
                 let ty = ctx.get_alias_type(name).unwrap();
                 Self::process_type(&ty, ctx)
             }
@@ -307,7 +295,7 @@ impl TypePostprocessor {
             _ => ty.clone(),
         }
     }
-    
+
     fn process_stmt(&mut self, stmt: &StmtNode, ctx: &Context) -> StmtNode {
         match stmt.get_stmt() {
             Stmt::ValDecl(decl) => {
@@ -625,7 +613,7 @@ impl TypePostprocessor {
 
     fn instantiate_binding_functions(
         &mut self,
-        ctx:&Context,
+        ctx: &Context,
         base_type_name: &str,
         functions: &[Function],
         concrete_types: &[Type],
@@ -635,7 +623,11 @@ impl TypePostprocessor {
         let instantiated_type_name = format!(
             "{}<{}>",
             base_type_name,
-            concrete_types.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(",")
+            concrete_types
+                .iter()
+                .map(|t| t.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
         );
         // self.process_function_bindings(functions,ctx)
         for function in functions {
@@ -645,18 +637,18 @@ impl TypePostprocessor {
             if parts.len() != 2 {
                 continue; // 不是标准的类型方法格式
             }
-            
+
             let method_name = parts[1];
-            
+
             // 构建实例化后的函数名
             let instantiated_function_name = format!("{}.{}", instantiated_type_name, method_name);
-            
+
             // 克隆函数以创建新实例
             let mut instantiated_function = function.clone();
-            
+
             // 更新函数名
             instantiated_function.set_name(instantiated_function_name.clone());
-            
+
             // 处理函数参数中的类型别名
             for arg in instantiated_function.args_mut() {
                 if arg.name() == "self" {
@@ -664,7 +656,7 @@ impl TypePostprocessor {
                     let alias = self_type.get_alias_name().unwrap();
                     let type_alias = ctx.get_type_alias(&alias).unwrap();
                     let mut alias_type = type_alias.get_type().clone();
-                    if alias_type.is_enum(){
+                    if alias_type.is_enum() {
                         alias_type.set_enum_name(instantiated_type_name.clone());
                     }
                     alias_type.try_replace_alias(alias_map);
@@ -677,7 +669,7 @@ impl TypePostprocessor {
                     arg.set_type(new_type);
                 }
             }
-            
+
             // 处理函数返回类型中的类型别名
             let mut return_type = instantiated_function.return_type().clone();
             return_type.try_replace_alias(alias_map);
@@ -687,12 +679,12 @@ impl TypePostprocessor {
             let mut new_body = vec![];
             let ctx = Context::with_local(ctx, vec![]);
             dbg!(&instantiated_function);
-            for i in instantiated_function.args(){
+            for i in instantiated_function.args() {
                 ctx.set_symbol_type(i.name(), i.r#type().unwrap());
                 ctx.try_add_local(i.name())
             }
-            
-            for i in instantiated_function.body(){
+
+            for i in instantiated_function.body() {
                 let new_stmt = self.process_stmt(i, &ctx);
                 new_body.push(new_stmt);
             }
@@ -700,7 +692,8 @@ impl TypePostprocessor {
             let function_type = instantiated_function.get_type();
             ctx.set_symbol_type(instantiated_function_name.clone(), function_type);
             // 将实例化后的函数注册到模块
-            self.module.register_function(&instantiated_function_name, instantiated_function);
+            self.module
+                .register_function(&instantiated_function_name, instantiated_function);
         }
     }
 }

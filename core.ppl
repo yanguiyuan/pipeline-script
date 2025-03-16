@@ -1,2 +1,20 @@
 extern fn cmd(cmd: String)
 extern fn println(obj: Any)
+extern fn panic(msg: String)
+enum Option<T> {
+    None,
+    Some(T)
+}
+fn Option<T>.is_some(self)->Bool{
+    if const(Option.None = self){
+        return false
+    }
+    return true
+}
+
+fn Option<T>.unwrap(self)->T{
+    if const(Option.Some(r) = self){
+        return r
+    }
+    panic("Unwrap None")
+}

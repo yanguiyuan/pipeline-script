@@ -1,6 +1,3 @@
-use crate::context::key::ContextKey;
-use crate::context::value::ContextValue;
-use crate::context::Context;
 use crate::ast::declaration::VariableDeclaration;
 use crate::ast::expr::FnCallExpr;
 use crate::ast::expr::{Argument, Expr, ExprNode};
@@ -8,6 +5,9 @@ use crate::ast::function::Function;
 use crate::ast::r#struct::{Struct, StructField};
 use crate::ast::r#type::Type;
 use crate::ast::stmt::{Stmt, StmtNode};
+use crate::context::key::ContextKey;
+use crate::context::value::ContextValue;
+use crate::context::Context;
 use crate::postprocessor::id::id;
 use crate::postprocessor::r#type::Position;
 use crate::postprocessor::r#type::StructExpr;
@@ -31,7 +31,6 @@ impl TypePostprocessor {
                 .first()
                 .expect("Method call must have 'this' argument");
             let this = self.process_expr(&this.value, ctx);
-            dbg!(&this);
             let this_type = this
                 .get_type()
                 .expect("Failed to get type for 'this' argument");
