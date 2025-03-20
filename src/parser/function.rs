@@ -157,7 +157,7 @@ impl Parser {
                             // 创建&self参数
                             let binding_type = fun.get_binding();
                             let self_var = VariableDeclaration::new("self".to_string())
-                                .with_type(Type::Pointer(Box::new(Type::Alias(binding_type))));
+                                .with_type(Type::Ref(Box::new(Type::Alias(binding_type))));
                             self_param = Some(self_var);
                         } else {
                             return Err(Error::UnexpectedToken(

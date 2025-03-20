@@ -1,3 +1,6 @@
+use crate::ast::module::Module;
+use crate::ast::r#type::Type;
+use crate::ast::type_alias::TypeAlias;
 use crate::context::key::ContextKey;
 use crate::context::scope::Scope;
 use crate::context::value::ContextValue;
@@ -7,9 +10,6 @@ use crate::llvm::context::LLVMContext;
 use crate::llvm::function::Function;
 use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
-use crate::ast::module::Module;
-use crate::ast::r#type::Type;
-use crate::ast::type_alias::TypeAlias;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -162,11 +162,11 @@ impl Context {
             ContextValue::LocalVariable(Arc::new(RwLock::new(local))),
         )
     }
-    pub fn get_type_binding_functions(&self,name:&str)->Vec<crate::ast::function::Function>{
+    pub fn get_type_binding_functions(&self, name: &str) -> Vec<crate::ast::function::Function> {
         let slot_map = self.get_module_slot_map();
         let slot_map = slot_map.read().unwrap();
         let mut result = Vec::new();
-        
+
         for module in slot_map.values() {
             for (_, function) in module.get_functions() {
                 if function.has_binding() && function.get_binding() == name {
@@ -174,7 +174,7 @@ impl Context {
                 }
             }
         }
-        
+
         result
     }
 
@@ -318,6 +318,16 @@ impl Context {
             }
             _ => panic!("not a local variable"),
         }
+    }
+    pub fn get_function(&self, name: impl AsRef<str>) -> Option<crate::ast::function::Function> {
+        let slot_map = self.get_module_slot_map();
+        let slot_map = slot_map.read().unwrap();
+        for module in slot_map.values() {
+            if let Some(fun) = module.get_function(name.as_ref()) {
+                return Some(fun.clone());
+            }
+        }
+        None
     }
     pub fn set_symbol_type(&self, name: String, t0: Type) {
         match self.get(ContextKey::SymbolType) {

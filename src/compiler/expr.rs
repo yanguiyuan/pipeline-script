@@ -7,6 +7,7 @@ use crate::llvm::value::LLVMValue;
 
 use crate::ast::expr::{Expr, ExprNode, Op};
 use crate::ast::r#type::Type;
+use crate::compiler::helper::check_type_match;
 use crate::core::value::Value;
 use std::collections::HashMap;
 
@@ -14,7 +15,12 @@ impl Compiler {
     pub(crate) fn compile_expr_with_ptr(&self, expr: &ExprNode, ctx: &Context) -> Value {
         let binding = ctx.get(ContextKey::Builder).unwrap();
         let builder = binding.as_builder();
-        let ty0 = expr.get_type().unwrap();
+        let mut ty0 = expr.get_type().unwrap();
+        let ty = ctx.get(ContextKey::Type("default".into()));
+        if let Some(ty) = ty {
+            let t = ty.as_type();
+            ty0 = t.clone();
+        }
         match expr.get_expr() {
             Expr::Variable(name) => self.compile_variable_ptr(name, &ty0, ctx),
             Expr::Index(target, index) => self.compile_index_ptr(target, index, &ty0, ctx),
@@ -41,7 +47,12 @@ impl Compiler {
     pub(crate) fn compile_expr(&self, expr: &ExprNode, ctx: &Context) -> Value {
         let binding = ctx.get(ContextKey::Builder).unwrap();
         let builder = binding.as_builder();
-        let ty0 = expr.get_type().unwrap();
+        let mut ty0 = expr.get_type().unwrap();
+        let ty = ctx.get(ContextKey::Type("default".into()));
+        if let Some(ty) = ty {
+            let t = ty.as_type();
+            ty0 = t.clone();
+        }
         match expr.get_expr() {
             Expr::FnCall(ref fc) => self.compile_fn_call(fc, ctx),
             Expr::Int(i) => self.compile_int_literal(*i, &ty0),
@@ -171,7 +182,6 @@ impl Compiler {
 
     fn compile_variable(&self, name: &str, ty0: &Type, ctx: &Context) -> Value {
         let builder = ctx.get_builder();
-
         // 1. 首先检查局部作用域
         let scope = ctx.get_scope();
         if scope.has(name) {
@@ -187,6 +197,7 @@ impl Compiler {
 
         // 2. 检查函数参数
         if let Some(v) = ctx.get_current_function().get_param(name) {
+            dbg!(&v);
             return Value::new(v, ty0.clone());
         }
 
@@ -195,12 +206,13 @@ impl Compiler {
             let f = self.llvm_module.get_function(name).unwrap().as_ref();
             Value::new(LLVMValue::Pointer(f), ty0.clone())
         });
-
         // 4. 处理类型转换和引用
         let ptr_type = ptr.get_type();
-
+        dbg!(name);
+        dbg!(&ptr_type);
+        dbg!(&ty0);
         // 如果需要引用类型，或者符号本身是引用类型，需要加载其值
-        if ty0.is_ref() || ptr_type.is_ref() {
+        if !ty0.is_ref() && (ptr_type.is_ref() || ptr_type.is_pointer()) {
             let element_type = if ty0.is_ref() {
                 ty0.get_element_type().unwrap()
             } else {
@@ -209,14 +221,13 @@ impl Compiler {
             let v0 = builder.build_load(self.compile_type(element_type), ptr.value);
             return Value::new(v0, element_type.clone());
         }
-
         // 类型匹配，直接返回
-        if ptr.get_type() == *ty0 {
+        if check_type_match(&ptr_type, ty0) {
             return ptr;
         }
 
         // 需要加载非指针值
-        if !ty0.is_pointer() {
+        if !ty0.is_pointer() && ptr_type.is_pointer() {
             let v0 = builder.build_load(self.compile_type(&ptr.ty), ptr.value);
             return Value::new(v0, ty0.clone());
         }
@@ -245,6 +256,7 @@ impl Compiler {
     ) -> Value {
         let l = self.compile_expr(l, ctx).get_value();
         let r = self.compile_expr(r, ctx).get_value();
+        dbg!(op);
         let builder = ctx.get_builder();
         let v = match op {
             Op::Plus => self.compile_add(l, r, ctx),
@@ -330,7 +342,7 @@ impl Compiler {
 
         Value::new(val, ty0.clone())
     }
-
+    // target 有可能是结构体指针，也有可能是结构体
     fn compile_member(
         &self,
         target: &ExprNode,
@@ -338,7 +350,10 @@ impl Compiler {
         ty0: &Type,
         ctx: &Context,
     ) -> Value {
+        dbg!(&field_name);
         let v = self.compile_expr(target, ctx);
+        dbg!(&v);
+        dbg!(&ty0);
         let ty = v.get_type();
         let mut val = v.get_value();
         let builder = ctx.get_builder();
@@ -348,10 +363,21 @@ impl Compiler {
             let llvm_type = self.compile_type(ty);
             val = builder.build_load(llvm_type, v.get_value());
         }
-
         let (idx, _) = ty.get_struct_field(field_name).unwrap();
-        let v = builder.build_struct_get(val, idx);
-        Value::new(v, ty0.clone())
+        if ty.is_ref() {
+            let llvm_type = self.compile_type(ty.get_element_type().unwrap());
+            val = builder.build_struct_gep(llvm_type, val, idx);
+            val = builder.build_load(ty0.as_llvm_type(), val);
+            return Value::new(val, ty0.clone());
+        }
+        if ty.is_struct() {
+            val = builder.build_struct_get(val, idx);
+            return Value::new(val, ty0.clone());
+        }
+        if !ty0.is_ref() && !ty0.is_pointer() {
+            val = builder.build_load(ty0.as_llvm_type(), val);
+        }
+        Value::new(val, ty0.clone())
     }
 
     fn compile_enum_variant(
@@ -414,9 +440,8 @@ impl Compiler {
         let (function_decl, is_fn_param) = self.get_function_declaration(&name, ctx);
 
         // 获取函数定义
-        let func = self.module.get_function(&name).unwrap();
+        let func = ctx.get_function(&name).unwrap();
         let func_args = func.args();
-
         // 构建参数映射和参数值数组
         let param_name_to_index = self.build_param_index_map(func_args);
         let mut arg_values =
@@ -455,7 +480,7 @@ impl Compiler {
     }
 
     fn get_function_declaration(&self, name: &str, ctx: &Context) -> (Type, bool) {
-        if let Some(function) = self.module.get_function(name) {
+        if let Some(function) = ctx.get_function(name) {
             (function.get_type(), false)
         } else {
             let current_function = ctx.get_current_function();
@@ -490,7 +515,6 @@ impl Compiler {
     ) -> Vec<Option<LLVMValue>> {
         let arg_count = function_decl.get_function_arg_count();
         let mut arg_values = vec![None; arg_count];
-
         // 处理命名参数
         for arg in args.iter() {
             if let Some(arg_name) = arg.get_name() {
@@ -524,11 +548,13 @@ impl Compiler {
 
             if pos_idx < arg_count {
                 let t = function_decl.get_function_arg_type(pos_idx).unwrap();
-                let mut v = self.compile_expr(&arg.value, ctx);
+                let ctx = Context::with_type(ctx, "default".into(), t.clone());
+                let mut v = self.compile_expr(&arg.value, &ctx);
 
                 // 处理Any类型
                 if t.is_any() {
-                    v = self.convert_to_any_type(v, &t, ctx);
+                    dbg!(&v);
+                    v = self.convert_to_any_type(v, &t, &ctx);
                 }
 
                 arg_values[pos_idx] = Some(v.get_value());
@@ -547,7 +573,7 @@ impl Compiler {
         ctx: &Context,
     ) -> Vec<Option<LLVMValue>> {
         // 获取函数定义
-        let func = self.module.get_function(&fc.name).unwrap();
+        let func = ctx.get_function(&fc.name).unwrap();
         let func_args = func.args();
 
         // 处理默认参数
@@ -591,8 +617,11 @@ impl Compiler {
             Global::i32_type(),
             Global::pointer_type(Global::i8_type()),
         ]));
-        let any_struct =
-            builder.build_struct_insert(any_struct, 0, &Global::const_i32(v.get_type().id()));
+        let any_struct = builder.build_struct_insert(
+            any_struct,
+            0,
+            &Global::const_i32(Type::from(v.value.get_type()).id()),
+        );
         let any_struct = builder.build_struct_insert(any_struct, 1, &val);
         builder.build_store(a, any_struct);
 

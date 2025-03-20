@@ -95,7 +95,7 @@ impl LLVMValue {
             LLVMValue::Int64(_) => LLVMType::Int64(ty),
             LLVMValue::Float(_) => LLVMType::Float(ty),
             LLVMValue::Double(_) => LLVMType::Double(ty),
-            // LLVMValue::Pointer(_) => LLVMType::Pointer(ty),
+            // LLVMValue::Pointer(_) => LLVMType::Pointer(Box::new(ty)),
             LLVMValue::Array(_) => {
                 let element_type = unsafe { LLVMGetElementType(ty) };
                 LLVMType::Array(Box::new(LLVMType::from(element_type)), ty)

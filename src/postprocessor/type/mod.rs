@@ -28,7 +28,6 @@ impl TypePostprocessor {
         let module_slot_map = ctx.get_module_slot_map();
         let mut module_slot_map = module_slot_map.write().unwrap();
         let mut module = module_slot_map.get_mut(module).unwrap().clone();
-        dbg!(&module);
         drop(module_slot_map);
         self.module.set_name(module.get_name());
         let submodule = module.get_submodules();
@@ -79,6 +78,9 @@ impl TypePostprocessor {
         for (name, st) in module.get_functions() {
             ctx.set_symbol_type(name.clone(), st.get_type());
         }
+        for (name, st) in module.get_type_aliases() {
+            ctx.set_alias_type(name.clone(), st.get_type().clone());
+        }
     }
 
     fn process_module_structs(&mut self, module: &Module, ctx: &Context) {
@@ -122,7 +124,6 @@ impl TypePostprocessor {
 
                             // 实例化所有绑定函数
                             let functions = ctx.get_type_binding_functions(alias.as_str());
-                            dbg!(&functions);
                             self.instantiate_binding_functions(
                                 ctx,
                                 alias.as_str(),
@@ -130,7 +131,6 @@ impl TypePostprocessor {
                                 &l,
                                 &alias_map,
                             );
-                            dbg!(&self.module);
                             let mut new_return_type = return_alias.get_type().clone();
                             new_return_type.try_replace_alias(&alias_map);
                             let new_name = format!(
@@ -148,7 +148,6 @@ impl TypePostprocessor {
                             );
 
                             ty = ty.with_return_type(new_return_type);
-                            dbg!(&ty);
                         }
                     }
                 }
@@ -280,19 +279,36 @@ impl TypePostprocessor {
     }
     fn process_type(ty: &Type, ctx: &Context) -> Type {
         match ty {
-            Type::Generic(name, _) => {
+            Type::Generic(name, n) => {
                 if let Some(alias) = name.get_alias_name() {
                     if let Some(alias) = ctx.get_alias_type(&alias) {
-                        dbg!(&alias);
-                        return Self::process_type(&alias, ctx);
+                        let mut processed_type = Self::process_type(&alias, ctx);
+                        let processed_type0 = n
+                            .iter()
+                            .map(|i| Self::process_type(i, ctx))
+                            .collect::<Vec<_>>();
+                        if processed_type.has_name() {
+                            let new_name = format!(
+                                "{}<{}>",
+                                processed_type.get_composite_type_name().unwrap(),
+                                processed_type0
+                                    .iter()
+                                    .map(|i| i.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(",")
+                            );
+                            processed_type.set_name(new_name)
+                        }
+                        return Type::GenericInstance {
+                            template: Box::new(Type::Generic(name.clone(), processed_type0)),
+                            instance: Box::new(processed_type),
+                        };
                     }
                 }
                 ty.clone()
             }
             Type::Alias(name) => {
-                dbg!(&name);
                 let ty = ctx.get_alias_type(name).unwrap();
-                dbg!(&ty);
                 ty
             }
             Type::Struct(name, s) => {
@@ -310,6 +326,26 @@ impl TypePostprocessor {
             Type::Array(ty) => {
                 let ty = Self::process_type(ty, ctx);
                 Type::Array(Box::new(ty))
+            }
+            Type::Enum(name, variants) => {
+                let mut processed_variants = vec![];
+                for (name, v) in variants.iter() {
+                    match v {
+                        None => {
+                            processed_variants.push((name.clone(), None));
+                            continue;
+                        }
+                        Some(v) => {
+                            let ty = Self::process_type(v, ctx);
+                            processed_variants.push((name.clone(), Some(ty.clone())))
+                        }
+                    }
+                }
+                Type::Enum(name.clone(), processed_variants)
+            }
+            Type::Ref(ty) => {
+                let ty = Self::process_type(ty, ctx);
+                Type::Ref(Box::new(ty))
             }
             _ => ty.clone(),
         }
@@ -560,9 +596,12 @@ impl TypePostprocessor {
 
                 // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
                 if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
+                    dbg!(&binding);
                     if let Expr::Variable(name) = &binding.get_expr() {
+                        dbg!(&processed_expr);
                         // 获取关联值的类型
-                        if let Some(Type::Enum(_, variants)) = processed_expr.get_type() {
+                        if let Some(Type::Enum(_, variants)) = processed_expr.get_deep_type() {
+                            dbg!(&variants);
                             // 查找变体的关联类型
                             for (variant_name, variant_type) in variants {
                                 if let Expr::EnumVariant(_, pattern_variant, _) =
@@ -571,6 +610,7 @@ impl TypePostprocessor {
                                     if &variant_name == pattern_variant {
                                         if let Some(ty) = variant_type {
                                             // 将关联值添加到上下文中
+                                            dbg!(&name, &ty);
                                             if_ctx.set_symbol_type(name.clone(), ty.clone());
                                             break;
                                         }
@@ -692,12 +732,10 @@ impl TypePostprocessor {
             // 处理函数返回类型中的类型别名
             let mut return_type = instantiated_function.return_type().clone();
             return_type.try_replace_alias(alias_map);
-            dbg!(&return_type);
             instantiated_function.set_return_type(return_type);
             instantiated_function.set_template(false);
             let mut new_body = vec![];
             let ctx = Context::with_local(ctx, vec![]);
-            dbg!(&instantiated_function);
             for i in instantiated_function.args() {
                 ctx.set_symbol_type(i.name(), i.r#type().unwrap());
                 ctx.try_add_local(i.name())

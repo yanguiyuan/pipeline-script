@@ -41,12 +41,12 @@ impl TypePostprocessor {
             }
             Expr::FnCall(fc) => {
                 // 处理方法调用的情况
-                let (mut fc_name, fc_args) = self.process_method_call(&fc, ctx);
-                if !fc.type_generics.is_empty() {
+                let (mut fc_name, fc_args, caller_type) = self.process_method_call(&fc, ctx);
+                if !fc.type_generics.is_empty() || fc_name.contains('<') {
                     let function_type;
                     // 实例化函数
                     (fc_name, function_type) =
-                        self.instantiate_template_function(&fc, &fc_name, ctx);
+                        self.instantiate_template_function(&fc, &fc_name, ctx, caller_type);
                     ctx.set_symbol_type(fc_name.clone(), function_type);
                 }
                 // 创建新的函数调用对象
@@ -54,7 +54,6 @@ impl TypePostprocessor {
 
                 // 获取函数类型信息
                 let (mut fc_type, mut fc_return_type) = self.resolve_function_type(&fc_name, ctx);
-                dbg!(&fc_type);
 
                 // 处理泛型参数
                 let new_generics = self.process_generics(&fc.generics, ctx);
@@ -70,7 +69,7 @@ impl TypePostprocessor {
                 // 处理模板函数实例化
                 if !fc.generics.is_empty() && &fc.name != "sizeof" {
                     (fc_name, fc_return_type) =
-                        self.instantiate_template_function(&fc, &fc_name, ctx);
+                        self.instantiate_template_function(&fc, &fc_name, ctx, None);
                 }
 
                 // 处理函数参数
@@ -148,7 +147,6 @@ impl TypePostprocessor {
             }
             Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
-                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name);
                 let ty = ty.unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
@@ -157,7 +155,6 @@ impl TypePostprocessor {
                 ExprNode::new(Expr::Variable(name.clone())).with_type(ty)
             }
             Expr::Struct(se) => {
-                dbg!(&se);
                 // 提前获取结构体名称和泛型信息
                 let struct_name = se.name.clone();
                 let generics = se
@@ -290,12 +287,16 @@ impl TypePostprocessor {
             }
             Expr::Member(target, name) => {
                 let target = self.process_expr(&target, ctx);
-                let ty = target.get_type().unwrap();
+                let mut ty = target.get_type().unwrap();
+                if ty.is_ref() {
+                    ty = ty.unwrap_ref();
+                }
                 if ty.is_module() {
                     let name = format!("{}:{}", target.get_variable_name().unwrap(), name);
                     let variable = ExprNode::new(Expr::Variable(name));
                     return self.process_expr(&variable, ctx);
                 }
+
                 let ty = if ty.is_array() && name == "length" {
                     Type::Int64
                 } else {

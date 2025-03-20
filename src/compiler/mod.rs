@@ -1,4 +1,5 @@
 mod expr;
+mod helper;
 mod stmt;
 mod r#type;
 
@@ -89,7 +90,6 @@ impl Compiler {
 
         let builder = Global::create_builder();
         let ctx = Context::with_builder(&ctx, builder);
-
         // 编译函数实现
         for (name, item) in self.module.get_functions().iter() {
             if item.is_extern || item.is_template {

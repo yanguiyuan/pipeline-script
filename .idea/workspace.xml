@@ -12,24 +12,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat: 泛型结构体绑定方法支持">
-      <change afterPath="$PROJECT_DIR$/src/ast/expr/function_call.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/ast/expr/mod.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/compiler/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/expr.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/function.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/expr/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/expr/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/type.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/helper.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/format_string.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/format_string.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.ll" beforeDir="false" afterPath="$PROJECT_DIR$/test.ll" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -273,7 +273,12 @@
       <workItem from="1742017453567" duration="15864000" />
       <workItem from="1742048281657" duration="6138000" />
       <workItem from="1742105423930" duration="6062000" />
-      <workItem from="1742117796303" duration="15114000" />
+      <workItem from="1742117796303" duration="15143000" />
+      <workItem from="1742218281578" duration="7117000" />
+      <workItem from="1742300290543" duration="1666000" />
+      <workItem from="1742304358512" duration="7784000" />
+      <workItem from="1742384557640" duration="7933000" />
+      <workItem from="1742473372152" duration="11252000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -411,7 +416,15 @@
       <option name="project" value="LOCAL" />
       <updated>1742128727375</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="feat: 泛型结构体绑定方法支持">
+      <option name="closed" value="true" />
+      <created>1742141023410</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1742141023410</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -469,8 +482,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
           <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
-          <line>33</line>
+          <line>34</line>
           <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/compiler/expr.rs</url>
+          <line>377</line>
+          <option name="timeStamp" value="13" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

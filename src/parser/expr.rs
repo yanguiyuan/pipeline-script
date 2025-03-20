@@ -94,16 +94,16 @@ impl Parser {
                             ))
                             .with_position(pos));
                         }
-                        Token::Dot => {
+                        Token::Dot if !generics.is_empty() => {
                             let _ = self.parse_special_token(Token::Dot)?;
                             let (static_method, p1) = self.parse_identifier()?;
                             pos += p1;
-                            let (args, p2) = self.parse_fn_args(ctx)?;
+                            let (args, p2) = self.parse_fn_args(ctx).unwrap();
                             pos += p2;
                             return Ok(ExprNode::from(Expr::FnCall(FunctionCall {
                                 name: format!("{}.{}", id, static_method),
                                 args,
-                                is_method: true,
+                                is_method: false,
                                 generics: vec![],
                                 type_generics: generics,
                             })));
@@ -189,10 +189,19 @@ impl Parser {
             Token::BraceLeft => {
                 let (mut args, p1) = self.parse_fn_args(ctx)?;
                 let p1 = p1 + p0;
-                dbg!(&expr);
+                let mut name = expr.get_member_name();
+                let new_name = format!(
+                    "{}.{}",
+                    expr.get_member_root().get_variable_name().unwrap(),
+                    name
+                );
+                let function = ctx.get_function(&new_name);
+                if function.is_some() && function.unwrap().self_type().is_none() {
+                    name = new_name;
+                }
                 args.insert(0, Argument::new(expr.get_member_root()));
                 Ok(ExprNode::from(Expr::FnCall(FunctionCall {
-                    name: expr.get_member_name(),
+                    name,
                     generics: vec![],
                     is_method: true,
                     args,

@@ -21,31 +21,29 @@ impl TypePostprocessor {
         &mut self,
         fc: &FunctionCall,
         ctx: &Context,
-    ) -> (String, Vec<Argument>) {
+    ) -> (String, Vec<Argument>, Option<Type>) {
         let mut fc_name = fc.name.clone();
 
         let mut fc_args = fc.args.clone();
-        dbg!(&fc);
+        let mut caller_type = None;
         if fc.is_method {
             let this = fc.args.first();
-            let function = get_function_from_context(ctx, &fc_name).expect("Function not found");
-            if function.self_type().is_none() {
-                // 非方法调用
-                return (fc_name, fc_args);
-            }
+            // let function = get_function_from_context(ctx, &fc_name).expect("Function not found");
+            // if function.self_type().is_none() {
+            //     // 非方法调用
+            //     return (fc_name, fc_args);
+            // }
             if let Some(this) = this {
                 let this = self.process_expr(&this.value, ctx);
                 let this_type = this
                     .get_type()
                     .expect("Failed to get type for 'self' argument");
-
+                caller_type = Some(this_type.clone());
                 if this_type.is_module() {
                     // 模块方法调用
                     fc_args.remove(0);
                     fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
                 } else {
-                    dbg!(&this_type);
-                    // 结构体方法调用
                     let this_type_name = this_type
                         .get_composite_type_name()
                         .expect("Failed to get composite type name");
@@ -53,7 +51,7 @@ impl TypePostprocessor {
                 }
             }
         }
-        (fc_name, fc_args)
+        (fc_name, fc_args, caller_type)
     }
 
     // 处理泛型参数
@@ -107,7 +105,24 @@ impl TypePostprocessor {
         fc: &FunctionCall,
         fc_name: &str,
         ctx: &Context,
+        caller_type: Option<Type>,
     ) -> (String, Type) {
+        let mut fc_name = fc_name.to_string();
+        let mut fc = fc.clone();
+        if let Some(mut caller_type) = caller_type.clone() {
+            if caller_type.is_ref() {
+                caller_type = caller_type.unwrap_ref();
+            }
+            if caller_type.is_generic_instance() {
+                let template = caller_type.get_generic_template().unwrap();
+                if let Type::Generic(wrapper, list) = template {
+                    let wrapper_name = wrapper.as_str();
+                    let wrapper_name = wrapper_name.split('.').last().unwrap();
+                    fc_name = format!("{}.{}", wrapper_name, fc.name);
+                    fc.type_generics = list.clone();
+                }
+            }
+        }
         // 生成实例化类型名
         let [p_type, method] = fc_name.split('.').collect::<Vec<&str>>()[..] else {
             panic!("Invalid function name");
@@ -139,11 +154,9 @@ impl TypePostprocessor {
         };
         // 生成实例化后的函数名
         // 获取模板函数定义
-        let mut template = get_function_from_context(ctx, fc_name)
+        let mut template = get_function_from_context(ctx, &fc_name)
             .expect("Template function not found")
             .clone();
-        dbg!(&template);
-        dbg!(&fc);
         // 创建新的上下文
         // 处理函数泛型参数
         for (index, generic) in template.function_generics.iter().enumerate() {
@@ -158,12 +171,41 @@ impl TypePostprocessor {
             .iter()
             .map(|ty| Self::process_type(ty, ctx))
             .collect::<Vec<Type>>();
+
         for (index, generic) in template.type_generics.iter().enumerate() {
             ctx.set_alias_type(
                 generic.get_alias_name().unwrap(),
                 type_generics[index + template.function_generics.len()].clone(),
             );
         }
+        // 处理函数参数泛型
+        for var in template.args_mut() {
+            if var.name == "self" {
+                if let Some(Type::GenericInstance { instance, .. }) = &caller_type {
+                    let self_type = var.r#type().unwrap();
+                    if self_type.is_ref() {
+                        var.set_type(Type::Ref(instance.clone()))
+                    } else {
+                        var.set_type(*instance.clone())
+                    }
+                }
+                if let Some(Type::Ref(t)) = &caller_type {
+                    if let Type::GenericInstance { instance, .. } = &**t {
+                        let self_type = var.r#type().unwrap();
+                        if self_type.is_ref() {
+                            var.set_type(Type::Ref(instance.clone()))
+                        } else {
+                            var.set_type(*instance.clone())
+                        }
+                    }
+                }
+                continue;
+            }
+            let old_type = var.r#type().unwrap();
+            let new_type = Self::process_type(&old_type, ctx);
+            var.set_type(new_type);
+        }
+
         let (symbol_types, locals) = self.prepare_template_context(&template, ctx);
         let ctx = self.create_template_context(ctx, symbol_types, locals);
 
@@ -175,24 +217,14 @@ impl TypePostprocessor {
             .collect();
 
         // 处理返回类型
-        dbg!(&template);
         let return_type = Self::process_type(template.return_type(), &ctx);
-        // 处理函数参数泛型
-        for var in template.args_mut() {
-            let old_type = var.r#type().unwrap();
-            if old_type.is_alias() {
-                let alias_name = old_type.get_alias_name().unwrap();
-                let new_type = ctx.get_alias_type(alias_name).unwrap();
-                var.set_type(new_type);
-            }
-        }
+
         // 更新模板函数
         template.set_name(instance_name.clone());
         template.is_template = false;
         template.function_generics = vec![];
         template.set_return_type(return_type.clone());
         template.set_body(new_body);
-        dbg!(&template);
         // 注册实例化后的函数
         self.module
             .register_function(&instance_name, template.clone());
@@ -238,7 +270,6 @@ impl TypePostprocessor {
 
     // 解析函数类型
     pub(crate) fn resolve_function_type(&self, fc_name: &str, ctx: &Context) -> (Type, Type) {
-        dbg!(&fc_name);
         let fc_type = ctx
             .get_symbol_type(fc_name)
             .expect("Failed to get function type");

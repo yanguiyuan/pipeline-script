@@ -16,6 +16,10 @@ pub enum Type {
     Ref(Box<Type>),
     // 泛型 例如：Array<Int32>,即Generic(Array,[Int32])
     Generic(Box<Type>, Vec<Type>),
+    GenericInstance {
+        template: Box<Type>,
+        instance: Box<Type>,
+    },
     Alias(String),
     Struct(Option<String>, Vec<(String, Type)>),
     // 枚举类型，Option<String>是枚举名称，Vec<(String, Option<Type>)>是枚举变体列表
@@ -118,8 +122,39 @@ impl Type {
             Type::Struct(name, _) => name.as_deref(),
             Type::Array(_) => Some("Array"),
             Type::Enum(name, _) => name.as_deref(),
+            Type::GenericInstance { instance, .. } => instance.get_composite_type_name(),
+            Type::Ref(t) => t.get_composite_type_name(),
             _ => None,
         }
+    }
+    pub fn get_generic_wrapper(&self) -> Option<&Type> {
+        match self {
+            Type::Generic(wrapper, _) => Some(wrapper),
+            _ => None,
+        }
+    }
+    pub fn unwrap_ref(&self) -> Type {
+        match self {
+            Type::Ref(t) => *t.clone(),
+            _ => panic!("Not a ref type"),
+        }
+    }
+    pub fn has_name(&self) -> bool {
+        match self {
+            Type::Struct(name, _) => name.is_some(),
+            Type::Enum(name, _) => name.is_some(),
+            _ => false,
+        }
+    }
+    pub fn set_name(&mut self, name: String) {
+        match self {
+            Type::Struct(n, _) => *n = Some(name),
+            Type::Enum(n, _) => *n = Some(name),
+            _ => panic!("Not a composite type"),
+        }
+    }
+    pub fn is_generic_instance(&self) -> bool {
+        matches!(self, Type::GenericInstance { .. })
     }
     pub fn set_composite_type_name(&mut self, name: Option<String>) {
         match self {
@@ -142,6 +177,7 @@ impl Type {
                 }
                 None
             }
+            Type::GenericInstance { instance, .. } => instance.get_enum_variant_type(name),
             _ => None,
         }
     }
@@ -188,6 +224,12 @@ impl Type {
             _ => None,
         }
     }
+    pub fn get_generic_template(&self) -> Option<&Type> {
+        match self {
+            Type::GenericInstance { template, .. } => Some(template),
+            _ => None,
+        }
+    }
     pub fn is_function(&self) -> bool {
         matches!(self, Type::Function(_, _))
     }
@@ -219,7 +261,9 @@ impl Type {
                 }
                 None
             }
+            Type::Ref(t) => t.get_struct_field(name),
             Type::Pointer(t) => t.get_struct_field(name),
+            Type::GenericInstance { instance, .. } => instance.get_struct_field(name),
             _ => None,
         }
     }
@@ -512,6 +556,7 @@ impl Type {
                 }
                 v.join(".")
             }
+
             Type::Array(t) => {
                 format!("[]{}", t.as_str())
             }
@@ -569,6 +614,7 @@ impl Type {
             Type::Bool => "Bool".to_string(),
             Type::Any => "Any".to_string(),
             Type::Unit => "Unit".to_string(),
+            _ => panic!("Unknown type: {:?}", self),
         }
     }
     pub fn is_enum(&self) -> bool {

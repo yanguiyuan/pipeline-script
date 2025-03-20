@@ -1,10 +1,10 @@
+use crate::ast::expr::{Expr, ExprNode};
+use crate::ast::r#type::Type;
+use crate::ast::stmt::{MatchBranch, Stmt, StmtNode};
 use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::core::value::Value;
 use crate::llvm::global::Global;
-use crate::ast::expr::{Expr, ExprNode};
-use crate::ast::r#type::Type;
-use crate::ast::stmt::{MatchBranch, Stmt, StmtNode};
 use llvm_sys::prelude::LLVMBasicBlockRef;
 
 impl Compiler {
@@ -65,7 +65,9 @@ impl Compiler {
                     for i in body {
                         self.compile_stmt(i, ctx)
                     }
-                    builder.build_br(merge_bb);
+                    if !ctx.get_flag("return").unwrap() {
+                        builder.build_br(merge_bb);
+                    }
                     builder.position_at_end(else_bb);
                 }
 
@@ -177,7 +179,7 @@ impl Compiler {
                 let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
                 let builder = ctx.get_builder();
                 let data = builder.build_struct_get(value.value, 1);
-
+                dbg!(Type::from(data_type.clone()));
                 // 将变量添加到上下文
                 ctx.set_symbol(name.clone(), Value::new(data, Type::from(data_type)));
             }
@@ -313,7 +315,6 @@ impl Compiler {
                 // 跳转到结束基本块
                 builder.build_br(end_block);
             }
-            
 
             // 设置当前基本块为结束基本块
             builder.position_at_end(end_block);
@@ -333,9 +334,9 @@ impl Compiler {
 
         // 创建基本块
         let function = ctx.get_current_function();
-        let then_block = function.append_basic_block("if_let_then");
-        let else_block = function.append_basic_block("if_let_else");
-        let end_block = function.append_basic_block("if_let_end");
+        let then_block = function.append_basic_block("if_const_then");
+        let else_block = function.append_basic_block("if_const_else");
+        let end_block = function.append_basic_block("if_const_end");
 
         // 检查模式是否是枚举变体
         if let Expr::EnumVariant(enum_name, variant_name, binding) = &pattern.get_expr() {
@@ -361,7 +362,7 @@ impl Compiler {
             for stmt in body {
                 self.compile_stmt(stmt, ctx);
             }
-            if!ctx.get_flag("return").unwrap() {
+            if !ctx.get_flag("return").unwrap() {
                 // 跳转到结束基本块
                 builder.build_br(end_block);
             }

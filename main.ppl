@@ -1,7 +1,7 @@
 import core
-fn Pointer<T>.create(n: Int64) -> Pointer<T> {
+extern fn malloc(size: Int64) -> Pointer<Unit>
+extern fn sizeof<T>() -> Int64
 
-}
 struct Vec<T> {
     data: Pointer<T>,
     len: Int64,
@@ -10,9 +10,23 @@ struct Vec<T> {
 fn Vec<T>.new() -> Vec<T> {
     const n = 10
     return Vec<T>{
-        data: Pointer<T>.create(n),
+        data: malloc(n*sizeof::<T>()),
         len: 0,
         cap: n,
     }
 }
+fn Vec<T>.push(&self,x: T) {
+    self.data[self.len] = x
+    self.len = self.len + 1
+}
+fn Vec<T>.get(self,index: Int64)->Option<T>  {
+    if(index > self.len -1){
+        Option.None
+    }
+   return Option.Some(self.data[index])
+}
 let v = Vec<Int64>.new()
+v.push(10)
+const b = v.get(0)
+const x = b.unwrap()
+println(x)

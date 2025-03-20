@@ -39,8 +39,8 @@ impl Engine {
         let ctx = LLVMContext::with_jit();
         let module = ctx.parse_ir(&r).unwrap();
         let executor = module.create_executor().unwrap();
-        let println_function = module.get_function("println").unwrap();
-        executor.add_global_mapping(println_function.as_ref(), println as *mut c_void);
+        let println_function = module.get_function_ref("println");
+        executor.add_global_mapping(println_function, println as *mut c_void);
         executor.run_function("$Module.main", &mut []);
     }
     pub fn run_file(&mut self, path: impl AsRef<Path>) {
@@ -93,7 +93,6 @@ impl Engine {
         });
         let mut type_preprocessor = TypePostprocessor::new();
         let module = type_preprocessor.process(module_key, &ctx);
-        dbg!(&module);
         let mut compiler = Compiler::new(module.clone());
         ctx.register_module(module);
         ctx.apply_mut_module(module_key, |module| {

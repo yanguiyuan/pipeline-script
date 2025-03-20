@@ -1,8 +1,8 @@
+use crate::ast::r#type::Type;
 use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
-use crate::ast::r#type::Type;
 impl Compiler {
     pub(crate) fn compile_type(&self, ty: &Type) -> LLVMType {
         match ty {
@@ -118,9 +118,10 @@ impl Compiler {
                 ]))
             }
             Type::Float => Global::float_type(),
-            Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
+            Type::Ref(t) => Global::pointer_type(self.compile_type(t)),
             Type::Alias(_) => Global::i8_type(),
             Type::Bool => Global::i1_type(),
+            Type::GenericInstance { instance, .. } => self.compile_type(instance),
             _ => panic!("Unknown type: {:?}", ty),
         }
     }

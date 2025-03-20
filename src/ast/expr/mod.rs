@@ -318,11 +318,14 @@ impl ExprNode {
         &self.expr
     }
     pub fn get_type(&self) -> Option<Type> {
-        if let Some(t) = &self.ty {
-            if t.is_ref() {
-                let element_type = t.get_element_type().unwrap();
-                return Some(element_type.clone());
-            }
+        self.ty.clone()
+    }
+    pub fn get_deep_type(&self) -> Option<Type> {
+        if let Some(Type::Ref(ty)) = &self.ty {
+            return Some(*ty.clone());
+        }
+        if let Some(Type::GenericInstance { instance, .. }) = &self.ty {
+            return Some(*instance.clone());
         }
         self.ty.clone()
     }
