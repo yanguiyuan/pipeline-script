@@ -5,6 +5,7 @@ use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::core::value::Value;
 use crate::llvm::global::Global;
+use crate::llvm::value::reference::ReferenceValue;
 use llvm_sys::prelude::LLVMBasicBlockRef;
 
 impl Compiler {
@@ -36,9 +37,13 @@ impl Compiler {
                 let t = val.r#type().unwrap();
                 let element_type = t.get_element_type().unwrap();
                 let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
-
+                dbg!(&alloc);
                 if let Some(default_expr) = val.get_default() {
                     let default_value = self.compile_expr(default_expr, ctx);
+                    dbg!(&default_value);
+                    let result =
+                        ReferenceValue::new(alloc.as_llvm_value_ref(), default_value.get_value());
+                    dbg!(&result);
                     builder.build_store(alloc, default_value.value);
                 }
 
@@ -179,7 +184,6 @@ impl Compiler {
                 let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
                 let builder = ctx.get_builder();
                 let data = builder.build_struct_get(value.value, 1);
-                dbg!(Type::from(data_type.clone()));
                 // 将变量添加到上下文
                 ctx.set_symbol(name.clone(), Value::new(data, Type::from(data_type)));
             }

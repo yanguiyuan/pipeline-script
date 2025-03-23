@@ -48,7 +48,7 @@ impl Global {
     #[allow(unused)]
     pub fn const_bool(value: bool) -> LLVMValue {
         let v = unsafe { LLVMConstInt(LLVMInt1Type(), value as u64, 0) };
-        LLVMValue::Int1(v)
+        LLVMValue::Bool(v)
     }
     pub fn sizeof(ty: LLVMType) -> LLVMValue {
         unsafe { LLVMSizeOf(ty.as_llvm_type_ref()) }.into()

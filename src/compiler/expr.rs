@@ -197,7 +197,6 @@ impl Compiler {
 
         // 2. 检查函数参数
         if let Some(v) = ctx.get_current_function().get_param(name) {
-            dbg!(&v);
             return Value::new(v, ty0.clone());
         }
 
@@ -208,9 +207,6 @@ impl Compiler {
         });
         // 4. 处理类型转换和引用
         let ptr_type = ptr.get_type();
-        dbg!(name);
-        dbg!(&ptr_type);
-        dbg!(&ty0);
         // 如果需要引用类型，或者符号本身是引用类型，需要加载其值
         if !ty0.is_ref() && (ptr_type.is_ref() || ptr_type.is_pointer()) {
             let element_type = if ty0.is_ref() {
@@ -256,7 +252,6 @@ impl Compiler {
     ) -> Value {
         let l = self.compile_expr(l, ctx).get_value();
         let r = self.compile_expr(r, ctx).get_value();
-        dbg!(op);
         let builder = ctx.get_builder();
         let v = match op {
             Op::Plus => self.compile_add(l, r, ctx),
@@ -350,10 +345,7 @@ impl Compiler {
         ty0: &Type,
         ctx: &Context,
     ) -> Value {
-        dbg!(&field_name);
         let v = self.compile_expr(target, ctx);
-        dbg!(&v);
-        dbg!(&ty0);
         let ty = v.get_type();
         let mut val = v.get_value();
         let builder = ctx.get_builder();
@@ -553,7 +545,6 @@ impl Compiler {
 
                 // 处理Any类型
                 if t.is_any() {
-                    dbg!(&v);
                     v = self.convert_to_any_type(v, &t, &ctx);
                 }
 

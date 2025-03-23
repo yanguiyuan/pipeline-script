@@ -1,3 +1,7 @@
+mod pointer;
+mod pstruct;
+pub mod reference;
+
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use llvm_sys::core::{
@@ -9,7 +13,7 @@ use std::ffi::{c_uint, CString};
 #[derive(Clone, Debug, Copy)]
 pub enum LLVMValue {
     String(LLVMValueRef),
-    Int1(LLVMValueRef),
+    Bool(LLVMValueRef),
     Int8(LLVMValueRef),
     Int16(LLVMValueRef),
     Int32(LLVMValueRef),
@@ -35,30 +39,32 @@ impl From<LLVMValueRef> for LLVMValue {
     fn from(value: LLVMValueRef) -> Self {
         let ty = unsafe { LLVMTypeOf(value) };
         let type_kind = unsafe { LLVMGetTypeKind(ty) };
-        match type_kind {
-            LLVMTypeKind::LLVMIntegerTypeKind => {
-                let width = unsafe { LLVMGetIntTypeWidth(ty) };
-                let width = width as i8;
+        unsafe {
+            match type_kind {
+                LLVMTypeKind::LLVMIntegerTypeKind => {
+                    let width = unsafe { LLVMGetIntTypeWidth(ty) };
+                    let width = width as i8;
 
-                match width {
-                    1 => LLVMValue::Int1(value),
-                    8 => LLVMValue::Int8(value),
-                    32 => LLVMValue::Int32(value),
-                    64 => LLVMValue::Int64(value),
-                    _ => {
-                        todo!()
+                    match width {
+                        1 => LLVMValue::Bool(value),
+                        8 => LLVMValue::Int8(value),
+                        32 => LLVMValue::Int32(value),
+                        64 => LLVMValue::Int64(value),
+                        _ => {
+                            todo!()
+                        }
                     }
                 }
-            }
-            LLVMTypeKind::LLVMPointerTypeKind => LLVMValue::Pointer(value),
-            LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
-            LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(value),
-            LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
-            LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(value),
-            LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(value),
-            t => {
-                println!("{t:?}");
-                todo!()
+                LLVMTypeKind::LLVMPointerTypeKind => LLVMValue::Pointer(value),
+                LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
+                LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(value),
+                LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
+                LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(value),
+                LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(value),
+                t => {
+                    println!("{t:?}");
+                    todo!()
+                }
             }
         }
     }
@@ -72,7 +78,7 @@ impl LLVMValue {
             LLVMValue::Int64(i) => *i,
             LLVMValue::Int32(i) => *i,
             LLVMValue::Int8(i) => *i,
-            LLVMValue::Int1(i) => *i,
+            LLVMValue::Bool(i) => *i,
             LLVMValue::Pointer(i) => *i,
             LLVMValue::Array(i) => *i,
             LLVMValue::Struct(i) => *i,
@@ -89,7 +95,7 @@ impl LLVMValue {
     pub fn get_type(&self) -> LLVMType {
         let ty = unsafe { LLVMTypeOf(self.as_llvm_value_ref()) };
         match self {
-            LLVMValue::Int1(_) => LLVMType::Int1(ty),
+            LLVMValue::Bool(_) => LLVMType::Int1(ty),
             LLVMValue::Int8(_) => LLVMType::Int8(ty),
             LLVMValue::Int32(_) => LLVMType::Int32(ty),
             LLVMValue::Int64(_) => LLVMType::Int64(ty),

@@ -596,12 +596,9 @@ impl TypePostprocessor {
 
                 // 如果模式是枚举变体，并且有关联值，将关联值添加到上下文中
                 if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
-                    dbg!(&binding);
                     if let Expr::Variable(name) = &binding.get_expr() {
-                        dbg!(&processed_expr);
                         // 获取关联值的类型
                         if let Some(Type::Enum(_, variants)) = processed_expr.get_deep_type() {
-                            dbg!(&variants);
                             // 查找变体的关联类型
                             for (variant_name, variant_type) in variants {
                                 if let Expr::EnumVariant(_, pattern_variant, _) =
@@ -610,7 +607,6 @@ impl TypePostprocessor {
                                     if &variant_name == pattern_variant {
                                         if let Some(ty) = variant_type {
                                             // 将关联值添加到上下文中
-                                            dbg!(&name, &ty);
                                             if_ctx.set_symbol_type(name.clone(), ty.clone());
                                             break;
                                         }

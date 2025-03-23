@@ -2,7 +2,14 @@ use crate::llvm::function::Function;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
-use llvm_sys::core::{LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2, LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2, LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildUnreachable, LLVMBuildZExt, LLVMConstArray2, LLVMConstIntToPtr, LLVMDisposeBuilder, LLVMInt8Type, LLVMPointerType, LLVMPositionBuilderAtEnd};
+use llvm_sys::core::{
+    LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2,
+    LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
+    LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2, LLVMBuildInsertValue,
+    LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore,
+    LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildUnreachable, LLVMBuildZExt, LLVMConstArray2,
+    LLVMConstIntToPtr, LLVMDisposeBuilder, LLVMInt8Type, LLVMPointerType, LLVMPositionBuilderAtEnd,
+};
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
 use std::cell::RefCell;
@@ -110,6 +117,7 @@ impl Builder {
         }
         .into()
     }
+
     pub fn build_struct_insert(&self, val: LLVMValue, idx: usize, value: &LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();
         unsafe {
