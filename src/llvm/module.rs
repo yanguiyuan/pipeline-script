@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::ptr;
 use std::rc::Rc;
+
 #[derive(Debug)]
 pub struct LLVMModule {
     module_ref: Rc<LLVMModuleRef>,

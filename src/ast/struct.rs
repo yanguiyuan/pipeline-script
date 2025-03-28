@@ -1,6 +1,6 @@
+use crate::ast::r#type::Type;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
-use crate::ast::r#type::Type;
 #[derive(Clone, Debug)]
 pub struct Struct {
     pub name: String,
@@ -18,9 +18,10 @@ impl Struct {
     }
     pub fn get_llvm_type(&self) -> LLVMType {
         Global::struct_type(
+            self.name.clone(),
             self.fields
                 .iter()
-                .map(|f| f.field_type.as_llvm_type())
+                .map(|f| (f.name.clone(), f.field_type.as_llvm_type()))
                 .collect(),
         )
     }

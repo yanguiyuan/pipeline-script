@@ -153,19 +153,20 @@ impl LLVMContext {
     pub fn create_named_struct_type(
         &self,
         name: impl AsRef<str>,
-        element_type: Vec<LLVMType>,
+        element_type: Vec<(String, LLVMType)>,
     ) -> LLVMType {
-        let name = name.as_ref();
-        let name = CString::new(name).unwrap();
+        let name0 = name.as_ref();
+
+        let name = CString::new(name0).unwrap();
         let mut et = element_type
             .iter()
-            .map(|t| t.as_llvm_type_ref())
+            .map(|(name, t)| t.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe { LLVMStructCreateNamed(self.llvm_ref, name.as_ptr()) };
         unsafe {
             LLVMStructSetBody(t, et.as_mut_ptr(), element_type.len() as c_uint, 0);
         }
-        LLVMType::Struct(element_type, t)
+        LLVMType::Struct(name0.into(), element_type, t)
     }
 }
 

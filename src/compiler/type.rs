@@ -13,7 +13,10 @@ impl Compiler {
             Type::Unit => Global::unit_type(),
             Type::Pointer(i) => Global::pointer_type(self.compile_type(i)),
             Type::Any => {
-                let v = vec![Global::i32_type(), Global::pointer_type(Global::i8_type())];
+                let v = vec![
+                    ("id".into(), Global::i32_type()),
+                    ("data".into(), Global::pointer_type(Global::i8_type())),
+                ];
                 self.ctx.create_named_struct_type("Any", v)
             }
             Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
@@ -31,7 +34,7 @@ impl Compiler {
                 // 创建枚举结构体类型
                 let mut fields = vec![
                     // 标签字段，用于区分不同的变体
-                    Global::i32_type(),
+                    ("tag".into(), Global::i32_type()),
                 ];
 
                 // 查找所有变体中最大的数据类型
@@ -52,26 +55,22 @@ impl Compiler {
 
                 // 添加数据字段
                 if let Some(data_type) = max_data_type {
-                    fields.push(data_type);
+                    fields.push(("data".into(), data_type));
                 } else {
                     // 如果没有变体有数据，添加一个空字段
-                    fields.push(Global::unit_type());
+                    fields.push(("data".into(), Global::unit_type()));
                 }
 
                 // 创建命名结构体类型
                 if let Some(name) = name {
                     self.ctx.create_named_struct_type(name, fields)
                 } else {
-                    Global::struct_type(fields)
+                    panic!("Enum type without name");
                 }
             }
             Type::Struct(name, s) => match name {
                 None => {
-                    let mut v = vec![];
-                    for (_, t) in s.iter() {
-                        v.push(self.compile_type(t));
-                    }
-                    Global::struct_type(v)
+                    panic!("Struct type without name");
                 }
                 Some(name) => {
                     let ty = self.llvm_module.get_struct(name);
@@ -79,8 +78,8 @@ impl Compiler {
                         Some((_, t)) => t.clone(),
                         None => {
                             let mut v = vec![];
-                            for (_, t) in s.iter() {
-                                v.push(self.compile_type(t));
+                            for (name, t) in s.iter() {
+                                v.push((name.clone(), self.compile_type(t)));
                             }
                             self.ctx.create_named_struct_type(name, v)
                         }
@@ -88,20 +87,24 @@ impl Compiler {
                 }
             },
             Type::Function(ret, args) => {
-                let mut v = vec![];
-                for t in args.iter() {
-                    v.push(self.compile_type(t));
-                }
-                let t = ret.as_llvm_type();
-                Global::struct_type(vec![
-                    Global::pointer_type(Global::function_type(t, v)),
-                    Global::pointer_type(Global::unit_type()),
-                ])
+                todo!();
+                // let mut v = vec![];
+                // for t in args.iter() {
+                //     v.push(self.compile_type(t));
+                // }
+                // let t = ret.as_llvm_type();
+                // Global::struct_type(vec![
+                //     Global::pointer_type(Global::function_type(t, v)),
+                //     Global::pointer_type(Global::unit_type()),
+                // ])
             }
-            Type::ArrayVarArg(t) => Global::struct_type(vec![
-                Global::i64_type(),
-                Global::pointer_type(self.compile_type(t)),
-            ]),
+            Type::ArrayVarArg(t) => Global::struct_type(
+                "ArrayVarArg".into(),
+                vec![
+                    ("size".into(), Global::i64_type()),
+                    ("data".into(), Global::pointer_type(self.compile_type(t))),
+                ],
+            ),
             Type::Closure { name: _, ptr, env } => {
                 let return_ty = self.compile_type(&ptr.0);
                 let mut params_ty = vec![];
@@ -110,16 +113,26 @@ impl Compiler {
                 }
                 let mut env_ty = vec![];
                 for a in env {
-                    env_ty.push(self.compile_type(&a.1));
+                    env_ty.push((a.0.clone(), self.compile_type(&a.1)));
                 }
-                Global::pointer_type(Global::struct_type(vec![
-                    Global::pointer_type(Global::function_type(return_ty, params_ty)),
-                    Global::pointer_type(Global::struct_type(env_ty)),
-                ]))
+                Global::pointer_type(Global::struct_type(
+                    "Closure".into(),
+                    vec![
+                        ("return_ty".into(), return_ty.clone()),
+                        (
+                            "params_ty".into(),
+                            Global::pointer_type(Global::function_type(return_ty, params_ty)),
+                        ),
+                        (
+                            "env_ty".into(),
+                            Global::pointer_type(Global::struct_type("env_ty".into(), env_ty)),
+                        ),
+                    ],
+                ))
             }
             Type::Float => Global::float_type(),
             Type::Ref(t) => Global::pointer_type(self.compile_type(t)),
-            Type::Alias(_) => Global::i8_type(),
+            // Type::Alias(_) => Global::i8_type(),
             Type::Bool => Global::i1_type(),
             Type::GenericInstance { instance, .. } => self.compile_type(instance),
             _ => panic!("Unknown type: {:?}", ty),

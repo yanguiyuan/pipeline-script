@@ -1,14 +1,20 @@
 use crate::llvm::global::Global;
+use crate::llvm::value::bool::BoolValue;
+use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
+use crate::llvm::value::pointer::PointerValue;
+use crate::llvm::value::pstruct::StructValue;
+use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
-    LLVMGetElementType, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMInt32Type, LLVMIsFunctionVarArg,
-    LLVMPrintTypeToString, LLVMTypeOf,
+    LLVMGetElementType, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMGetUndef, LLVMInt32Type,
+    LLVMIsFunctionVarArg, LLVMPrintTypeToString, LLVMTypeOf,
 };
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef};
 use llvm_sys::LLVMTypeKind;
+use std::collections::HashMap;
 use std::ffi::CStr;
 use std::fmt::{Display, Formatter};
 
-#[derive(Clone, Debug, PartialOrd, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LLVMType {
     Int1(LLVMTypeRef),
     Int8(LLVMTypeRef),
@@ -17,7 +23,7 @@ pub enum LLVMType {
     Int64(LLVMTypeRef),
     Float(LLVMTypeRef),
     Double(LLVMTypeRef),
-    Struct(Vec<LLVMType>, LLVMTypeRef),
+    Struct(String, Vec<(String, LLVMType)>, LLVMTypeRef),
     Array(Box<LLVMType>, LLVMTypeRef),
     Function(Box<LLVMType>, Vec<LLVMType>, LLVMTypeRef),
     Pointer(Box<LLVMType>, LLVMTypeRef),
@@ -90,7 +96,7 @@ impl LLVMType {
             LLVMType::Function(_, _, i) => *i,
             LLVMType::Pointer(_, i) => *i,
             LLVMType::Unit(i) => *i,
-            LLVMType::Struct(_, i) => *i,
+            LLVMType::Struct(_, _, i) => *i,
         }
     }
     pub fn get_element_type(&self) -> LLVMType {
@@ -118,15 +124,52 @@ impl LLVMType {
     }
     pub fn get_struct_field_type(&self, index: usize) -> LLVMType {
         match self {
-            LLVMType::Struct(v, _) => v.get(index).cloned().unwrap(),
+            LLVMType::Struct(_, v, _) => v.get(index).cloned().unwrap().1,
             _ => panic!("Not a struct"),
+        }
+    }
+    pub fn get_function_return_type(&self) -> LLVMType {
+        match self {
+            LLVMType::Function(_, _, f) => LLVMType::from(*f),
+            _ => panic!("Not a function"),
+        }
+    }
+    pub fn get_undef(&self) -> LLVMValue {
+        let reference = unsafe { LLVMGetUndef(self.as_llvm_type_ref()) };
+        match self {
+            LLVMType::Int1(_) => LLVMValue::Bool(BoolValue::new(reference)),
+            LLVMType::Pointer(element, _) => {
+                LLVMValue::Pointer(PointerValue::new(reference, element.get_undef()))
+            }
+            LLVMType::Int8(_) => LLVMValue::Int8(Int8Value::new(reference)),
+            LLVMType::Int16(_) => LLVMValue::Int16(Int16Value::new(reference)),
+            LLVMType::Int32(_) => LLVMValue::Int32(Int32Value::new(reference)),
+            LLVMType::Int64(_) => LLVMValue::Int64(Int64Value::new(reference)),
+            // LLVMType::Struct(_, _) => LLVMValue::Struct(reference),
+            LLVMType::Unit(_) => LLVMValue::Unit,
+            LLVMType::Struct(name, field, _) => {
+                let mut filed_index = HashMap::new();
+                for (i, f) in field.iter().enumerate() {
+                    filed_index.insert(f.0.clone(), i);
+                }
+                LLVMValue::Struct(StructValue::new(
+                    reference,
+                    name.clone(),
+                    filed_index.clone(),
+                    field.iter().map(|f| f.1.get_undef()).collect(),
+                ))
+            }
+            t => {
+                println!("{t:?}");
+                todo!()
+            }
         }
     }
     pub fn is_array(&self) -> bool {
         matches!(self, LLVMType::Array(_, _))
     }
     pub fn is_struct(&self) -> bool {
-        matches!(self, LLVMType::Struct(_, _))
+        matches!(self, LLVMType::Struct(_, _, _))
     }
     pub fn i32() -> Self {
         let t = unsafe { LLVMInt32Type() };
@@ -151,9 +194,9 @@ impl LLVMType {
             LLVMType::Float(_) => 4,
             LLVMType::Double(_) => 8,
             LLVMType::Pointer(_, _) => 8, // 指针大小为8字节（64位系统）
-            LLVMType::Struct(fields, _) => {
+            LLVMType::Struct(_, fields, _) => {
                 // 结构体大小为所有字段大小之和
-                fields.iter().map(|f| f.size()).sum()
+                fields.iter().map(|f| f.1.size()).sum()
             }
             LLVMType::Array(element_type, _) => {
                 // 数组大小为元素大小

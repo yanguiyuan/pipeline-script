@@ -3,9 +3,9 @@ use crate::ast::r#type::Type;
 use crate::ast::stmt::{MatchBranch, Stmt, StmtNode};
 use crate::compiler::Compiler;
 use crate::context::Context;
-use crate::core::value::Value;
 use crate::llvm::global::Global;
 use crate::llvm::value::reference::ReferenceValue;
+use crate::llvm::value::LLVMValue;
 use llvm_sys::prelude::LLVMBasicBlockRef;
 
 impl Compiler {
@@ -18,17 +18,16 @@ impl Compiler {
             Stmt::Return(expr) => {
                 let v = self.compile_expr(expr, ctx);
                 ctx.set_flag("return", true);
-                builder.build_return(v.value);
+                builder.build_return(v);
             }
             Stmt::ValDecl(val) => {
                 let t = val.r#type().unwrap();
                 let v = self.compile_expr(val.get_default().unwrap(), ctx);
                 if t.is_array() {
-                    return ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
+                    return ctx.set_symbol(val.name(), v);
                 }
-                if v.value.is_pointer() {
-                    let v = Value::new(v.value, t.clone());
-                    ctx.set_symbol(val.name(), Value::new(v.value, t.clone()));
+                if v.is_pointer() {
+                    ctx.set_symbol(val.name(), v);
                     return;
                 }
                 ctx.set_symbol(val.name(), v);
@@ -37,22 +36,17 @@ impl Compiler {
                 let t = val.r#type().unwrap();
                 let element_type = t.get_element_type().unwrap();
                 let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
-                dbg!(&alloc);
-                if let Some(default_expr) = val.get_default() {
-                    let default_value = self.compile_expr(default_expr, ctx);
-                    dbg!(&default_value);
-                    let result =
-                        ReferenceValue::new(alloc.as_llvm_value_ref(), default_value.get_value());
-                    dbg!(&result);
-                    builder.build_store(alloc, default_value.value);
-                }
+                let default_expr = val.get_default().unwrap();
+                let default_value = self.compile_expr(default_expr, ctx);
+                let result = ReferenceValue::new(alloc.as_llvm_value_ref(), default_value.clone());
+                builder.build_store(alloc.clone(), default_value);
 
-                ctx.set_symbol(val.name(), Value::new(alloc, t));
+                ctx.set_symbol(val.name(), LLVMValue::Reference(result));
             }
             Stmt::Assign(lhs, rhs) => {
                 let lhs = self.compile_expr_with_ptr(lhs, ctx);
                 let rhs = self.compile_expr(rhs, ctx);
-                builder.build_store(lhs.value, rhs.value);
+                builder.build_store(lhs, rhs);
             }
             Stmt::If(if_stmt) => {
                 let branches = if_stmt.get_branches();
@@ -64,7 +58,7 @@ impl Compiler {
                     let builder = ctx.get_builder();
                     let then_bb = current_function.append_basic_block("then");
                     let else_bb = current_function.append_basic_block("else");
-                    builder.build_cond_br(condition.value, then_bb, else_bb);
+                    builder.build_cond_br(condition, then_bb, else_bb);
                     builder.position_at_end(then_bb);
                     let body = i.get_body();
                     for i in body {
@@ -93,7 +87,7 @@ impl Compiler {
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_cond_bb);
                 let cond = self.compile_expr(condition, ctx);
-                builder.build_cond_br(cond.value, while_body_bb, while_exit_bb);
+                builder.build_cond_br(cond, while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
                 for i in body {
                     self.compile_stmt(i, ctx);
@@ -109,7 +103,7 @@ impl Compiler {
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_cond_bb);
                 let cond = self.compile_expr(expr, ctx);
-                builder.build_cond_br(cond.value, while_body_bb, while_exit_bb);
+                builder.build_cond_br(cond, while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
                 for i in body {
                     self.compile_stmt(i, ctx);
@@ -174,40 +168,37 @@ impl Compiler {
     fn compile_match_branch_binding(
         &self,
         binding: &Option<Box<ExprNode>>,
-        value: &Value,
+        value: &LLVMValue,
         ctx: &Context,
     ) {
         // 如果模式有关联值，需要提取并绑定
         if let Some(binding) = binding {
             if let Expr::Variable(name) = &binding.get_expr() {
                 // 获取枚举值的数据（第二个字段）
-                let data_type = self.compile_type(&value.ty).get_struct_field_type(1);
                 let builder = ctx.get_builder();
-                let data = builder.build_struct_get(value.value, 1);
+                let data = builder.build_struct_get(value.clone(), 1);
                 // 将变量添加到上下文
-                ctx.set_symbol(name.clone(), Value::new(data, Type::from(data_type)));
+                ctx.set_symbol(name.clone(), data);
             }
         }
     }
     fn compile_match_branch_pointer_binding(
         &self,
         binding: &Option<Box<ExprNode>>,
-        element_llvm_type: &crate::llvm::types::LLVMType,
-        value: &Value,
+        value: &LLVMValue,
         ctx: &Context,
     ) {
         if let Some(binding) = binding {
             if let Expr::Variable(name) = &binding.get_expr() {
-                let builder = ctx.get_builder();
                 // 获取枚举值的数据（第二个字段）
-                let data_ptr = builder.build_struct_gep(element_llvm_type.clone(), value.value, 1);
-                let data_type = element_llvm_type.get_struct_field_type(1);
+                let data_ptr = value
+                    .as_reference()
+                    .unwrap()
+                    .get_enum_variant_data_ptr()
+                    .unwrap();
 
                 // 将变量添加到上下文
-                ctx.set_symbol(
-                    name.clone(),
-                    Value::new(data_ptr, Type::Ref(Box::new(Type::from(data_type)))),
-                );
+                ctx.set_symbol(name.clone(), data_ptr);
             }
         }
     }
@@ -215,7 +206,7 @@ impl Compiler {
     fn compile_match_branchs(
         &self,
         branches: &[MatchBranch],
-        value: &Value,
+        value: &LLVMValue,
         branch_blocks: &[LLVMBasicBlockRef],
         end_block: LLVMBasicBlockRef,
         ctx: &Context,
@@ -229,9 +220,9 @@ impl Compiler {
                 // 获取变体索引
                 let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
                 // 获取枚举值的标签（第一个字段）
-                let tag = builder.build_struct_get(value.value, 0);
+                let tag = builder.build_struct_get(value.clone(), 0);
                 // 创建条件：tag == variant_index
-                let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
+                let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
                 // 创建下一个分支的基本块
                 let next_block = if branch_index < branches.len() - 1 {
                     branch_blocks[branch_index + 1]
@@ -283,22 +274,26 @@ impl Compiler {
             let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
 
             // 获取枚举值的标签（第一个字段）
-            let element_type = value.ty.get_element_type().unwrap();
-            let element_llvm_type = ctx.get_type(element_type).unwrap();
-            let tag_ptr = builder.build_struct_gep(element_llvm_type.clone(), value.value, 0);
-            let tag = builder.build_load(Global::i32_type(), tag_ptr);
+
+            let tag = value
+                .as_reference()
+                .unwrap()
+                .get_value()
+                .as_enum_variant()
+                .unwrap()
+                .get_tag();
 
             // 创建条件：tag == variant_index
-            let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
+            let cond = tag.eq(&Global::const_i32(variant_index as i32));
 
             // 创建条件分支
-            builder.build_cond_br(cond, then_block, else_block);
+            builder.build_cond_br(cond.into(), then_block, else_block);
 
             // 编译then分支
             builder.position_at_end(then_block);
 
             // 如果模式有关联值，需要提取并绑定
-            self.compile_match_branch_pointer_binding(binding, &element_llvm_type, &value, ctx);
+            self.compile_match_branch_pointer_binding(binding, &value, ctx);
 
             // 编译then分支体
             for stmt in body {
@@ -348,10 +343,10 @@ impl Compiler {
             let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
 
             // 获取枚举值的标签（第一个字段）
-            let tag = builder.build_struct_get(value.value, 0);
+            let tag = builder.build_struct_get(value.clone(), 0);
 
             // 创建条件：tag == variant_index
-            let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32));
+            let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
 
             // 创建条件分支
             builder.build_cond_br(cond, then_block, else_block);

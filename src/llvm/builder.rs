@@ -65,7 +65,7 @@ impl Builder {
         let name = CString::new(name0).unwrap();
         let str0 = value.as_ref();
         if self.strings.borrow().contains_key(str0) {
-            return *self.strings.borrow().get(str0).unwrap();
+            return self.strings.borrow().get(str0).unwrap().clone();
         }
         let str = CString::new(str0).unwrap();
         let r = unsafe { LLVMBuildGlobalString(self.inner, str.as_ptr(), name.as_ptr()) };
@@ -85,7 +85,7 @@ impl Builder {
             LLVMBuildArrayAlloca(
                 self.inner,
                 el_ty.as_llvm_type_ref(),
-                Global::const_i64(arr.len() as i64).as_llvm_value_ref(),
+                Global::const_i64(arr.len() as i64).get_reference(),
                 name.as_ptr(),
             )
         };

@@ -1,12 +1,12 @@
-use crate::context::scope::Scope;
-use crate::core::value::Value;
-use crate::llvm::builder::Builder;
-use crate::llvm::context::LLVMContext;
-use crate::llvm::function::Function;
-use crate::llvm::module::LLVMModule;
-use crate::llvm::types::LLVMType;
 use crate::ast::module::Module;
 use crate::ast::r#type::Type;
+use crate::context::scope::Scope;
+use crate::llvm::builder::Builder;
+use crate::llvm::context::LLVMContext;
+use crate::llvm::module::LLVMModule;
+use crate::llvm::types::LLVMType;
+use crate::llvm::value::fucntion::FunctionValue;
+use crate::llvm::value::LLVMValue;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -18,14 +18,14 @@ pub enum ContextValue {
     Builder(Arc<Builder>),
     SymbolType(Arc<RwLock<HashMap<String, Type>>>),
     AliasType(Arc<RwLock<HashMap<String, Type>>>),
-    SymbolTable(Rc<Mutex<HashMap<String, Value>>>),
+    SymbolTable(Rc<Mutex<HashMap<String, LLVMValue>>>),
     LLVMContext(Rc<Mutex<LLVMContext>>),
     LLVMModule(Rc<RwLock<LLVMModule>>),
     ModuleSlotMap(Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>>),
     // 编译阶段使用
     Scope(Scope),
     Flag(Arc<RwLock<bool>>),
-    Function(Function),
+    Function(FunctionValue),
     // 编译阶段使用,存储当前函数类型
     Type(Type),
     // 预处理阶段分析闭包捕获的变量
@@ -66,7 +66,7 @@ impl ContextValue {
             _ => panic!("not a type"),
         }
     }
-    pub fn as_symbol_table(&self) -> Rc<Mutex<HashMap<String, Value>>> {
+    pub fn as_symbol_table(&self) -> Rc<Mutex<HashMap<String, LLVMValue>>> {
         match self {
             ContextValue::SymbolTable(t) => t.clone(),
             _ => panic!("not a symbol table"),

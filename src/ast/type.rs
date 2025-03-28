@@ -325,12 +325,12 @@ impl Type {
                 // 创建枚举结构体类型
                 let fields = vec![
                     // 标签字段，用于区分不同的变体
-                    Global::i32_type(),
+                    ("id".into(), Global::i32_type()),
                     // 数据字段，使用i64作为默认类型
-                    Global::i64_type(),
+                    ("data".into(), Global::i64_type()),
                 ];
 
-                Global::struct_type(fields)
+                Global::struct_type("Enum".into(), fields)
             }
             Type::Function(ret, args) => {
                 let mut v = vec![];
@@ -341,10 +341,13 @@ impl Type {
             }
             Type::ArrayVarArg(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Ref(t) => Global::pointer_type(t.as_llvm_type()),
-            Type::Any => Global::struct_type(vec![
-                Global::i32_type(),
-                Global::pointer_type(Global::i8_type()),
-            ]),
+            Type::Any => Global::struct_type(
+                "Any".into(),
+                vec![
+                    ("id".into(), Global::i32_type()),
+                    ("data".into(), Global::pointer_type(Global::i8_type())),
+                ],
+            ),
             _ => panic!("Unknown type: {:?}", self),
         }
     }

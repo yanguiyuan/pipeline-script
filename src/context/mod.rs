@@ -4,12 +4,12 @@ use crate::ast::type_alias::TypeAlias;
 use crate::context::key::ContextKey;
 use crate::context::scope::Scope;
 use crate::context::value::ContextValue;
-use crate::core::value::Value;
 use crate::llvm::builder::Builder;
 use crate::llvm::context::LLVMContext;
-use crate::llvm::function::Function;
 use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
+use crate::llvm::value::fucntion::FunctionValue;
+use crate::llvm::value::LLVMValue;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -96,7 +96,7 @@ impl Context {
             _ => panic!("not a builder"),
         }
     }
-    pub fn get_current_function(&self) -> Function {
+    pub fn get_current_function(&self) -> FunctionValue {
         match self.get(ContextKey::Function) {
             Some(ContextValue::Function(b)) => b.clone(),
             _ => panic!("not a function"),
@@ -132,7 +132,7 @@ impl Context {
             value: ContextValue::LLVMModule(Rc::new(RwLock::new(module))),
         }
     }
-    pub fn with_function(parent: &Context, f: Function) -> Self {
+    pub fn with_function(parent: &Context, f: FunctionValue) -> Self {
         Self::with_value(parent, ContextKey::Function, ContextValue::Function(f))
     }
     pub fn with_flag(parent: &Context, key: impl Into<String>, flag: bool) -> Self {
@@ -226,12 +226,12 @@ impl Context {
             _ => panic!("not a scope"),
         }
     }
-    pub fn set_symbol(&self, name: String, v: Value) {
+    pub fn set_symbol(&self, name: String, v: LLVMValue) {
         let symbol_table = self.get(ContextKey::SymbolTable).unwrap().as_symbol_table();
         let mut symbol_table = symbol_table.lock().unwrap();
         symbol_table.insert(name, v);
     }
-    pub fn get_symbol(&self, name: impl AsRef<str>) -> Option<Value> {
+    pub fn get_symbol(&self, name: impl AsRef<str>) -> Option<LLVMValue> {
         let symbol_table = self.get(ContextKey::SymbolTable).unwrap().as_symbol_table();
         let symbol_table = symbol_table.lock().unwrap();
         symbol_table.get(name.as_ref()).cloned()

@@ -1,11 +1,11 @@
-use crate::core::value::Value;
+use crate::llvm::value::LLVMValue;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::RwLock;
 
 #[derive(Clone, Debug)]
 pub struct Scope {
-    symbol_table: Rc<RwLock<HashMap<String, Value>>>,
+    symbol_table: Rc<RwLock<HashMap<String, LLVMValue>>>,
 }
 impl Default for Scope {
     fn default() -> Self {
@@ -19,7 +19,7 @@ impl Scope {
             symbol_table: Rc::new(RwLock::new(HashMap::new())),
         }
     }
-    pub fn set(&self, name: impl Into<String>, value: Value) {
+    pub fn set(&self, name: impl Into<String>, value: LLVMValue) {
         let mut symbol_table = self.symbol_table.write().unwrap();
         symbol_table.insert(name.into(), value);
     }
@@ -27,7 +27,7 @@ impl Scope {
         let symbol_table = self.symbol_table.read().unwrap();
         symbol_table.contains_key(name.as_ref())
     }
-    pub fn get(&self, name: impl AsRef<str>) -> Option<Value> {
+    pub fn get(&self, name: impl AsRef<str>) -> Option<LLVMValue> {
         let symbol_table = self.symbol_table.read().unwrap();
         symbol_table.get(name.as_ref()).cloned()
     }

@@ -1,11 +1,13 @@
 use crate::llvm::builder::Builder;
 use crate::llvm::types::LLVMType;
+use crate::llvm::value::bool::BoolValue;
+use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
-    LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString, LLVMConstStruct,
-    LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMGetUndef,
-    LLVMInt16Type, LLVMInt1Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType,
-    LLVMSizeOf, LLVMStructType, LLVMVoidType,
+    LLVMArrayType2, LLVMConstArray2, LLVMConstInt, LLVMConstReal, LLVMConstString,
+    LLVMCreateBuilder, LLVMDoubleType, LLVMFloatType, LLVMFunctionType, LLVMInt16Type,
+    LLVMInt1Type, LLVMInt32Type, LLVMInt64Type, LLVMInt8Type, LLVMPointerType, LLVMSizeOf,
+    LLVMStructType, LLVMVoidType,
 };
 use llvm_sys::prelude::{LLVMTypeRef, LLVMValueRef};
 use std::ffi::{c_uint, CString};
@@ -41,29 +43,29 @@ impl Global {
         let v = unsafe { LLVMConstReal(LLVMFloatType(), value as f64) };
         LLVMValue::Float(v)
     }
-    pub fn const_i8(value: i8) -> LLVMValue {
+    pub fn const_i8(value: i8) -> Int8Value {
         let v = unsafe { LLVMConstInt(LLVMInt8Type(), value as u64, 0) };
-        LLVMValue::Int8(v)
+        Int8Value::new(v)
     }
     #[allow(unused)]
-    pub fn const_bool(value: bool) -> LLVMValue {
+    pub fn const_bool(value: bool) -> BoolValue {
         let v = unsafe { LLVMConstInt(LLVMInt1Type(), value as u64, 0) };
-        LLVMValue::Bool(v)
+        BoolValue::new(v)
     }
     pub fn sizeof(ty: LLVMType) -> LLVMValue {
         unsafe { LLVMSizeOf(ty.as_llvm_type_ref()) }.into()
     }
-    pub fn const_i16(value: i16) -> LLVMValue {
+    pub fn const_i16(value: i16) -> Int16Value {
         let v = unsafe { LLVMConstInt(LLVMInt16Type(), value as u64, 0) };
-        LLVMValue::Int16(v)
+        Int16Value::new(v)
     }
-    pub fn const_i32(value: i32) -> LLVMValue {
+    pub fn const_i32(value: i32) -> Int32Value {
         let v = unsafe { LLVMConstInt(LLVMInt32Type(), value as u64, 0) };
-        LLVMValue::Int32(v)
+        Int32Value::new(v)
     }
-    pub fn const_i64(value: i64) -> LLVMValue {
+    pub fn const_i64(value: i64) -> Int64Value {
         let v = unsafe { LLVMConstInt(LLVMInt64Type(), value as u64, 0) };
-        LLVMValue::Int64(v)
+        Int64Value::new(v)
     }
     pub fn i8_type() -> LLVMType {
         let t = unsafe { LLVMInt8Type() };
@@ -85,27 +87,27 @@ impl Global {
         let t = unsafe { LLVMInt64Type() };
         LLVMType::Int64(t)
     }
-    pub fn struct_type(element_type: Vec<LLVMType>) -> LLVMType {
+    pub fn struct_type(name: String, element_type: Vec<(String, LLVMType)>) -> LLVMType {
         let mut t = element_type
             .iter()
-            .map(|t| t.as_llvm_type_ref())
+            .map(|t| t.1.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe { LLVMStructType(t.as_mut_ptr(), element_type.len() as c_uint, 0) };
-        LLVMType::Struct(element_type, t)
+        LLVMType::Struct(name, element_type, t)
     }
-    #[allow(unused)]
-    pub fn const_struct(element_type: Vec<LLVMValue>) -> LLVMValue {
-        let mut t = element_type
-            .iter()
-            .map(|t| t.as_llvm_value_ref())
-            .collect::<Vec<LLVMValueRef>>();
-        let t = unsafe { LLVMConstStruct(t.as_mut_ptr(), element_type.len() as c_uint, 0) };
-        LLVMValue::Struct(t)
-    }
-    pub fn undef(ty: LLVMType) -> LLVMValue {
-        let t = unsafe { LLVMGetUndef(ty.as_llvm_type_ref()) };
-        LLVMValue::Undef(t)
-    }
+    // #[allow(unused)]
+    // pub fn const_struct(element_type: Vec<LLVMValue>) -> LLVMValue {
+    //     let mut t = element_type
+    //         .iter()
+    //         .map(|t| t.as_llvm_value_ref())
+    //         .collect::<Vec<LLVMValueRef>>();
+    //     let t = unsafe { LLVMConstStruct(t.as_mut_ptr(), element_type.len() as c_uint, 0) };
+    //     LLVMValue::Struct(t)
+    // }
+    // pub fn undef(ty: LLVMType) -> LLVMValue {
+    //     let t = unsafe { LLVMGetUndef(ty.as_llvm_type_ref()) };
+    //     LLVMValue::Undef(t)
+    // }
     #[allow(unused)]
     pub fn array_type(element_type: LLVMType) -> LLVMType {
         let t = unsafe { LLVMArrayType2(element_type.as_llvm_type_ref(), 2) };

@@ -1,5 +1,4 @@
 mod expr;
-mod helper;
 mod stmt;
 mod r#type;
 
@@ -12,6 +11,7 @@ use crate::llvm::global::Global;
 use crate::llvm::module::LLVMModule;
 
 use crate::ast::module::Module;
+use crate::llvm::value::fucntion::FunctionValue;
 
 pub struct Compiler {
     module: Module,
@@ -74,18 +74,32 @@ impl Compiler {
             let return_type0 = item.return_type();
             let return_type = self.get_type(&ctx, return_type0);
             if is_var_arg {
-                t = Global::function_type_with_var_arg(return_type, arg_types);
+                t = Global::function_type_with_var_arg(return_type.clone(), arg_types);
             } else {
-                t = Global::function_type(return_type, arg_types);
+                t = Global::function_type(return_type.clone(), arg_types);
             }
-            if item.is_extern {
-                self.llvm_module.register_extern_function(name, t);
+            let f = if item.is_extern {
+                self.llvm_module.register_extern_function(name, t)
             } else {
                 let args = item.args();
                 let param_names: Vec<String> =
                     args.iter().map(|arg| arg.name()).collect::<Vec<_>>();
-                self.llvm_module.register_function(name, t, param_names);
-            }
+                self.llvm_module.register_function(name, t, param_names)
+            };
+            let function_value = FunctionValue::new(
+                f.get_function_ref(),
+                name.clone(),
+                Box::new(return_type.get_undef()),
+                args.iter()
+                    .map(|arg| {
+                        (
+                            arg.name().clone(),
+                            arg.r#type().unwrap().as_llvm_type().get_undef(),
+                        )
+                    })
+                    .collect(),
+            );
+            ctx.set_symbol(name.clone(), function_value.into());
         }
 
         let builder = Global::create_builder();
@@ -95,7 +109,7 @@ impl Compiler {
             if item.is_extern || item.is_template {
                 continue;
             }
-            let function = self.llvm_module.get_function(name).unwrap();
+            let function = ctx.get_symbol(name).unwrap().as_function().unwrap();
             let entry = function.append_basic_block("entry");
             let builder = ctx.get_builder();
             builder.position_at_end(entry);
@@ -123,7 +137,13 @@ impl Compiler {
         let entry = main.append_basic_block("entry");
         let builder = ctx.get_builder();
         builder.position_at_end(entry);
-        let ctx = Context::with_function(&ctx, main);
+        let function_value = FunctionValue::new(
+            main.get_function_ref(),
+            "$Module.main".into(),
+            Box::new(Global::unit_type().get_undef()),
+            vec![],
+        );
+        let ctx = Context::with_function(&ctx, function_value);
         let ctx = Context::with_scope(&ctx, Scope::new());
         let ctx = Context::with_flag(&ctx, "return", false);
         for stmt in block.iter() {

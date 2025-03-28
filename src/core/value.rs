@@ -1,5 +1,5 @@
-use crate::llvm::value::LLVMValue;
 use crate::ast::r#type::Type;
+use crate::llvm::value::LLVMValue;
 
 #[derive(Debug, Clone)]
 pub struct Value {
@@ -11,7 +11,7 @@ impl Value {
         Value { value, ty }
     }
     pub fn get_value(&self) -> LLVMValue {
-        self.value
+        self.value.clone()
     }
     pub fn get_type(&self) -> Type {
         self.ty.clone()
