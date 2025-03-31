@@ -108,7 +108,12 @@ impl Engine {
 
         //编译
         let llvm_module = compiler.compile(&ctx);
+        llvm_module.verify_with_debug_info();
         llvm_module.dump();
+        // match llvm_module.to_assembly("x86_64-pc-windows-msvc"){
+        //     Ok(s)=>println!("=====assembly=====>\n{}",s),
+        //     Err(e)=>println!("{}",e)
+        // }
         let executor = llvm_module.create_executor().unwrap();
         for (name, f) in &self.function_map {
             let func = llvm_module.get_function(name).unwrap();

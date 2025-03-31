@@ -22,6 +22,7 @@ impl TypePostprocessor {
         fc: &FunctionCall,
         ctx: &Context,
     ) -> (String, Vec<Argument>, Option<Type>) {
+        dbg!(fc);
         let mut fc_name = fc.name.clone();
 
         let mut fc_args = fc.args.clone();
@@ -44,6 +45,7 @@ impl TypePostprocessor {
                     fc_args.remove(0);
                     fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
                 } else {
+                    dbg!(&this_type);
                     let this_type_name = this_type
                         .get_composite_type_name()
                         .expect("Failed to get composite type name");

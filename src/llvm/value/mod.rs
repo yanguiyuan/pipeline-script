@@ -1,3 +1,4 @@
+pub mod array;
 pub mod bool;
 pub mod fucntion;
 pub mod int;
@@ -7,6 +8,7 @@ pub mod pstruct;
 pub mod reference;
 
 use crate::llvm::types::LLVMType;
+use crate::llvm::value::array::ArrayValue;
 use crate::llvm::value::bool::BoolValue;
 use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
@@ -15,7 +17,7 @@ use crate::llvm::value::pointer::PointerValue;
 use crate::llvm::value::pstruct::StructValue;
 use crate::llvm::value::reference::ReferenceValue;
 use llvm_sys::core::{
-    LLVMConstString, LLVMGetElementType, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMTypeOf,
+    LLVMConstString, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMGetUndef, LLVMTypeOf, LLVMVoidType,
 };
 use llvm_sys::prelude::LLVMValueRef;
 use llvm_sys::LLVMTypeKind;
@@ -32,7 +34,7 @@ pub enum LLVMValue {
     Float(LLVMValueRef),
     Double(LLVMValueRef),
     Pointer(PointerValue),
-    Array(LLVMValueRef),
+    Array(ArrayValue),
     Struct(StructValue),
     // Undef(LLVMValueRef),
     Function(FunctionValue),
@@ -73,7 +75,7 @@ impl From<LLVMValueRef> for LLVMValue {
                 // LLVMTypeKind::LLVMPointerTypeKind => {
                 //     LLVMValue::Pointer(PointerValue::new(value, LLVMValue::Undef(value)))
                 // }
-                LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
+                // LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
                 LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(value),
                 LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
                 // LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(StructValue::new(value, UNNAMED.into(), HashMap::new(), ty)),
@@ -89,36 +91,40 @@ impl From<LLVMValueRef> for LLVMValue {
 impl LLVMValue {
     pub fn id(&self) -> i32 {
         match self {
-            LLVMValue::String(_) => 0,
+            LLVMValue::Unit => 0,
             LLVMValue::Bool(_) => 1,
             LLVMValue::Int8(_) => 3,
-            LLVMValue::Int32(_) => 5,
-            LLVMValue::Int64(_) => 7,
-            LLVMValue::Float(_) => 9,
-            LLVMValue::Double(_) => 11,
-            LLVMValue::Unit => 0,
+            LLVMValue::Int16(_) => 5,
+            LLVMValue::Int32(_) => 7,
+            LLVMValue::Int64(_) => 9,
+            LLVMValue::Float(_) => 11,
+            LLVMValue::Double(_) => 13,
+            LLVMValue::String(_) => 15,
             t => {
                 panic!("Unknown type: {:?}", t)
             }
         }
     }
     pub fn as_llvm_value_ref(&self) -> LLVMValueRef {
-        match self {
-            LLVMValue::String(i) => *i,
-            LLVMValue::Float(i) => *i,
-            LLVMValue::Double(i) => *i,
-            LLVMValue::Int64(i) => i.get_reference(),
-            LLVMValue::Int32(i) => i.get_reference(),
-            LLVMValue::Int16(i) => i.get_reference(),
-            LLVMValue::Int8(i) => i.get_reference(),
-            LLVMValue::Bool(i) => i.get_reference(),
-            LLVMValue::Pointer(i) => i.get_reference(),
-            LLVMValue::Array(i) => *i,
-            LLVMValue::Struct(i) => i.get_reference(),
-            // LLVMValue::Undef(i) => *i,
-            // LLVMValue::Unit => Global::undef(Global::unit_type()).as_llvm_value_ref(),
-            t => {
-                panic!("Unknown type: {:?}", t)
+        unsafe {
+            match self {
+                LLVMValue::String(i) => *i,
+                LLVMValue::Float(i) => *i,
+                LLVMValue::Double(i) => *i,
+                LLVMValue::Int64(i) => i.get_reference(),
+                LLVMValue::Int32(i) => i.get_reference(),
+                LLVMValue::Int16(i) => i.get_reference(),
+                LLVMValue::Int8(i) => i.get_reference(),
+                LLVMValue::Bool(i) => i.get_reference(),
+                LLVMValue::Pointer(i) => i.get_reference(),
+                LLVMValue::Array(i) => i.get_reference(),
+                LLVMValue::Struct(i) => i.get_reference(),
+                LLVMValue::Reference(i) => i.get_reference(),
+                // LLVMValue::Undef(i) => *i,
+                LLVMValue::Unit => LLVMGetUndef(LLVMVoidType()),
+                t => {
+                    panic!("Unknown type: {:?}", t)
+                }
             }
         }
     }
@@ -131,6 +137,12 @@ impl LLVMValue {
     pub fn as_reference(&self) -> Option<&ReferenceValue> {
         match self {
             LLVMValue::Reference(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn as_array(&self) -> Option<&ArrayValue> {
+        match self {
+            LLVMValue::Array(v) => Some(v),
             _ => None,
         }
     }
@@ -161,21 +173,21 @@ impl LLVMValue {
     pub fn is_pointer(&self) -> bool {
         matches!(self, LLVMValue::Pointer(_))
     }
-    pub fn get_type(&self) -> LLVMType {
+    pub fn get_llvm_type(&self) -> LLVMType {
         let ty = unsafe { LLVMTypeOf(self.as_llvm_value_ref()) };
         match self {
             LLVMValue::Bool(_) => LLVMType::Int1(ty),
             LLVMValue::Int8(_) => LLVMType::Int8(ty),
+            LLVMValue::Int16(_) => LLVMType::Int16(ty),
             LLVMValue::Int32(_) => LLVMType::Int32(ty),
             LLVMValue::Int64(_) => LLVMType::Int64(ty),
             LLVMValue::Float(_) => LLVMType::Float(ty),
             LLVMValue::Double(_) => LLVMType::Double(ty),
-            // LLVMValue::Pointer(_) => LLVMType::Pointer(Box::new(ty)),
-            LLVMValue::Array(_) => {
-                let element_type = unsafe { LLVMGetElementType(ty) };
-                LLVMType::Array(Box::new(LLVMType::from(element_type)), ty)
-            }
-            // LLVMValue::Struct(_)=>LLVMType::Struct(ty),
+            LLVMValue::Pointer(pointer_value) => pointer_value.get_llvm_type(),
+            LLVMValue::Array(array) => LLVMType::Array(Box::new(array.get_element_type()), ty),
+            LLVMValue::Struct(struct_value) => struct_value.get_llvm_type(),
+            LLVMValue::Unit => LLVMType::Unit(ty),
+            LLVMValue::String(_) => LLVMType::String(ty),
             t => panic!("{t:?}"),
         }
     }

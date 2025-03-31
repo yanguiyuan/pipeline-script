@@ -12,32 +12,36 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat: 初次保存">
-      <change afterPath="$PROJECT_DIR$/src/llvm/value/bool.rs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/llvm/value/fucntion.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/llvm/value/array.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/core.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/core.ppl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ast/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/stmt.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/struct.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/struct.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ast/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/type.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/helper.rs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/stmt.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/key.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/key.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/scope.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/scope.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/context/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/value.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/value.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/builtin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/llvm/context.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/context.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/global.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/global.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/module.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/module.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/value/fucntion.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/fucntion.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/pointer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/pointer.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/pstruct.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/pstruct.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/reference.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/reference.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plugin/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/builtin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/ptype.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/ptype.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -295,6 +299,8 @@
       <workItem from="1743089458020" duration="467000" />
       <workItem from="1743090276559" duration="1028000" />
       <workItem from="1743172973578" duration="514000" />
+      <workItem from="1743320887366" duration="461000" />
+      <workItem from="1743328856396" duration="20256000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -502,11 +508,6 @@
           <url>file://$PROJECT_DIR$/src/ast/module.rs</url>
           <line>49</line>
           <option name="timeStamp" value="6" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/compiler/mod.rs</url>
-          <line>156</line>
-          <option name="timeStamp" value="8" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

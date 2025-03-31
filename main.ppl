@@ -1,7 +1,7 @@
 import core
 extern fn malloc(size: Int64) -> Pointer<Unit>
 extern fn sizeof<T>() -> Int64
-
+/*
 struct Vec<T> {
     data: Pointer<T>,
     len: Int64,
@@ -30,3 +30,21 @@ v.push(10)
 const b = v.get(0)
 const x = b.unwrap()
 println(x)
+*/
+
+struct Person{
+    name: String,
+    age: Age,
+}
+fn Person.new(name: String,age: Age) -> Person{
+    return Person{
+        name: name,
+        age: age
+    }
+}
+struct Age{
+   value: Int64,
+}
+let p = Person.new("Alice",Age{value: 10})
+println(p.name)
+println(p.age.value)

@@ -20,7 +20,7 @@ impl Compiler {
                 self.ctx.create_named_struct_type("Any", v)
             }
             Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
-            Type::String => Global::pointer_type(Global::i8_type()),
+            Type::String => Global::string_type(),
             Type::Enum(name, variants) => {
                 // 枚举类型编译为包含标签和数据的结构体
                 // 标签是一个整数，表示枚举变体的索引

@@ -8,4 +8,4 @@ pub mod types;
 pub mod value;
 
 // UNNAMED 无名称的静态变量
-pub static UNNAMED: &str = "";
+// pub static UNNAMED: *mut c_char = "" as *mut c_char;

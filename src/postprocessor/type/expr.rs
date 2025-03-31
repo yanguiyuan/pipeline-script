@@ -86,7 +86,7 @@ impl TypePostprocessor {
                 let l = self.process_expr(&l, ctx);
                 let r = self.process_expr(&r, ctx);
                 // 获取左右操作数的类型
-                let l_type = l.get_type().unwrap();
+                let mut l_type = l.get_type().unwrap();
                 let mut r_type = r.get_type().unwrap();
 
                 // 如果类型相同，直接返回
@@ -98,6 +98,10 @@ impl TypePostprocessor {
                 // 处理数值类型之间的转换
                 if r_type.is_ref() {
                     r_type = r_type.get_element_type().unwrap().clone();
+                }
+                // 处理数值类型之间的转换
+                if l_type.is_ref() {
+                    l_type = l_type.get_element_type().unwrap().clone();
                 }
                 if l_type.is_integer() && r_type.is_integer() {
                     // 整数类型间的转换 - 选择更大的类型
@@ -147,6 +151,7 @@ impl TypePostprocessor {
             }
             Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
+                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name);
                 let ty = ty.unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
@@ -179,7 +184,7 @@ impl TypePostprocessor {
                         .iter()
                         .map(|(name, v)| {
                             let mut field_type = struct_val.get_field_type(name).unwrap().clone();
-                            field_type.try_replace_alias(&gm); // 在内部作用域使用gm
+                            field_type = Self::process_type(&field_type, ctx);
                             (name.clone(), (field_type, v.clone()))
                         })
                         .collect::<Vec<_>>();
@@ -264,7 +269,11 @@ impl TypePostprocessor {
                 // 获取元素类型（从上下文或默认为Int64）
                 let element_type = match ctx.get(ContextKey::Type("default".into())) {
                     Some(ContextValue::Type(ty)) => ty.get_element_type().unwrap().clone(),
-                    _ => Type::Int64,
+                    _ => {
+                        let first = v0.first().unwrap();
+                        let first = self.process_expr(first, ctx);
+                        first.get_type().unwrap()
+                    }
                 };
 
                 // 使用带有正确元素类型的上下文处理数组元素
@@ -281,12 +290,16 @@ impl TypePostprocessor {
             Expr::Index(target, index) => {
                 let target = self.process_expr(&target, ctx);
                 let index = self.process_expr(&index, ctx);
-                let ty = target.get_type().unwrap();
+                let mut ty = target.get_type().unwrap();
+                if ty.is_ref() {
+                    ty = ty.unwrap_ref();
+                }
                 let ty = ty.get_element_type().unwrap();
                 ExprNode::new(Expr::Index(Box::new(target), Box::new(index))).with_type(ty.clone())
             }
             Expr::Member(target, name) => {
                 let target = self.process_expr(&target, ctx);
+                dbg!(&target);
                 let mut ty = target.get_type().unwrap();
                 if ty.is_ref() {
                     ty = ty.unwrap_ref();
@@ -300,6 +313,8 @@ impl TypePostprocessor {
                 let ty = if ty.is_array() && name == "length" {
                     Type::Int64
                 } else {
+                    dbg!(&ty);
+                    dbg!(&name);
                     ty.get_struct_field(name.clone()).unwrap().1.clone()
                 };
                 ExprNode::new(Expr::Member(Box::new(target), name.clone())).with_type(ty)

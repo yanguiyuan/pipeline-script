@@ -121,6 +121,9 @@ impl Stmt {
             _ => false,
         }
     }
+    pub fn is_break(&self) -> bool {
+        matches!(self, Stmt::Break)
+    }
     pub fn is_closure_decl(&self) -> bool {
         match &self {
             Stmt::ValDecl(v) => v.is_closure,

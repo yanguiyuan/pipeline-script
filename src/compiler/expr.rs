@@ -28,7 +28,8 @@ impl Compiler {
                 let val = self.compile_expr(expr, ctx);
                 let element_ty = ty0.get_element_type().unwrap();
                 let ptr = builder.build_alloca("", &self.compile_type(element_ty));
-                builder.build_store(ptr.clone(), val);
+                ptr.as_reference().unwrap().store(ctx, val);
+                // builder.build_store(ptr.clone(), val);
                 ptr
             }
             Expr::FnCall(ref fc) => self.compile_fn_call(fc, ctx),
@@ -61,7 +62,7 @@ impl Compiler {
             Expr::Binary(op, l, r) => self.compile_binary_op(op, l, r, ctx),
             Expr::Variable(name) => self.compile_variable(name, ctx),
             Expr::Array(v) => self.compile_array(v, &ty0, ctx),
-            Expr::Index(target, index) => self.compile_index(target, index, &ty0, ctx),
+            Expr::Index(target, index) => self.compile_index(target, index, ctx),
             Expr::Struct(s) => LLVMValue::Struct(self.compile_struct(s, &ty0, ctx)),
             Expr::Member(target, field_name) => self.compile_member(target, field_name, ctx),
             Expr::Address(target) => self.compile_expr_with_ptr(target, ctx),
@@ -96,7 +97,7 @@ impl Compiler {
 
     fn compile_member_ptr(&self, target: &ExprNode, field_name: &str, ctx: &Context) -> LLVMValue {
         let v = self.compile_expr_with_ptr(target, ctx);
-        let element = v.as_reference().unwrap().get_value();
+        let element = v.as_reference().unwrap().get_value(ctx);
         if element.is_pointer() {
             return element
                 .as_pointer()
@@ -159,15 +160,13 @@ impl Compiler {
     fn compile_variable(&self, name: &str, ctx: &Context) -> LLVMValue {
         // 2. 检查函数参数
         if let Some(v) = ctx.get_current_function().get_param(name) {
-            dbg!(&v);
             return v;
         }
 
         // 3. 查找全局符号或函数
         let ptr = ctx.get_symbol(name).unwrap();
-        dbg!(&ptr);
         if ptr.is_reference() {
-            return ptr.as_reference().unwrap().get_value();
+            return ptr.as_reference().unwrap().get_value(ctx);
         }
         ptr
     }
@@ -178,7 +177,7 @@ impl Compiler {
             Type::Int16 => Global::const_i16(i as i16).into(),
             Type::Int32 => Global::const_i32(i as i32).into(),
             Type::Int64 => Global::const_i64(i).into(),
-            _ => panic!("Unknown type for int literal: {:?}", ty0),
+            _ => Global::const_i64(i).into(),
         }
     }
 
@@ -218,17 +217,12 @@ impl Compiler {
         builder.build_array(ty, llvm_args)
     }
 
-    fn compile_index(
-        &self,
-        target: &ExprNode,
-        index: &ExprNode,
-        ty0: &Type,
-        ctx: &Context,
-    ) -> LLVMValue {
+    fn compile_index(&self, target: &ExprNode, index: &ExprNode, ctx: &Context) -> LLVMValue {
         let v = self.compile_expr(target, ctx);
+        let element_type = v.as_array().unwrap().get_element_type();
         let index = self.compile_expr(index, ctx);
         let builder = ctx.get_builder();
-        let v = builder.build_array_get_in_bounds(self.compile_type(ty0), v, index);
+        let v = builder.build_array_get_in_bounds(element_type, v, index);
         v
     }
 
@@ -279,12 +273,12 @@ impl Compiler {
             v = v.as_pointer().unwrap().get_element();
         }
         if v.is_reference() {
-            v = v.as_reference().unwrap().get_value();
+            v = v.as_reference().unwrap().get_value(ctx);
         }
         if v.is_struct() {
             v.as_struct().unwrap().get_field(field_name)
         } else {
-            panic!("成员访问的类型不是结构体: {:?}", v.get_type());
+            panic!("成员访问的类型不是结构体: {:?}", v.get_llvm_type());
         }
     }
 
@@ -351,17 +345,16 @@ impl Compiler {
         let param_name_to_index = self.build_param_index_map(func_args);
         let mut arg_values =
             self.process_function_args(fc, args, &param_name_to_index, &function_decl, ctx);
-        // 处理闭包和符号类型
-        let symbol_type = ctx.get_symbol(&name);
-        if let Some(symbol) = symbol_type {
-            return symbol.as_function().unwrap().call(ctx, arg_values);
-        }
-
         // 处理特殊内建函数
         if let Some(result) =
             self.handle_builtin_functions(&name, &fc.generics, &mut arg_values, ctx)
         {
             return result;
+        }
+        // 处理闭包和符号类型
+        let symbol_type = ctx.get_symbol(&name);
+        if let Some(symbol) = symbol_type {
+            return symbol.as_function().unwrap().call(ctx, arg_values);
         }
 
         // 处理函数指针调用
@@ -501,7 +494,7 @@ impl Compiler {
         let builder = ctx.get_builder();
         let mut val = v;
         if val.is_reference() {
-            val = val.as_reference().unwrap().get_value();
+            val = val.as_reference().unwrap().get_value(ctx);
         }
 
         let ty = self.get_type(ctx, t);
@@ -517,7 +510,8 @@ impl Compiler {
         let any_struct =
             builder.build_struct_insert(any_struct, 0, &Global::const_i32(val.id()).into());
         let any_struct = builder.build_struct_insert(any_struct, 1, &val);
-        builder.build_store(a.clone(), any_struct);
+        a.as_reference().unwrap().store(ctx, any_struct);
+        // builder.build_store(a.clone(), any_struct);
         a
     }
 
@@ -531,6 +525,11 @@ impl Compiler {
         let builder = ctx.get_builder();
 
         match name {
+            "int16" => {
+                let val = arg_values.first().unwrap().as_ref().unwrap().clone();
+                let v = builder.build_zext(val, Global::i16_type());
+                Some(v)
+            }
             "int32" => {
                 let val = arg_values.first().unwrap().as_ref().unwrap().clone();
                 let v = builder.build_zext(val, Global::i32_type());
@@ -589,7 +588,7 @@ impl Compiler {
 
     fn compile_add(&self, l: LLVMValue, r: LLVMValue, ctx: &Context) -> LLVMValue {
         let builder = ctx.get_builder();
-        let ty = l.get_type();
+        let ty = l.get_llvm_type();
         if ty.is_float() {
             return builder.build_fadd(l, r);
         }

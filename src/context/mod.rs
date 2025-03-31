@@ -10,6 +10,7 @@ use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::LLVMValue;
+use llvm_sys::prelude::LLVMBasicBlockRef;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -349,5 +350,19 @@ impl Context {
         }
 
         None
+    }
+    pub fn with_loop_block(parent: &Context, name: String, block: LLVMBasicBlockRef) -> Self {
+        Self::with_value(
+            parent,
+            ContextKey::LoopBlock(name),
+            ContextValue::LoopBlock(block),
+        )
+    }
+
+    pub fn get_loop_block(&self, name: &str) -> Option<LLVMBasicBlockRef> {
+        match self.get(ContextKey::LoopBlock(name.to_string())) {
+            Some(ContextValue::LoopBlock(block)) => Some(*block),
+            _ => None,
+        }
     }
 }

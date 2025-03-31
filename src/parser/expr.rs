@@ -56,9 +56,9 @@ impl Parser {
                             }))
                             .with_position(pos));
                         }
-                        Token::Less => {
-                            generics = self.parse_generic_list()?;
-                        }
+                        // Token::Less => {
+                        //     generics = self.parse_generic_list()?;
+                        // }
                         Token::ParenLeft => {
                             // 解析结构体构造
                             let p0 = self.parse_special_token(Token::ParenLeft)?;
@@ -195,15 +195,21 @@ impl Parser {
                     expr.get_member_root().get_variable_name().unwrap(),
                     name
                 );
+                let mut is_method = false;
                 let function = ctx.get_function(&new_name);
-                if function.is_some() && function.unwrap().self_type().is_none() {
-                    name = new_name;
+                if let Some(function) = function {
+                    if function.self_type().is_none() {
+                        name = new_name;
+                    } else {
+                        args.insert(0, Argument::new(expr.get_member_root()));
+                        is_method = true;
+                    }
                 }
-                args.insert(0, Argument::new(expr.get_member_root()));
+
                 Ok(ExprNode::from(Expr::FnCall(FunctionCall {
                     name,
                     generics: vec![],
-                    is_method: true,
+                    is_method,
                     args,
                     type_generics: vec![],
                 }))

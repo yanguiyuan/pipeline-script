@@ -4,7 +4,6 @@ use crate::ast::stmt::{MatchBranch, Stmt, StmtNode};
 use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::llvm::global::Global;
-use crate::llvm::value::reference::ReferenceValue;
 use crate::llvm::value::LLVMValue;
 use llvm_sys::prelude::LLVMBasicBlockRef;
 
@@ -38,15 +37,16 @@ impl Compiler {
                 let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
                 let default_expr = val.get_default().unwrap();
                 let default_value = self.compile_expr(default_expr, ctx);
-                let result = ReferenceValue::new(alloc.as_llvm_value_ref(), default_value.clone());
-                builder.build_store(alloc.clone(), default_value);
+                let result = alloc.as_reference().unwrap();
+                result.store(ctx, default_value);
+                // builder.build_store(alloc.clone(), default_value);
 
-                ctx.set_symbol(val.name(), LLVMValue::Reference(result));
+                ctx.set_symbol(val.name(), alloc);
             }
             Stmt::Assign(lhs, rhs) => {
                 let lhs = self.compile_expr_with_ptr(lhs, ctx);
                 let rhs = self.compile_expr(rhs, ctx);
-                builder.build_store(lhs, rhs);
+                lhs.as_reference().unwrap().store(ctx, rhs);
             }
             Stmt::If(if_stmt) => {
                 let branches = if_stmt.get_branches();
@@ -61,10 +61,11 @@ impl Compiler {
                     builder.build_cond_br(condition, then_bb, else_bb);
                     builder.position_at_end(then_bb);
                     let body = i.get_body();
+                    let ctx = Context::with_flag(ctx, "break", false);
                     for i in body {
-                        self.compile_stmt(i, ctx)
+                        self.compile_stmt(i, &ctx)
                     }
-                    if !ctx.get_flag("return").unwrap() {
+                    if !ctx.get_flag("return").unwrap() && !ctx.get_flag("break").unwrap() {
                         builder.build_br(merge_bb);
                     }
                     builder.position_at_end(else_bb);
@@ -89,10 +90,15 @@ impl Compiler {
                 let cond = self.compile_expr(condition, ctx);
                 builder.build_cond_br(cond, while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
+                // 创建新的上下文，包含循环的基本块
+                let ctx = Context::with_loop_block(ctx, "while_exit".to_string(), while_exit_bb);
+                let ctx = Context::with_flag(&ctx, "break", false);
                 for i in body {
-                    self.compile_stmt(i, ctx);
+                    self.compile_stmt(i, &ctx);
                 }
-                builder.build_br(while_cond_bb);
+                if !ctx.get_flag("break").unwrap() {
+                    builder.build_br(while_cond_bb);
+                }
                 builder.position_at_end(while_exit_bb)
             }
             Stmt::ForIn(_, expr, body) => {
@@ -105,8 +111,10 @@ impl Compiler {
                 let cond = self.compile_expr(expr, ctx);
                 builder.build_cond_br(cond, while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
+                // 创建新的上下文，包含循环的基本块
+                let ctx = Context::with_loop_block(ctx, "while_exit".to_string(), while_exit_bb);
                 for i in body {
-                    self.compile_stmt(i, ctx);
+                    self.compile_stmt(i, &ctx);
                 }
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_exit_bb)
@@ -120,6 +128,14 @@ impl Compiler {
             }
             Stmt::IfConst(pattern, expr, body, else_body) => {
                 self.compile_if_const_statement(pattern, expr, body, else_body, ctx);
+            }
+            Stmt::Break => {
+                let builder = ctx.get_builder();
+                // 获取最近的循环退出基本块
+                if let Some(while_exit_bb) = ctx.get_loop_block("while_exit") {
+                    builder.build_br(while_exit_bb);
+                    ctx.set_flag("break", true);
+                }
             }
             _ => todo!("compile stmt"),
         }
@@ -278,7 +294,7 @@ impl Compiler {
             let tag = value
                 .as_reference()
                 .unwrap()
-                .get_value()
+                .get_value(ctx)
                 .as_enum_variant()
                 .unwrap()
                 .get_tag();

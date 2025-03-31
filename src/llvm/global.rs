@@ -1,5 +1,6 @@
 use crate::llvm::builder::Builder;
 use crate::llvm::types::LLVMType;
+use crate::llvm::value::array::ArrayValue;
 use crate::llvm::value::bool::BoolValue;
 use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
 use crate::llvm::value::LLVMValue;
@@ -18,7 +19,7 @@ impl Global {
     #[allow(unused)]
     pub fn const_array(array: &[LLVMValue]) -> LLVMValue {
         // 获取类型
-        let ty = array[0].get_type();
+        let ty = array[0].get_llvm_type();
         // 转换成LLVMValueRef
         let mut llvm_values: Vec<LLVMValueRef> =
             array.iter().map(|v| v.as_llvm_value_ref()).collect();
@@ -29,7 +30,7 @@ impl Global {
                 llvm_values.len() as u64,
             )
         };
-        LLVMValue::Array(a)
+        LLVMValue::Array(ArrayValue::new(a, ty, array.len()))
     }
     pub fn const_unit() -> LLVMValue {
         LLVMValue::Unit
@@ -163,6 +164,10 @@ impl Global {
     pub fn pointer_type(element_type: LLVMType) -> LLVMType {
         let t = unsafe { LLVMPointerType(element_type.as_llvm_type_ref(), 0) };
         LLVMType::Pointer(Box::new(element_type), t)
+    }
+    pub fn string_type() -> LLVMType {
+        let t = unsafe { LLVMPointerType(Global::i8_type().as_llvm_type_ref(), 0) };
+        LLVMType::String(t)
     }
     #[allow(unused)]
     pub fn const_string(str: impl AsRef<str>) -> LLVMValue {

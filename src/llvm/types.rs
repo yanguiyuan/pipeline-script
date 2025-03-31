@@ -27,6 +27,7 @@ pub enum LLVMType {
     Array(Box<LLVMType>, LLVMTypeRef),
     Function(Box<LLVMType>, Vec<LLVMType>, LLVMTypeRef),
     Pointer(Box<LLVMType>, LLVMTypeRef),
+    String(LLVMTypeRef),
     Unit(LLVMTypeRef),
 }
 
@@ -97,6 +98,7 @@ impl LLVMType {
             LLVMType::Pointer(_, i) => *i,
             LLVMType::Unit(i) => *i,
             LLVMType::Struct(_, _, i) => *i,
+            LLVMType::String(i) => *i,
         }
     }
     pub fn get_element_type(&self) -> LLVMType {
@@ -159,6 +161,7 @@ impl LLVMType {
                     field.iter().map(|f| f.1.get_undef()).collect(),
                 ))
             }
+            LLVMType::String(_) => LLVMValue::String(reference),
             t => {
                 println!("{t:?}");
                 todo!()
@@ -204,6 +207,7 @@ impl LLVMType {
             }
             LLVMType::Function(_, _, _) => 8, // 函数指针大小为8字节
             LLVMType::Unit(_) => 0,           // Unit类型大小为0
+            LLVMType::String(_) => 8,         // 字符串指针大小为8字节
         }
     }
 }

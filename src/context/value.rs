@@ -7,6 +7,7 @@ use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::LLVMValue;
+use llvm_sys::prelude::LLVMBasicBlockRef;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -32,6 +33,8 @@ pub enum ContextValue {
     LocalVariable(Arc<RwLock<Vec<String>>>),
     CaptureVariable(Arc<RwLock<Vec<(String, Type)>>>),
     TypeTable(Rc<RwLock<HashMap<Type, LLVMType>>>),
+    // 循环的基本块
+    LoopBlock(LLVMBasicBlockRef),
 }
 
 impl Default for ContextValue {

@@ -16,39 +16,44 @@ pub extern "C" fn len(target: Array) -> i64 {
     target.len
 }
 pub extern "C" fn println(obj: Any) {
-    // for i in 0..obj.len {
-    //     let obj = unsafe { (obj.ptr).offset(i as isize) };
     unsafe {
         match obj.id {
             0 => {
                 print!("Unit")
             }
+            1 => {
+                let b = obj.ptr as *mut bool;
+                print!("{}", *b);
+            }
             3 => {
-                let value = obj.ptr as *mut i32;
-                print!("{}", *value);
+                let value = obj.ptr as i8;
+                print!("{}", value);
             }
             5 => {
-                let v = obj.ptr as *mut i32;
-                print!("{}", *v);
+                let value = obj.ptr as i16;
+                print!("{}", value);
             }
-            7 | 8 => {
-                let v = obj.ptr as *mut i64;
-                // let v =  *v ;
-                // let v = v as *mut i64;
-                print!("{}", *v);
+            7 => {
+                let v = obj.ptr as i32;
+                print!("{}", v);
             }
             9 => {
+                let v = obj.ptr as i64;
+                print!("{}", v);
+            }
+            11 => {
                 let v = obj.ptr as *mut f32;
                 print!("{}", *v);
             }
             13 => {
+                let v = obj.ptr as *mut f64;
+                print!("{}", *v);
+            }
+            15 => {
                 let s = CStr::from_ptr(obj.ptr as *const c_char);
                 print!("{}", s.to_str().unwrap());
             }
-            15 => {
-                let b = obj.ptr as *mut bool;
-                print!("{}", *b);
-            }
+
             t => todo!("{t}"),
         }
     }

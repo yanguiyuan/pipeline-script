@@ -1,6 +1,9 @@
-use crate::llvm::function::Function;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
+use crate::llvm::value::array::ArrayValue;
+use crate::llvm::value::fucntion::FunctionValue;
+use crate::llvm::value::pointer::PointerValue;
+use crate::llvm::value::reference::ReferenceValue;
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
     LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2,
@@ -8,7 +11,8 @@ use llvm_sys::core::{
     LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2, LLVMBuildInsertValue,
     LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore,
     LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildUnreachable, LLVMBuildZExt, LLVMConstArray2,
-    LLVMConstIntToPtr, LLVMDisposeBuilder, LLVMInt8Type, LLVMPointerType, LLVMPositionBuilderAtEnd,
+    LLVMConstIntToPtr, LLVMDisposeBuilder, LLVMGetArrayLength2, LLVMInt8Type, LLVMPointerType,
+    LLVMPositionBuilderAtEnd,
 };
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
 use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
@@ -69,14 +73,17 @@ impl Builder {
         }
         let str = CString::new(str0).unwrap();
         let r = unsafe { LLVMBuildGlobalString(self.inner, str.as_ptr(), name.as_ptr()) };
-        self.strings.borrow_mut().insert(str0.to_string(), r.into());
-        r.into()
+        let s = LLVMValue::String(r);
+        self.strings
+            .borrow_mut()
+            .insert(str0.to_string(), s.clone());
+        s
     }
     pub fn build_alloca(&self, name: impl AsRef<str>, ty: &LLVMType) -> LLVMValue {
         let name0 = name.as_ref();
         let name = CString::new(name0).unwrap();
         let local = unsafe { LLVMBuildAlloca(self.inner, ty.as_llvm_type_ref(), name.as_ptr()) };
-        local.into()
+        LLVMValue::Reference(ReferenceValue::new(local, ty.get_undef()))
     }
 
     pub fn build_array(&self, el_ty: LLVMType, arr: Vec<LLVMValue>) -> LLVMValue {
@@ -103,7 +110,7 @@ impl Builder {
         unsafe {
             LLVMBuildStore(self.inner, constant_array, array_address);
         }
-        array_address.into()
+        LLVMValue::Array(ArrayValue::new(array_address, el_ty, arr.len()))
     }
     pub fn build_struct_get(&self, val: LLVMValue, idx: usize) -> LLVMValue {
         let name = CString::new("").unwrap();
@@ -120,7 +127,7 @@ impl Builder {
 
     pub fn build_struct_insert(&self, val: LLVMValue, idx: usize, value: &LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();
-        unsafe {
+        let new_struct = unsafe {
             LLVMBuildInsertValue(
                 self.inner,
                 val.as_llvm_value_ref(),
@@ -128,8 +135,9 @@ impl Builder {
                 idx as c_uint,
                 name.as_ptr(),
             )
-        }
-        .into()
+        };
+        let struct_value = val.as_struct().unwrap();
+        LLVMValue::Struct(struct_value.with_field(new_struct, idx, value.clone()))
     }
     pub fn build_i64_to_ptr(&self, val: LLVMValue) -> LLVMValue {
         let target = unsafe { LLVMPointerType(LLVMInt8Type(), 0) };
@@ -153,20 +161,30 @@ impl Builder {
             LLVMBuildUnreachable(self.inner);
         }
     }
-    pub fn build_store(&self, ptr: LLVMValue, val: LLVMValue) {
-        unsafe { LLVMBuildStore(self.inner, val.as_llvm_value_ref(), ptr.as_llvm_value_ref()) };
+    pub fn build_store(&self, ptr: LLVMValueRef, val: LLVMValue) {
+        unsafe { LLVMBuildStore(self.inner, val.as_llvm_value_ref(), ptr) };
     }
-    pub fn build_load(&self, ty: LLVMType, ptr: LLVMValue) -> LLVMValue {
+    pub fn build_load(&self, ty: LLVMType, ptr: LLVMValueRef) -> LLVMValue {
         let name = CString::new("").unwrap();
-        unsafe {
+        let val = unsafe {
             LLVMBuildLoad2(
                 self.inner,
-                ty.as_llvm_type_ref(),
-                ptr.as_llvm_value_ref(),
+                ty.as_llvm_type_ref(), // 指针元素类型，如果指针是*i8,这这里的类型应该是i8
+                ptr,
                 name.as_ptr(),
             )
+        };
+        unsafe {
+            match ty {
+                LLVMType::Pointer(_, _) => PointerValue::new(val, ty.get_undef()).into(),
+                LLVMType::String(_) => LLVMValue::String(val),
+                LLVMType::Array(element_type, array_type) => {
+                    let length = LLVMGetArrayLength2(array_type);
+                    ArrayValue::new(val, *element_type, length as usize).into()
+                }
+                _ => val.into(),
+            }
         }
-        .into()
     }
     pub fn build_array_get(&self, ty: LLVMType, ptr: LLVMValue, index: LLVMValue) -> LLVMValue {
         // 获取ptr所指数组的类型
@@ -205,7 +223,11 @@ impl Builder {
             );
             LLVMBuildLoad2(self.inner, ty.as_llvm_type_ref(), ptr0, name.as_ptr())
         };
-        r.into()
+        match ty {
+            LLVMType::Pointer(_, _) => PointerValue::new(r, ty.get_undef()).into(),
+            LLVMType::String(_) => LLVMValue::String(r),
+            _ => r.into(),
+        }
     }
     pub fn build_array_gep(&self, ty: LLVMType, ptr: LLVMValue, index: LLVMValue) -> LLVMValue {
         // 获取ptr所指数组的类型
@@ -255,7 +277,8 @@ impl Builder {
                 name.as_ptr(),
             )
         };
-        r.into()
+        let r = r.into();
+        r
     }
     pub fn build_fadd(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();
@@ -351,11 +374,11 @@ impl Builder {
     }
     pub fn build_call(
         &self,
-        function: &Function,
+        function: &FunctionValue,
         params: &mut [LLVMValue],
         var_name: impl AsRef<str>,
     ) -> LLVMValue {
-        let dec = function.get_declaration().as_llvm_type_ref();
+        let dec = function.get_llvm_type().as_llvm_type_ref();
         let var_name = CString::new(var_name.as_ref()).unwrap();
         let mut params = params
             .iter()
@@ -365,7 +388,7 @@ impl Builder {
             LLVMBuildCall2(
                 self.inner,
                 dec,
-                function.get_function_ref(),
+                function.get_reference(),
                 params.as_mut_ptr(),
                 params.len() as c_uint,
                 var_name.as_ptr(),

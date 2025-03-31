@@ -96,28 +96,6 @@ impl Parser {
         Ok(Type::Generic(Box::new(ty), list))
     }
 
-    pub fn parse_type_name(&mut self) -> crate::core::result::Result<(String, Position)> {
-        let (token, p0) = self.token_stream.next_token();
-
-        match &token {
-            Token::BracketLeft => {
-                let p1 = self.parse_special_token(Token::BracketRight)?;
-                let (name, p2) = self.parse_identifier()?;
-                Ok((format!("[]{}", name), p0 + p1 + p2))
-            }
-            Token::Dot => {
-                let p0 = self.parse_special_token(Token::Dot)?;
-                let (name, p1) = self.parse_identifier()?;
-                Ok((format!("..{}", name), p0 + p1))
-            }
-            Token::Identifier(id) => Ok((id.to_string(), p0)),
-            _ => Err(Error::UnexpectedToken(
-                token.to_string(),
-                "Identifier or special token".into(),
-                p0,
-            )),
-        }
-    }
     fn parse_generic_type<F>(&mut self, constructor: F) -> crate::core::result::Result<Type>
     where
         F: FnOnce(Box<Type>) -> Type,

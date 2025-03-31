@@ -39,6 +39,7 @@ impl TypePostprocessor {
             module.merge_into_main(ctx, &name);
         }
         module.sort_global_block();
+        dbg!(&module);
         self.process_module(&module, ctx);
         self.module.clone()
     }
@@ -90,26 +91,21 @@ impl TypePostprocessor {
             }
             let st = self.process_struct(st, ctx);
             self.module.register_struct(name, st.clone());
+            ctx.set_alias_type(name.clone(), st.get_type().clone());
         }
     }
 
     fn process_module_functions(&mut self, module: &Module, ctx: &Context) {
-        let functions = module.get_functions();
-        self.process_function_types(&functions, ctx);
+        let mut functions = module.get_functions();
+        self.process_function_types(&mut functions, ctx);
         self.register_processed_functions(&functions, ctx);
     }
 
-    fn process_function_types(&mut self, functions: &HashMap<String, Function>, ctx: &Context) {
-        for (name, f) in functions.iter() {
+    fn process_function_types(&mut self, functions: &mut HashMap<String, Function>, ctx: &Context) {
+        for (name, f) in functions.iter_mut() {
             let mut ty = f.get_type();
             if let Some(return_type) = ty.get_function_return_type() {
-                if return_type.is_alias() {
-                    if let Some(alias) = return_type.get_alias_name() {
-                        if let Some(new_return_ty) = ctx.get_alias_type(&alias) {
-                            ty = ty.with_return_type(new_return_ty);
-                        }
-                    }
-                }
+                ty = Self::process_type(&ty, ctx);
                 // 返回类型为泛型，需要实例化
                 if let Type::Generic(b, l) = return_type {
                     if let Some(alias) = b.get_alias_name() {
@@ -151,6 +147,9 @@ impl TypePostprocessor {
                         }
                     }
                 }
+            }
+            for i in f.args_mut() {
+                i.set_type(Self::process_type(&i.r#type().unwrap(), ctx));
             }
             ctx.set_symbol_type(name.clone(), ty);
         }
@@ -346,6 +345,14 @@ impl TypePostprocessor {
             Type::Ref(ty) => {
                 let ty = Self::process_type(ty, ctx);
                 Type::Ref(Box::new(ty))
+            }
+            Type::Function(ret, args) => {
+                let ret = Self::process_type(ret, ctx);
+                let args = args
+                    .iter()
+                    .map(|i| Self::process_type(i, ctx))
+                    .collect::<Vec<_>>();
+                Type::Function(Box::new(ret), args)
             }
             _ => ty.clone(),
         }

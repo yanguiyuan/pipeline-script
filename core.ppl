@@ -1,6 +1,8 @@
 extern fn cmd(cmd: String)
 extern fn println(obj: Any)
 extern fn panic(msg: String)
+extern fn int16(code: Int8)->Int16
+/**
 enum Option<T> {
     None,
     Some(T)
@@ -18,3 +20,4 @@ fn Option<T>.unwrap(self)->T{
     }
     panic("Unwrap None")
 }
+*/

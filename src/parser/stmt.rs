@@ -258,7 +258,8 @@ impl Parser {
         todo!()
     }
     pub(crate) fn parse_break_stmt(&mut self) -> crate::core::result::Result<StmtNode> {
-        todo!()
+        self.parse_keyword("break")?;
+        Ok(StmtNode::new(Stmt::Break, Position::none()))
     }
     pub fn parse_stmt(&mut self, ctx: &Context) -> crate::core::result::Result<StmtNode> {
         loop {

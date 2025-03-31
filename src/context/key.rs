@@ -17,6 +17,8 @@ pub enum ContextKey {
     TypeTable,
     Function,
     Scope,
+    // 循环的基本块
+    LoopBlock(String),
 }
 
 impl Default for ContextKey {
@@ -49,6 +51,10 @@ impl PartialEq for ContextKey {
             ContextKey::LLVMContext => matches!(other, ContextKey::LLVMContext),
             ContextKey::LLVMModule => matches!(other, ContextKey::LLVMModule),
             ContextKey::ModuleSlotMap => matches!(other, ContextKey::ModuleSlotMap),
+            ContextKey::LoopBlock(l) => match other {
+                ContextKey::LoopBlock(o) => l == o,
+                _ => false,
+            },
         }
     }
 }
