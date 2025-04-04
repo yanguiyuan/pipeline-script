@@ -272,6 +272,9 @@ impl TypePostprocessor {
 
     // 解析函数类型
     pub(crate) fn resolve_function_type(&self, fc_name: &str, ctx: &Context) -> (Type, Type) {
+        let mut map = HashMap::new();
+        map.insert("sizeof", (Type::Int64, vec![]));
+        map.insert("int64", (Type::Int64, vec![Type::Int32]));
         let fc_type = ctx
             .get_symbol_type(fc_name)
             .expect("Failed to get function type");

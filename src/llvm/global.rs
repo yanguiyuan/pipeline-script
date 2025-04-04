@@ -1,3 +1,4 @@
+use crate::context::Context;
 use crate::llvm::builder::Builder;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::array::ArrayValue;
@@ -17,9 +18,9 @@ pub struct Global;
 
 impl Global {
     #[allow(unused)]
-    pub fn const_array(array: &[LLVMValue]) -> LLVMValue {
+    pub fn const_array(ctx: &Context, array: &[LLVMValue]) -> LLVMValue {
         // 获取类型
-        let ty = array[0].get_llvm_type();
+        let ty = array[0].get_llvm_type(ctx);
         // 转换成LLVMValueRef
         let mut llvm_values: Vec<LLVMValueRef> =
             array.iter().map(|v| v.as_llvm_value_ref()).collect();

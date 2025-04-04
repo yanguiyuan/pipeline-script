@@ -2,7 +2,7 @@
 pub enum ContextKey {
     Background,
     Builder,
-    SymbolTable,
+    // SymbolTable,
     LLVMContext,
     LLVMModule,
     SymbolType,
@@ -33,7 +33,7 @@ impl PartialEq for ContextKey {
             ContextKey::Background => matches!(other, ContextKey::Background),
             ContextKey::Builder => matches!(other, ContextKey::Builder),
             ContextKey::TypeTable => matches!(other, ContextKey::TypeTable),
-            ContextKey::SymbolTable => matches!(other, ContextKey::SymbolTable),
+            // ContextKey::SymbolTable => matches!(other, ContextKey::SymbolTable),
             ContextKey::Function => matches!(other, ContextKey::Function),
             ContextKey::Scope => matches!(other, ContextKey::Scope),
             ContextKey::Flag(f) => match other {

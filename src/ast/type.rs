@@ -313,7 +313,7 @@ impl Type {
             Type::Float => Global::float_type(),
             Type::Double => Global::double_type(),
             Type::Bool => Global::i8_type(),
-            Type::String => Global::pointer_type(Global::i8_type()),
+            Type::String => Global::string_type(),
             Type::Pointer(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
             Type::Struct(_, _) => Global::pointer_type(Global::i8_type()),

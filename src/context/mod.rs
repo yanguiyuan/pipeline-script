@@ -31,8 +31,8 @@ impl Context {
     pub fn background() -> Self {
         Self {
             parent: None,
-            key: ContextKey::SymbolTable,
-            value: ContextValue::SymbolTable(Rc::new(Mutex::new(HashMap::new()))),
+            key: ContextKey::Background,
+            value: ContextValue::Background,
         }
     }
     pub fn with_builder(parent: &Context, builder: Builder) -> Self {
@@ -109,8 +109,8 @@ impl Context {
             _ => panic!("not a function"),
         }
     }
-    pub fn with_scope(parent: &Context, scope: Scope) -> Self {
-        Self::with_value(parent, ContextKey::Scope, ContextValue::Scope(scope))
+    pub fn with_scope(parent: &Context) -> Self {
+        Self::with_value(parent, ContextKey::Scope, ContextValue::Scope(Scope::new()))
     }
     pub fn with_type_table(parent: &Context, t: HashMap<Type, LLVMType>) -> Self {
         Self::with_value(
@@ -148,6 +148,13 @@ impl Context {
             Some(ContextValue::LLVMModule(m)) => m.clone(),
             _ => panic!("not a llvm module"),
         }
+    }
+    pub fn with_llvm_module(parent: &Context, m: LLVMModule) -> Self {
+        Self::with_value(
+            parent,
+            ContextKey::LLVMModule,
+            ContextValue::LLVMModule(Rc::new(RwLock::new(m))),
+        )
     }
     pub fn get_llvm_context(&self) -> Rc<Mutex<LLVMContext>> {
         match self.get(ContextKey::LLVMContext) {
@@ -228,14 +235,18 @@ impl Context {
         }
     }
     pub fn set_symbol(&self, name: String, v: LLVMValue) {
-        let symbol_table = self.get(ContextKey::SymbolTable).unwrap().as_symbol_table();
-        let mut symbol_table = symbol_table.lock().unwrap();
-        symbol_table.insert(name, v);
+        let scope = self.get(ContextKey::Scope).unwrap().as_scope();
+        scope.set(name, v);
     }
     pub fn get_symbol(&self, name: impl AsRef<str>) -> Option<LLVMValue> {
-        let symbol_table = self.get(ContextKey::SymbolTable).unwrap().as_symbol_table();
-        let symbol_table = symbol_table.lock().unwrap();
-        symbol_table.get(name.as_ref()).cloned()
+        let scope = self.get(ContextKey::Scope).unwrap().as_scope();
+        match scope.has(name.as_ref()) {
+            true => scope.get(name),
+            false => match &self.parent {
+                None => None,
+                Some(parent) => parent.get_symbol(name),
+            },
+        }
     }
     pub fn get_type(&self, t: &Type) -> Option<LLVMType> {
         match self.get(ContextKey::TypeTable) {

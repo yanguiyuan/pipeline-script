@@ -17,12 +17,17 @@ mod helper;
 
 pub struct TypePostprocessor {
     module: Module,
+    builtin_symbol_type: HashMap<String, Type>,
 }
 impl TypePostprocessor {
     pub fn new() -> Self {
         Self {
             module: Module::new("unknown"),
+            builtin_symbol_type: HashMap::new(),
         }
+    }
+    pub fn register_builtin_symbol_type(&mut self, name: &str, ty: Type) {
+        self.builtin_symbol_type.insert(name.to_string(), ty);
     }
     pub fn process(&mut self, module: DefaultKey, ctx: &Context) -> Module {
         let module_slot_map = ctx.get_module_slot_map();
@@ -67,6 +72,10 @@ impl TypePostprocessor {
     }
 
     fn process_module_symbols(&self, module: &Module, ctx: &Context) {
+        // 处理内置类型
+        for (name, ty) in self.builtin_symbol_type.iter() {
+            ctx.set_symbol_type(name.clone(), ty.clone());
+        }
         // 处理子模块
         for module_name in module.get_submodules().keys() {
             ctx.set_symbol_type(module_name.into(), Type::Module);

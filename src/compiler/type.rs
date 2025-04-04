@@ -19,14 +19,15 @@ impl Compiler {
                 ];
                 self.ctx.create_named_struct_type("Any", v)
             }
-            Type::Array(t) => Global::pointer_type(t.as_llvm_type()),
+            Type::Array(t) => Global::pointer_type(self.compile_type(t)),
             Type::String => Global::string_type(),
             Type::Enum(name, variants) => {
                 // 枚举类型编译为包含标签和数据的结构体
                 // 标签是一个整数，表示枚举变体的索引
                 // 数据是一个联合体，包含所有变体的数据
                 if let Some(name) = name {
-                    let t = self.llvm_module.get_struct(name);
+                    let llvm_module = self.llvm_module.read().unwrap();
+                    let t = llvm_module.get_struct(name);
                     if let Some((_, t)) = t {
                         return t.clone();
                     }
@@ -73,7 +74,8 @@ impl Compiler {
                     panic!("Struct type without name");
                 }
                 Some(name) => {
-                    let ty = self.llvm_module.get_struct(name);
+                    let llvm_module = self.llvm_module.read().unwrap();
+                    let ty = llvm_module.get_struct(name);
                     match ty {
                         Some((_, t)) => t.clone(),
                         None => {

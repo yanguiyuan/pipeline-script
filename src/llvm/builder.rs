@@ -1,8 +1,10 @@
+use crate::context::Context;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::array::ArrayValue;
 use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::pointer::PointerValue;
+use crate::llvm::value::pstruct::StructValue;
 use crate::llvm::value::reference::ReferenceValue;
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
@@ -112,17 +114,25 @@ impl Builder {
         }
         LLVMValue::Array(ArrayValue::new(array_address, el_ty, arr.len()))
     }
-    pub fn build_struct_get(&self, val: LLVMValue, idx: usize) -> LLVMValue {
+    pub fn build_struct_get(&self, val: &StructValue, idx: usize) -> LLVMValue {
         let name = CString::new("").unwrap();
-        unsafe {
+        let r = unsafe {
             LLVMBuildExtractValue(
                 self.inner,
-                val.as_llvm_value_ref(),
+                val.get_reference(),
                 idx as c_uint,
                 name.as_ptr(),
             )
+        };
+        let field_type = val.get_field_by_index(idx).unwrap();
+        match field_type {
+            LLVMValue::String(_) => LLVMValue::String(r),
+            LLVMValue::Struct(mut v) => {
+                v.set_reference(r);
+                v.into()
+            }
+            _ => r.into(),
         }
-        .into()
     }
 
     pub fn build_struct_insert(&self, val: LLVMValue, idx: usize, value: &LLVMValue) -> LLVMValue {
@@ -374,11 +384,12 @@ impl Builder {
     }
     pub fn build_call(
         &self,
+        ctx: &Context,
         function: &FunctionValue,
         params: &mut [LLVMValue],
         var_name: impl AsRef<str>,
     ) -> LLVMValue {
-        let dec = function.get_llvm_type().as_llvm_type_ref();
+        let dec = function.get_llvm_type(ctx).as_llvm_type_ref();
         let var_name = CString::new(var_name.as_ref()).unwrap();
         let mut params = params
             .iter()
@@ -394,6 +405,12 @@ impl Builder {
                 var_name.as_ptr(),
             )
         };
+        let return_value = function.get_return_value();
+        if return_value.is_struct() {
+            let mut struct_value = return_value.as_struct().unwrap().clone();
+            struct_value.set_reference(call_res);
+            return struct_value.clone().into();
+        }
         call_res.into()
     }
     pub fn build_call_fn_ptr(

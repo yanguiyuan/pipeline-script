@@ -7,6 +7,7 @@ pub mod pointer;
 pub mod pstruct;
 pub mod reference;
 
+use crate::context::Context;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::array::ArrayValue;
 use crate::llvm::value::bool::BoolValue;
@@ -173,7 +174,7 @@ impl LLVMValue {
     pub fn is_pointer(&self) -> bool {
         matches!(self, LLVMValue::Pointer(_))
     }
-    pub fn get_llvm_type(&self) -> LLVMType {
+    pub fn get_llvm_type(&self, ctx: &Context) -> LLVMType {
         let ty = unsafe { LLVMTypeOf(self.as_llvm_value_ref()) };
         match self {
             LLVMValue::Bool(_) => LLVMType::Int1(ty),
@@ -183,9 +184,9 @@ impl LLVMValue {
             LLVMValue::Int64(_) => LLVMType::Int64(ty),
             LLVMValue::Float(_) => LLVMType::Float(ty),
             LLVMValue::Double(_) => LLVMType::Double(ty),
-            LLVMValue::Pointer(pointer_value) => pointer_value.get_llvm_type(),
+            LLVMValue::Pointer(pointer_value) => pointer_value.get_llvm_type(ctx),
             LLVMValue::Array(array) => LLVMType::Array(Box::new(array.get_element_type()), ty),
-            LLVMValue::Struct(struct_value) => struct_value.get_llvm_type(),
+            LLVMValue::Struct(struct_value) => struct_value.get_llvm_type(ctx),
             LLVMValue::Unit => LLVMType::Unit(ty),
             LLVMValue::String(_) => LLVMType::String(ty),
             t => panic!("{t:?}"),

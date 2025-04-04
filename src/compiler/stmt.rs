@@ -192,7 +192,7 @@ impl Compiler {
             if let Expr::Variable(name) = &binding.get_expr() {
                 // 获取枚举值的数据（第二个字段）
                 let builder = ctx.get_builder();
-                let data = builder.build_struct_get(value.clone(), 1);
+                let data = builder.build_struct_get(value.as_struct().unwrap(), 1);
                 // 将变量添加到上下文
                 ctx.set_symbol(name.clone(), data);
             }
@@ -236,7 +236,7 @@ impl Compiler {
                 // 获取变体索引
                 let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
                 // 获取枚举值的标签（第一个字段）
-                let tag = builder.build_struct_get(value.clone(), 0);
+                let tag = builder.build_struct_get(value.as_struct().unwrap(), 0);
                 // 创建条件：tag == variant_index
                 let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
                 // 创建下一个分支的基本块
@@ -359,7 +359,7 @@ impl Compiler {
             let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
 
             // 获取枚举值的标签（第一个字段）
-            let tag = builder.build_struct_get(value.clone(), 0);
+            let tag = builder.build_struct_get(value.as_struct().unwrap(), 0);
 
             // 创建条件：tag == variant_index
             let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());

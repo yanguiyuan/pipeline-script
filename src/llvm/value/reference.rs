@@ -31,8 +31,8 @@ impl ReferenceValue {
         // let builder = ctx.get_builder();
         // builder.build_load(self.element.borrow().get_llvm_type(), self.reference)
     }
-    pub fn get_element_type(&self) -> LLVMType {
-        self.element.borrow().get_llvm_type()
+    pub fn get_element_type(&self, ctx: &Context) -> LLVMType {
+        self.element.borrow().get_llvm_type(ctx)
     }
     pub fn get_struct_field_ptr(&self, name: &str) -> Option<LLVMValue> {
         todo!()

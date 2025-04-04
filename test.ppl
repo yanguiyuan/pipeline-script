@@ -1,0 +1,50 @@
+import core
+extern fn malloc(size: Int64) -> Pointer<Unit>
+extern fn sizeof<T>() -> Int64
+/*
+struct Vec<T> {
+    data: Pointer<T>,
+    len: Int64,
+    cap: Int64,
+}
+fn Vec<T>.new() -> Vec<T> {
+    const n = 10
+    return Vec<T>{
+        data: malloc(n*sizeof::<T>()),
+        len: 0,
+        cap: n,
+    }
+}
+fn Vec<T>.push(&self,x: T) {
+    self.data[self.len] = x
+    self.len = self.len + 1
+}
+fn Vec<T>.get(self,index: Int64)->Option<T>  {
+    if(index > self.len -1){
+        Option.None
+    }
+   return Option.Some(self.data[index])
+}
+let v = Vec<Int64>.new()
+v.push(10)
+const b = v.get(0)
+const x = b.unwrap()
+println(x)
+*/
+
+struct Person{
+    name: String,
+    age: Age,
+}
+fn Person.new(name: String,age: Age) -> Person{
+    return Person{
+        name: name,
+        age: age
+    }
+}
+struct Age{
+   value: Int64,
+}
+let p = Person.new("Alice",Age{value: 10})
+println(p.name)
+println(p.age.value)

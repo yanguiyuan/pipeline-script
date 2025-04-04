@@ -6,7 +6,6 @@ use crate::llvm::context::LLVMContext;
 use crate::llvm::module::LLVMModule;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::fucntion::FunctionValue;
-use crate::llvm::value::LLVMValue;
 use llvm_sys::prelude::LLVMBasicBlockRef;
 use slotmap::DefaultKey;
 use std::collections::HashMap;
@@ -19,7 +18,7 @@ pub enum ContextValue {
     Builder(Arc<Builder>),
     SymbolType(Arc<RwLock<HashMap<String, Type>>>),
     AliasType(Arc<RwLock<HashMap<String, Type>>>),
-    SymbolTable(Rc<Mutex<HashMap<String, LLVMValue>>>),
+    // SymbolTable(Rc<Mutex<HashMap<String, LLVMValue>>>),
     LLVMContext(Rc<Mutex<LLVMContext>>),
     LLVMModule(Rc<RwLock<LLVMModule>>),
     ModuleSlotMap(Arc<RwLock<slotmap::SlotMap<DefaultKey, Module>>>),
@@ -69,10 +68,16 @@ impl ContextValue {
             _ => panic!("not a type"),
         }
     }
-    pub fn as_symbol_table(&self) -> Rc<Mutex<HashMap<String, LLVMValue>>> {
+    pub fn as_scope(&self) -> Scope {
         match self {
-            ContextValue::SymbolTable(t) => t.clone(),
-            _ => panic!("not a symbol table"),
+            ContextValue::Scope(s) => s.clone(),
+            _ => panic!("not a scope"),
         }
     }
+    // pub fn as_symbol_table(&self) -> Rc<Mutex<HashMap<String, LLVMValue>>> {
+    //     match self {
+    //         ContextValue::SymbolTable(t) => t.clone(),
+    //         _ => panic!("not a symbol table"),
+    //     }
+    // }
 }

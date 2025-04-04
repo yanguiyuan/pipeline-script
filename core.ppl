@@ -2,6 +2,7 @@ extern fn cmd(cmd: String)
 extern fn println(obj: Any)
 extern fn panic(msg: String)
 extern fn int16(code: Int8)->Int16
+extern fn sizeof<T>() -> Int64
 /**
 enum Option<T> {
     None,

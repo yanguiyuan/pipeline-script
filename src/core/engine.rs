@@ -1,8 +1,10 @@
+use crate::ast::r#type::Type;
 use crate::compiler::Compiler;
 use crate::context::Context;
 use crate::core::builtin::println;
 use crate::lexer::Lexer;
 use crate::llvm::context::LLVMContext;
+use crate::llvm::value::LLVMValue;
 use crate::parser::Parser;
 use crate::postprocessor::r#type::TypePostprocessor;
 use crate::postprocessor::{run_visitor, DynVisitor, Stage, Visitor};
@@ -17,6 +19,9 @@ pub struct Engine {
     preprocessors: Vec<Box<dyn Preprocessor>>,
     function_map: HashMap<String, *mut c_void>,
     visitors: Vec<Box<dyn DynVisitor>>,
+    builtin_symbol_types: HashMap<String, Type>,
+    builtin_symbol: HashMap<String, LLVMValue>,
+    // builtin_llvm_functions: HashMap<String, LLVMValue>,
     pub test_llvm: bool,
     pub test_llvm_files: Vec<PathBuf>,
 }
@@ -27,8 +32,10 @@ impl Default for Engine {
             preprocessors: vec![Box::new(ImportPreprocessor)],
             visitors: vec![],
             function_map: HashMap::new(),
+            builtin_symbol_types: HashMap::new(),
             test_llvm: false,
             test_llvm_files: vec![],
+            builtin_symbol: HashMap::new(),
         }
     }
 }
@@ -55,6 +62,12 @@ impl Engine {
     }
     pub fn register_external_function(&mut self, name: impl Into<String>, f: *mut c_void) {
         self.function_map.insert(name.into(), f);
+    }
+    pub fn register_builtin_symbol_type(&mut self, name: impl Into<String>, ty: Type) {
+        self.builtin_symbol_types.insert(name.into(), ty);
+    }
+    pub fn register_builtin_symbol(&mut self, name: impl Into<String>, value: LLVMValue) {
+        self.builtin_symbol.insert(name.into(), value);
     }
     pub fn register_visitor(&mut self, visitor: impl Visitor + 'static) {
         self.visitors.push(Box::new(visitor));
@@ -92,9 +105,15 @@ impl Engine {
             }
         });
         let mut type_preprocessor = TypePostprocessor::new();
+        for (name, ty) in self.builtin_symbol_types.iter() {
+            type_preprocessor.register_builtin_symbol_type(name, ty.clone());
+        }
         let module = type_preprocessor.process(module_key, &ctx);
         dbg!(&module);
         let mut compiler = Compiler::new(module.clone());
+        for (name, value) in self.builtin_symbol.iter() {
+            compiler.register_builtin_symbol(name, value.clone());
+        }
         ctx.register_module(module);
         ctx.apply_mut_module(module_key, |module| {
             for i in self
@@ -108,6 +127,7 @@ impl Engine {
 
         //编译
         let llvm_module = compiler.compile(&ctx);
+        let llvm_module = llvm_module.read().unwrap();
         llvm_module.verify_with_debug_info();
         llvm_module.dump();
         // match llvm_module.to_assembly("x86_64-pc-windows-msvc"){
