@@ -1,5 +1,7 @@
 pub mod array;
 pub mod bool;
+pub mod double;
+pub mod float;
 pub mod fucntion;
 pub mod int;
 pub mod penum;
@@ -11,6 +13,8 @@ use crate::context::Context;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::array::ArrayValue;
 use crate::llvm::value::bool::BoolValue;
+use crate::llvm::value::double::DoubleValue;
+use crate::llvm::value::float::FloatValue;
 use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
 use crate::llvm::value::penum::EnumVariantValue;
@@ -32,8 +36,8 @@ pub enum LLVMValue {
     Int16(Int16Value),
     Int32(Int32Value),
     Int64(Int64Value),
-    Float(LLVMValueRef),
-    Double(LLVMValueRef),
+    Float(FloatValue),
+    Double(DoubleValue),
     Pointer(PointerValue),
     Array(ArrayValue),
     Struct(StructValue),
@@ -77,10 +81,10 @@ impl From<LLVMValueRef> for LLVMValue {
                 //     LLVMValue::Pointer(PointerValue::new(value, LLVMValue::Undef(value)))
                 // }
                 // LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
-                LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(value),
+                LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(DoubleValue::new(value)),
                 LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
                 // LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(StructValue::new(value, UNNAMED.into(), HashMap::new(), ty)),
-                LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(value),
+                LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(FloatValue::new(value)),
                 t => {
                     println!("{t:?}");
                     todo!()
@@ -110,8 +114,8 @@ impl LLVMValue {
         unsafe {
             match self {
                 LLVMValue::String(i) => *i,
-                LLVMValue::Float(i) => *i,
-                LLVMValue::Double(i) => *i,
+                LLVMValue::Float(i) => i.get_reference(),
+                LLVMValue::Double(i) => i.get_reference(),
                 LLVMValue::Int64(i) => i.get_reference(),
                 LLVMValue::Int32(i) => i.get_reference(),
                 LLVMValue::Int16(i) => i.get_reference(),
@@ -123,6 +127,7 @@ impl LLVMValue {
                 LLVMValue::Reference(i) => i.get_reference(),
                 // LLVMValue::Undef(i) => *i,
                 LLVMValue::Unit => LLVMGetUndef(LLVMVoidType()),
+                LLVMValue::Function(i) => i.get_reference(),
                 t => {
                     panic!("Unknown type: {:?}", t)
                 }
@@ -174,6 +179,9 @@ impl LLVMValue {
     pub fn is_pointer(&self) -> bool {
         matches!(self, LLVMValue::Pointer(_))
     }
+    pub fn is_function(&self) -> bool {
+        matches!(self, LLVMValue::Function(_))
+    }
     pub fn get_llvm_type(&self, ctx: &Context) -> LLVMType {
         let ty = unsafe { LLVMTypeOf(self.as_llvm_value_ref()) };
         match self {
@@ -189,10 +197,30 @@ impl LLVMValue {
             LLVMValue::Struct(struct_value) => struct_value.get_llvm_type(ctx),
             LLVMValue::Unit => LLVMType::Unit(ty),
             LLVMValue::String(_) => LLVMType::String(ty),
+            LLVMValue::Function(function_value) => function_value.get_llvm_type(ctx),
             t => panic!("{t:?}"),
         }
     }
     pub fn is_unit(&self) -> bool {
         matches!(self, LLVMValue::Unit)
+    }
+    pub fn is_undef(&self) -> bool {
+        match self {
+            LLVMValue::Bool(v) => v.is_undef(),
+            LLVMValue::Int8(v) => v.is_undef(),
+            LLVMValue::Int16(v) => v.is_undef(),
+            LLVMValue::Int32(v) => v.is_undef(),
+            LLVMValue::Int64(v) => v.is_undef(),
+            LLVMValue::Float(v) => v.is_undef(),
+            LLVMValue::Double(v) => v.is_undef(),
+            LLVMValue::Pointer(v) => v.is_undef(),
+            LLVMValue::Reference(v) => v.is_undef(),
+            LLVMValue::Struct(v) => v.is_undef(),
+            LLVMValue::Array(v) => v.is_undef(),
+            LLVMValue::EnumVariant(v) => v.is_undef(),
+            LLVMValue::Function(_) => false,
+            LLVMValue::Unit => false,
+            LLVMValue::String(_) => false,
+        }
     }
 }

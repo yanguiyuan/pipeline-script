@@ -63,15 +63,15 @@ impl Compiler {
                 continue;
             }
             let fields = item.get_fields();
-            let mut struct_type = vec![];
             let mut field_index: HashMap<String, usize> = HashMap::new();
             for (i, field) in fields.iter().enumerate() {
-                let t = self.get_type(&ctx, &field.field_type);
-                struct_type.push(t);
                 field_index.insert(field.name.clone(), i);
             }
             let t = item.get_type();
-            let t = self.get_type(&ctx, &t);
+            let mut t = self.get_type(&ctx, &t);
+            if t.is_function() {
+                t = Global::pointer_type(t);
+            }
             self.llvm_module
                 .write()
                 .unwrap()
@@ -100,7 +100,21 @@ impl Compiler {
                 }
                 let ty = arg.r#type().unwrap();
                 let t = self.get_type(&ctx, &ty);
-                arg_types.push(t);
+                // 函数值作为参数时，统一转换成闭包类型
+                if t.is_function() {
+                    arg_types.push((
+                        arg.name().to_string(),
+                        Global::struct_type(
+                            "Closure".into(),
+                            vec![
+                                ("ptr".to_string(), Global::pointer_type(t)),
+                                ("env".to_string(), Global::pointer_type(Global::unit_type())),
+                            ],
+                        ),
+                    ));
+                    continue;
+                }
+                arg_types.push((arg.name().to_string(), t));
             }
             let t;
             let return_type0 = item.return_type();
@@ -206,7 +220,10 @@ impl Compiler {
         // 注册形参进入作用域
         for arg in function.args() {
             let arg_name = arg.name();
-            let arg_value = function_value.get_param(arg_name.clone()).unwrap();
+            let mut arg_value = function_value.get_param(&ctx, arg_name.clone()).unwrap();
+            if let LLVMValue::Function(f) = &mut arg_value {
+                f.set_closure()
+            }
             ctx.set_symbol(arg_name, arg_value);
         }
         ctx

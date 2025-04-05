@@ -120,24 +120,29 @@ impl TypePostprocessor {
                     if let Some(alias) = b.get_alias_name() {
                         // 获取类型模版
                         if let Some(return_alias) = ctx.get_type_alias(&alias) {
-                            let mut alias_map = HashMap::new();
+                            // let mut alias_map = HashMap::new();
+                            let ctx = Context::with_value(
+                                ctx,
+                                ContextKey::AliasType,
+                                ContextValue::AliasType(Arc::new(RwLock::new(HashMap::new()))),
+                            );
                             for (index, generic) in
                                 return_alias.get_generic_list().iter().enumerate()
                             {
-                                alias_map.insert(generic.clone(), l.get(index).unwrap().clone());
+                                // alias_map.insert(generic.clone(), l.get(index).unwrap().clone());
+                                ctx.set_alias_type(generic.clone(), l.get(index).unwrap().clone());
                             }
 
                             // 实例化所有绑定函数
                             let functions = ctx.get_type_binding_functions(alias.as_str());
                             self.instantiate_binding_functions(
-                                ctx,
+                                &ctx,
                                 alias.as_str(),
                                 &functions,
                                 &l,
-                                &alias_map,
                             );
                             let mut new_return_type = return_alias.get_type().clone();
-                            new_return_type.try_replace_alias(&alias_map);
+                            new_return_type = Self::process_type(&new_return_type, &ctx);
                             let new_name = format!(
                                 "{}<{}>",
                                 new_return_type.get_composite_type_name().unwrap(),
@@ -359,7 +364,7 @@ impl TypePostprocessor {
                 let ret = Self::process_type(ret, ctx);
                 let args = args
                     .iter()
-                    .map(|i| Self::process_type(i, ctx))
+                    .map(|(name, t)| (name.clone(), Self::process_type(t, ctx)))
                     .collect::<Vec<_>>();
                 Type::Function(Box::new(ret), args)
             }
@@ -688,7 +693,6 @@ impl TypePostprocessor {
         base_type_name: &str,
         functions: &[Function],
         concrete_types: &[Type],
-        alias_map: &HashMap<String, Type>,
     ) {
         // 构建实例化后的类型名称
         let instantiated_type_name = format!(
@@ -730,20 +734,20 @@ impl TypePostprocessor {
                     if alias_type.is_enum() {
                         alias_type.set_enum_name(instantiated_type_name.clone());
                     }
-                    alias_type.try_replace_alias(alias_map);
+                    alias_type = Self::process_type(&alias_type, ctx);
                     arg.set_type(alias_type);
                     continue;
                 }
                 if let Some(arg_type) = arg.r#type() {
                     let mut new_type = arg_type.clone();
-                    new_type.try_replace_alias(alias_map);
+                    new_type = Self::process_type(&new_type, ctx);
                     arg.set_type(new_type);
                 }
             }
 
             // 处理函数返回类型中的类型别名
             let mut return_type = instantiated_function.return_type().clone();
-            return_type.try_replace_alias(alias_map);
+            return_type = Self::process_type(&return_type, ctx);
             instantiated_function.set_return_type(return_type);
             instantiated_function.set_template(false);
             let mut new_body = vec![];

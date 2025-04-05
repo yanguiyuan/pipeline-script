@@ -10,16 +10,13 @@ use crate::llvm::value::penum::EnumVariantValue;
 use crate::llvm::value::pstruct::StructValue;
 use crate::llvm::value::LLVMValue;
 use std::collections::HashMap;
+
 impl Compiler {
     pub(crate) fn compile_expr_with_ptr(&self, expr: &ExprNode, ctx: &Context) -> LLVMValue {
         let binding = ctx.get(ContextKey::Builder).unwrap();
         let builder = binding.as_builder();
-        let mut ty0 = expr.get_type().unwrap();
-        let ty = ctx.get(ContextKey::Type("default".into()));
-        if let Some(ty) = ty {
-            let t = ty.as_type();
-            ty0 = t.clone();
-        }
+        let ty0 = expr.get_type().unwrap();
+
         match expr.get_expr() {
             Expr::Variable(name) => self.compile_variable_ptr(name, ctx),
             Expr::Index(target, index) => self.compile_index_ptr(target, index, &ty0, ctx),
@@ -58,7 +55,7 @@ impl Compiler {
             Expr::Variable(name) => self.compile_variable(name, ctx),
             Expr::Array(v) => self.compile_array(v, &ty0, ctx),
             Expr::Index(target, index) => self.compile_index(target, index, ctx),
-            Expr::Struct(s) => LLVMValue::Struct(self.compile_struct(s, &ty0, ctx)),
+            Expr::Struct(s) => LLVMValue::Struct(self.compile_struct(s, ctx)),
             Expr::Member(target, field_name) => self.compile_member(target, field_name, ctx),
             Expr::Address(target) => self.compile_expr_with_ptr(target, ctx),
             Expr::EnumVariant(enum_name, ref variant_name, ref value) => LLVMValue::EnumVariant(
@@ -153,12 +150,7 @@ impl Compiler {
     // ===== 值相关编译函数 =====
 
     fn compile_variable(&self, name: &str, ctx: &Context) -> LLVMValue {
-        // 2. 检查函数参数
-        if let Some(v) = ctx.get_current_function().get_param(name) {
-            return v;
-        }
-
-        // 3. 查找全局符号或函数
+        // 查找全局符号或函数
         let ptr = ctx.get_symbol(name).unwrap();
         if ptr.is_reference() {
             return ptr.as_reference().unwrap().get_value(ctx);
@@ -183,6 +175,7 @@ impl Compiler {
 
     fn compile_binary_op(&self, op: &Op, l: &ExprNode, r: &ExprNode, ctx: &Context) -> LLVMValue {
         let l = self.compile_expr(l, ctx);
+        dbg!(&l);
         let r = self.compile_expr(r, ctx);
         let builder = ctx.get_builder();
         match op {
@@ -232,13 +225,7 @@ impl Compiler {
         v
     }
 
-    fn compile_struct(
-        &self,
-        s: &crate::ast::expr::StructExpr,
-        ty0: &Type,
-        ctx: &Context,
-    ) -> StructValue {
-        dbg!(s);
+    fn compile_struct(&self, s: &crate::ast::expr::StructExpr, ctx: &Context) -> StructValue {
         let builder = ctx.get_builder();
         let llvm_module = self.llvm_module.read().unwrap();
         let (field_index_map, _) = llvm_module.get_struct(s.get_name()).unwrap();
@@ -263,7 +250,9 @@ impl Compiler {
             .collect::<Vec<LLVMValue>>();
         // let struct_type = ctx.(s.get_name()).unwrap();
         // dbg!(struct_type);
-        let mut val = self.compile_type(ty0).get_undef();
+        let struct_ast = self.module.get_struct(s.get_name()).unwrap();
+        let struct_type = self.get_type(ctx, &struct_ast.get_type());
+        let mut val = struct_type.get_undef();
 
         for (idx, v) in props.iter().enumerate() {
             val = builder.build_struct_insert(val, idx, v);
@@ -277,11 +266,9 @@ impl Compiler {
     }
     // target 有可能是结构体指针，也有可能是结构体
     fn compile_member(&self, target: &ExprNode, field_name: &str, ctx: &Context) -> LLVMValue {
-        dbg!(target);
         let mut v = self.compile_expr(target, ctx);
-        dbg!(&v);
         if v.is_pointer() {
-            v = v.as_pointer().unwrap().get_element();
+            v = v.as_pointer().unwrap().get_element(ctx);
         }
         if v.is_reference() {
             v = v.as_reference().unwrap().get_value(ctx);
@@ -347,18 +334,17 @@ impl Compiler {
         let name = fc.name.clone();
         let args = &fc.args;
         // 获取函数声明
-        dbg!(&name);
         let function_value = ctx.get_symbol(&name).unwrap();
-        dbg!(&function_value);
         let (function_decl, is_fn_param) = self.get_function_declaration(&name, ctx);
-
+        let index_map = function_value.as_function().unwrap().get_param_index_map();
         // 获取函数定义
-        let func = ctx.get_function(&name).unwrap();
-        let func_args = func.args();
+        // let func = ctx.get_function(&name).unwrap();
+        // let func_args = func.args();
         // 构建参数映射和参数值数组
-        let param_name_to_index = self.build_param_index_map(func_args);
-        let mut arg_values =
-            self.process_function_args(fc, args, &param_name_to_index, &function_decl, ctx);
+        // let param_name_to_index = self.build_param_index_map(func_args);
+        dbg!(fc);
+        dbg!(args);
+        let mut arg_values = self.process_function_args(fc, args, &index_map, &function_decl, ctx);
         // 处理特殊内建函数
         if let Some(result) =
             self.handle_builtin_functions(&name, &fc.generics, &mut arg_values, ctx)
@@ -388,7 +374,6 @@ impl Compiler {
             (function.get_type(), false)
         } else {
             let current_function = ctx.get_current_function();
-            dbg!(name);
             let function_index = current_function.get_param_index(name).unwrap();
             let function_decl = ctx
                 .get_current_function_type()
@@ -474,32 +459,24 @@ impl Compiler {
         fc: &crate::ast::expr::FunctionCall,
         ctx: &Context,
     ) -> Vec<Option<LLVMValue>> {
-        // 获取函数定义
-        let func = ctx.get_function(&fc.name).unwrap();
-        let func_args = func.args();
+        // 获取函数值
+        let function_value = ctx.get_symbol(&fc.name).unwrap().as_function().unwrap();
+        let args_count = function_value.get_args_count();
 
         // 处理默认参数
         for (i, arg_val) in arg_values.iter_mut().enumerate() {
-            if arg_val.is_none() && i < func_args.len() {
-                let param = &func_args[i];
-                if param.has_default() {
-                    let d = param.get_default().unwrap();
-                    let v = if d.get_type().unwrap().is_pointer() {
-                        self.compile_expr_with_ptr(d, ctx)
-                    } else {
-                        self.compile_expr(d, ctx)
-                    };
-                    *arg_val = Some(v);
+            if arg_val.is_none() && i < args_count {
+                if !function_value.is_arg_undef(i) {
+                    *arg_val = Some(function_value.get_param_by_index(i).unwrap());
                 } else {
                     panic!(
                         "函数 '{}' 的参数 '{}' 没有提供值且没有默认值",
                         fc.name,
-                        param.name()
+                        function_value.get_arg_name(i).unwrap()
                     );
                 }
             }
         }
-
         arg_values
     }
 
@@ -573,7 +550,7 @@ impl Compiler {
         ctx: &Context,
     ) -> LLVMValue {
         let builder = ctx.get_builder();
-        let fn_struct = ctx.get_current_function().get_param(name).unwrap();
+        let fn_struct = ctx.get_current_function().get_param(ctx, name).unwrap();
         let struct_value = fn_struct.as_struct().unwrap();
         let fn_ptr = builder.build_struct_get(struct_value, 0);
         let extra_param = builder.build_struct_get(struct_value, 1);

@@ -103,10 +103,14 @@ impl LLVMContext {
         let t = unsafe { LLVMInt8TypeInContext(self.llvm_ref) };
         LLVMType::Int8(t)
     }
-    pub fn function_type(&self, return_type: LLVMType, param_types: Vec<LLVMType>) -> LLVMType {
+    pub fn function_type(
+        &self,
+        return_type: LLVMType,
+        param_types: Vec<(String, LLVMType)>,
+    ) -> LLVMType {
         let mut param_types0 = param_types
             .iter()
-            .map(|t| t.as_llvm_type_ref())
+            .map(|t| t.1.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe {
             LLVMFunctionType(
@@ -121,11 +125,11 @@ impl LLVMContext {
     pub fn function_type_with_var_arg(
         &self,
         return_type: LLVMType,
-        param_types: Vec<LLVMType>,
+        param_types: Vec<(String, LLVMType)>,
     ) -> LLVMType {
         let mut param_types0 = param_types
             .iter()
-            .map(|t| t.as_llvm_type_ref())
+            .map(|t| t.1.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe {
             LLVMFunctionType(

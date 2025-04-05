@@ -32,6 +32,20 @@ impl Parser {
                         let body = self.parse_block(ctx)?;
                         let expr = Expr::Closure(vec![], body, vec![]);
                         args.push(Argument::new(ExprNode::from(expr)));
+                    } else if self.token_stream.peek().0 == Token::Vertical {
+                        // 解析闭包参数
+                        let mut params = vec![];
+                        self.parse_special_token(Token::Vertical)?;
+
+                        // 检查是否有参数
+                        if self.token_stream.peek().0 != Token::Vertical {
+                            params = self.parse_param_list(ctx)?;
+                        }
+
+                        self.parse_special_token(Token::Vertical)?;
+                        let body = self.parse_block(ctx)?;
+                        let expr = Expr::Closure(params, body, vec![]);
+                        args.push(Argument::new(ExprNode::from(expr)));
                     }
 
                     break;

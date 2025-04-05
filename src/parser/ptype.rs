@@ -60,7 +60,20 @@ impl Parser {
                         }
                     }
 
-                    Ok(Type::Function(Box::new(Type::Unit), param_type))
+                    // 检查是否有返回类型
+                    let return_type = if self.try_parse_token(Token::Arrow) {
+                        self.parse_type()?
+                    } else {
+                        Type::Unit
+                    };
+
+                    Ok(Type::Function(
+                        Box::new(return_type),
+                        param_type
+                            .into_iter()
+                            .map(|t| (t.as_str().to_string(), t))
+                            .collect(),
+                    ))
                 }
                 name => Ok(Type::Alias(name.into())),
             },

@@ -11,30 +11,32 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat: 提交一版">
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat: 基础函数支持">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/core.ppl" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/function.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ast/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/type.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/compiler/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/stmt.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/type.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/key.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/key.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/context/value.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/value.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/context.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/context.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/global.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/global.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/types.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/types.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/value/array.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/array.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/value/bool.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/bool.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/fucntion.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/fucntion.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/pointer.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/pointer.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/pstruct.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/pstruct.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/llvm/value/reference.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/value/reference.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/function.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/function.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/ptype.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/ptype.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/plugin/builtin.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/plugin/builtin.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/helper.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/test.ppl" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -297,7 +299,8 @@
       <workItem from="1743511262296" duration="7064000" />
       <workItem from="1743604538361" duration="3632000" />
       <workItem from="1743741121702" duration="8831000" />
-      <workItem from="1743773965671" duration="8508000" />
+      <workItem from="1743773965671" duration="10501000" />
+      <workItem from="1743837873188" duration="18994000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -467,7 +470,15 @@
       <option name="project" value="LOCAL" />
       <updated>1743435017137</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="feat: 基础函数支持">
+      <option name="closed" value="true" />
+      <created>1743782878543</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1743782878543</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -504,7 +515,8 @@
     <MESSAGE value="feat: 泛型结构体绑定方法支持" />
     <MESSAGE value="feat: 初次保存" />
     <MESSAGE value="feat: 提交一版" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: 提交一版" />
+    <MESSAGE value="feat: 基础函数支持" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat: 基础函数支持" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="true" />
   </component>
   <component name="XDebuggerManager">

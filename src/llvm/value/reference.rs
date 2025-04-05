@@ -1,6 +1,7 @@
 use crate::context::Context;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
+use llvm_sys::core::LLVMIsUndef;
 use llvm_sys::prelude::LLVMValueRef;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -39,5 +40,8 @@ impl ReferenceValue {
     }
     pub fn get_enum_variant_data_ptr(&self) -> Option<LLVMValue> {
         todo!()
+    }
+    pub fn is_undef(&self) -> bool {
+        unsafe { LLVMIsUndef(self.reference) == 1 }
     }
 }

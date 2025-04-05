@@ -1,5 +1,6 @@
 use crate::llvm::global::Global;
 use crate::llvm::value::bool::BoolValue;
+use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
 use crate::llvm::value::pointer::PointerValue;
 use crate::llvm::value::pstruct::StructValue;
@@ -25,7 +26,7 @@ pub enum LLVMType {
     Double(LLVMTypeRef),
     Struct(String, Vec<(String, LLVMType)>, LLVMTypeRef),
     Array(Box<LLVMType>, LLVMTypeRef),
-    Function(Box<LLVMType>, Vec<LLVMType>, LLVMTypeRef),
+    Function(Box<LLVMType>, Vec<(String, LLVMType)>, LLVMTypeRef),
     Pointer(Box<LLVMType>, LLVMTypeRef),
     String(LLVMTypeRef),
     Unit(LLVMTypeRef),
@@ -119,7 +120,7 @@ impl LLVMType {
                     return LLVMType::Unit(Global::unit_type().as_llvm_type_ref());
                 }
                 println!("{}", index);
-                v.get(index).cloned().unwrap()
+                v.get(index).cloned().unwrap().1
             }
             _ => panic!("Not a function"),
         }
@@ -162,6 +163,18 @@ impl LLVMType {
                 ))
             }
             LLVMType::String(_) => LLVMValue::String(reference),
+            LLVMType::Function(ret, args, _) => {
+                let undef_args = args
+                    .iter()
+                    .map(|arg| (arg.0.clone(), arg.1.get_undef()))
+                    .collect();
+                LLVMValue::Function(FunctionValue::new(
+                    reference,
+                    "".into(),
+                    Box::new(ret.get_undef()),
+                    undef_args,
+                ))
+            }
             t => {
                 println!("{t:?}");
                 todo!()
@@ -177,6 +190,9 @@ impl LLVMType {
     pub fn i32() -> Self {
         let t = unsafe { LLVMInt32Type() };
         LLVMType::Int32(t)
+    }
+    pub fn is_function(&self) -> bool {
+        matches!(self, LLVMType::Function(_, _, _))
     }
     pub fn is_float(&self) -> bool {
         matches!(self, LLVMType::Float(_))

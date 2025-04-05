@@ -1,4 +1,5 @@
 use crate::llvm::value::LLVMValue;
+use llvm_sys::core::LLVMIsUndef;
 use llvm_sys::prelude::LLVMValueRef;
 
 #[derive(Clone, Debug)]
@@ -11,6 +12,9 @@ impl BoolValue {
     }
     pub fn get_reference(&self) -> LLVMValueRef {
         self.reference
+    }
+    pub fn is_undef(&self) -> bool {
+        unsafe { LLVMIsUndef(self.reference) == 1 }
     }
 }
 impl From<BoolValue> for LLVMValue {

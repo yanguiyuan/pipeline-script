@@ -1,5 +1,6 @@
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
+use llvm_sys::core::LLVMIsUndef;
 use llvm_sys::prelude::LLVMValueRef;
 
 #[derive(Clone, Debug)]
@@ -22,6 +23,9 @@ impl ArrayValue {
     }
     pub fn get_element_type(&self) -> LLVMType {
         self.element.clone()
+    }
+    pub fn is_undef(&self) -> bool {
+        unsafe { LLVMIsUndef(self.reference) == 1 }
     }
 }
 impl From<ArrayValue> for LLVMValue {

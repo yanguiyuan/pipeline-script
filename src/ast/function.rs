@@ -182,7 +182,7 @@ impl Function {
     pub fn get_type(&self) -> Type {
         let mut args = vec![];
         for i in &self.args {
-            args.push(i.r#type().unwrap());
+            args.push((i.name().to_string(), i.r#type().unwrap()));
         }
         Type::Function(Box::new(self.return_type.clone()), args)
     }

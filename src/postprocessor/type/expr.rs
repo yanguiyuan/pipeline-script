@@ -40,6 +40,7 @@ impl TypePostprocessor {
                 .with_type(actual.get_type().unwrap())
             }
             Expr::FnCall(fc) => {
+                dbg!(&fc);
                 // 处理方法调用的情况
                 let (mut fc_name, fc_args, caller_type) = self.process_method_call(&fc, ctx);
                 if !fc.type_generics.is_empty() || fc_name.contains('<') {
@@ -54,7 +55,6 @@ impl TypePostprocessor {
 
                 // 获取函数类型信息
                 let (mut fc_type, mut fc_return_type) = self.resolve_function_type(&fc_name, ctx);
-
                 // 处理泛型参数
                 let new_generics = self.process_generics(&fc.generics, ctx);
 
@@ -74,7 +74,6 @@ impl TypePostprocessor {
 
                 // 处理函数参数
                 let args = self.process_function_arguments(&fc_args, &fc_type, ctx);
-
                 // 构建新的函数调用表达式
                 new_fc.args = args;
                 new_fc.name = fc_name.clone();
@@ -151,7 +150,6 @@ impl TypePostprocessor {
             }
             Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
-                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name);
                 let ty = ty.unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
@@ -220,7 +218,9 @@ impl TypePostprocessor {
                             if let Some(alias) = new_field.field_type.get_alias_name() {
                                 new_field.field_type = generic_map[&alias].clone();
                             } else {
-                                new_field.field_type.try_replace_alias(&generic_map);
+                                // new_field.field_type.try_replace_alias(&generic_map);
+                                new_field.field_type =
+                                    Self::process_type(&new_field.field_type, ctx);
                             }
                             new_field
                         })

@@ -2,6 +2,7 @@ use crate::context::Context;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
+use llvm_sys::core::LLVMIsUndef;
 use llvm_sys::prelude::LLVMValueRef;
 use std::collections::HashMap;
 
@@ -69,6 +70,9 @@ impl StructValue {
     }
     pub fn set_reference(&mut self, reference: LLVMValueRef) {
         self.reference = reference;
+    }
+    pub fn is_undef(&self) -> bool {
+        unsafe { LLVMIsUndef(self.reference) == 1 }
     }
 }
 

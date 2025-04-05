@@ -3,6 +3,8 @@ use crate::llvm::builder::Builder;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::array::ArrayValue;
 use crate::llvm::value::bool::BoolValue;
+use crate::llvm::value::double::DoubleValue;
+use crate::llvm::value::float::FloatValue;
 use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
@@ -39,11 +41,11 @@ impl Global {
     #[allow(unused)]
     pub fn const_double(value: f64) -> LLVMValue {
         let v = unsafe { LLVMConstReal(LLVMDoubleType(), value) };
-        LLVMValue::Double(v)
+        LLVMValue::Double(DoubleValue::new(v))
     }
     pub fn const_float(value: f32) -> LLVMValue {
         let v = unsafe { LLVMConstReal(LLVMFloatType(), value as f64) };
-        LLVMValue::Float(v)
+        LLVMValue::Float(FloatValue::new(v))
     }
     pub fn const_i8(value: i8) -> Int8Value {
         let v = unsafe { LLVMConstInt(LLVMInt8Type(), value as u64, 0) };
@@ -129,10 +131,10 @@ impl Global {
         let t = unsafe { LLVMDoubleType() };
         LLVMType::Double(t)
     }
-    pub fn function_type(return_type: LLVMType, param_types: Vec<LLVMType>) -> LLVMType {
+    pub fn function_type(return_type: LLVMType, param_types: Vec<(String, LLVMType)>) -> LLVMType {
         let mut t = param_types
             .iter()
-            .map(|t| t.as_llvm_type_ref())
+            .map(|t| t.1.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe {
             LLVMFunctionType(
@@ -146,11 +148,11 @@ impl Global {
     }
     pub fn function_type_with_var_arg(
         return_type: LLVMType,
-        param_types: Vec<LLVMType>,
+        param_types: Vec<(String, LLVMType)>,
     ) -> LLVMType {
         let mut t = param_types
             .iter()
-            .map(|t| t.as_llvm_type_ref())
+            .map(|t| t.1.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe {
             LLVMFunctionType(

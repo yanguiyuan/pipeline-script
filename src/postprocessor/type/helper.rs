@@ -87,6 +87,7 @@ impl TypePostprocessor {
         ctx: &Context,
     ) -> Vec<Argument> {
         let mut args = vec![];
+        dbg!(fc_type);
         let arg_count = fc_type.get_function_arg_count();
         // 直接返回参数，不进行命名参数处理
         // 命名参数的处理将在add_default_arguments中完成
@@ -272,9 +273,6 @@ impl TypePostprocessor {
 
     // 解析函数类型
     pub(crate) fn resolve_function_type(&self, fc_name: &str, ctx: &Context) -> (Type, Type) {
-        let mut map = HashMap::new();
-        map.insert("sizeof", (Type::Int64, vec![]));
-        map.insert("int64", (Type::Int64, vec![Type::Int32]));
         let fc_type = ctx
             .get_symbol_type(fc_name)
             .expect("Failed to get function type");
@@ -288,7 +286,7 @@ impl TypePostprocessor {
         l: &[VariableDeclaration],
         body: &[StmtNode],
         ctx: &Context,
-    ) -> (Vec<StmtNode>, Vec<(String, Type)>, Vec<Type>) {
+    ) -> (Vec<StmtNode>, Vec<(String, Type)>, Vec<(String, Type)>) {
         let mut new_body = vec![];
         let mut local = vec![];
         let ctx = Context::with_capture(ctx);
@@ -296,7 +294,7 @@ impl TypePostprocessor {
 
         for i in l {
             local.push(i.name());
-            param_type.push(i.r#type().unwrap());
+            param_type.push((i.name(), i.r#type().unwrap()));
             ctx.set_symbol_type(i.name(), i.r#type().unwrap())
         }
 
@@ -316,7 +314,7 @@ impl TypePostprocessor {
         l: &[VariableDeclaration],
         new_body: &[StmtNode],
         captures: &[(String, Type)],
-        param_type: &[Type],
+        param_type: &[(String, Type)],
         closure_var_name: &str,
     ) -> ExprNode {
         let captures_map: HashMap<String, Type> = captures.iter().cloned().collect();

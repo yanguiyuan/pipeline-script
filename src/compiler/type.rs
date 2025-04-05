@@ -71,7 +71,12 @@ impl Compiler {
             }
             Type::Struct(name, s) => match name {
                 None => {
-                    panic!("Struct type without name");
+                    // panic!("Struct type without name");
+                    let fields = s
+                        .iter()
+                        .map(|(name, t)| (name.clone(), self.compile_type(t)))
+                        .collect();
+                    Global::struct_type("Struct".into(), fields)
                 }
                 Some(name) => {
                     let llvm_module = self.llvm_module.read().unwrap();
@@ -81,7 +86,11 @@ impl Compiler {
                         None => {
                             let mut v = vec![];
                             for (name, t) in s.iter() {
-                                v.push((name.clone(), self.compile_type(t)));
+                                let mut t = self.compile_type(t);
+                                if t.is_function() {
+                                    t = Global::pointer_type(t)
+                                }
+                                v.push((name.clone(), t));
                             }
                             self.ctx.create_named_struct_type(name, v)
                         }
@@ -89,16 +98,12 @@ impl Compiler {
                 }
             },
             Type::Function(ret, args) => {
-                todo!();
-                // let mut v = vec![];
-                // for t in args.iter() {
-                //     v.push(self.compile_type(t));
-                // }
-                // let t = ret.as_llvm_type();
-                // Global::struct_type(vec![
-                //     Global::pointer_type(Global::function_type(t, v)),
-                //     Global::pointer_type(Global::unit_type()),
-                // ])
+                let mut v = vec![];
+                for (name, t) in args.iter() {
+                    v.push((name.clone(), self.compile_type(t)));
+                }
+                let t = ret.as_llvm_type();
+                Global::function_type(t, v)
             }
             Type::ArrayVarArg(t) => Global::struct_type(
                 "ArrayVarArg".into(),
@@ -110,27 +115,24 @@ impl Compiler {
             Type::Closure { name: _, ptr, env } => {
                 let return_ty = self.compile_type(&ptr.0);
                 let mut params_ty = vec![];
-                for t in &ptr.1 {
-                    params_ty.push(self.compile_type(t))
+                for (name, t) in &ptr.1 {
+                    params_ty.push((name.clone(), self.compile_type(t)))
                 }
+                let func_ty = Global::function_type(return_ty.clone(), params_ty.clone());
                 let mut env_ty = vec![];
                 for a in env {
                     env_ty.push((a.0.clone(), self.compile_type(&a.1)));
                 }
-                Global::pointer_type(Global::struct_type(
+                Global::struct_type(
                     "Closure".into(),
                     vec![
-                        ("return_ty".into(), return_ty.clone()),
+                        ("ptr".into(), Global::pointer_type(func_ty)),
                         (
-                            "params_ty".into(),
-                            Global::pointer_type(Global::function_type(return_ty, params_ty)),
-                        ),
-                        (
-                            "env_ty".into(),
+                            "env".into(),
                             Global::pointer_type(Global::struct_type("env_ty".into(), env_ty)),
                         ),
                     ],
-                ))
+                )
             }
             Type::Float => Global::float_type(),
             Type::Ref(t) => Global::pointer_type(self.compile_type(t)),

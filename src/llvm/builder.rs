@@ -131,6 +131,16 @@ impl Builder {
                 v.set_reference(r);
                 v.into()
             }
+            LLVMValue::Pointer(pointer_value) => {
+                let mut pointer_value = pointer_value.clone();
+                pointer_value.set_reference(r);
+                pointer_value.into()
+            }
+            LLVMValue::Function(f) => {
+                let mut function_value = f.clone();
+                function_value.set_reference(r);
+                function_value.into()
+            }
             _ => r.into(),
         }
     }
@@ -191,6 +201,19 @@ impl Builder {
                 LLVMType::Array(element_type, array_type) => {
                     let length = LLVMGetArrayLength2(array_type);
                     ArrayValue::new(val, *element_type, length as usize).into()
+                }
+                LLVMType::Struct(name, fields, _) => {
+                    let mut field_index = HashMap::new();
+                    for (i, (name, ty)) in fields.iter().enumerate() {
+                        field_index.insert(name.clone(), i);
+                    }
+                    StructValue::new(
+                        val,
+                        name,
+                        field_index,
+                        fields.iter().map(|(_, ty)| ty.get_undef()).collect(),
+                    )
+                    .into()
                 }
                 _ => val.into(),
             }
@@ -448,6 +471,37 @@ impl Builder {
             )
         }
         .into()
+    }
+    pub fn build_extract_value(&self, val: &StructValue, idx: usize) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        let r = unsafe {
+            LLVMBuildExtractValue(
+                self.inner,
+                val.get_reference(),
+                idx as c_uint,
+                name.as_ptr(),
+            )
+        };
+
+        let field_type = val.get_field_by_index(idx).unwrap();
+        match field_type {
+            LLVMValue::String(_) => LLVMValue::String(r),
+            LLVMValue::Struct(mut v) => {
+                v.set_reference(r);
+                v.into()
+            }
+            LLVMValue::Pointer(pointer_value) => {
+                let mut pointer_value = pointer_value.clone();
+                pointer_value.set_reference(r);
+                pointer_value.into()
+            }
+            LLVMValue::Function(f) => {
+                let mut function_value = f.clone();
+                function_value.set_reference(r);
+                function_value.into()
+            }
+            _ => r.into(),
+        }
     }
 }
 
