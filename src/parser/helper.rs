@@ -1,3 +1,4 @@
+use crate::ast::r#struct::Struct;
 use crate::ast::stmt::StmtNode;
 use crate::context::Context;
 use crate::core::error::Error;
@@ -8,6 +9,18 @@ use crate::parser::Parser;
 pub fn is_enum(ctx: &Context, id: &str) -> bool {
     ctx.get_type_alias(id)
         .map_or(false, |ty| ty.get_type().is_enum())
+}
+
+pub fn get_struct_from_context(ctx: &Context, name: &str) -> Option<Struct> {
+    let modules = ctx.get_module_slot_map();
+    let readable_modules = modules.read().unwrap();
+    for (_, module) in readable_modules.iter() {
+        let struct_ = module.get_struct(name);
+        if let Some(struct_) = struct_ {
+            return Some(struct_.clone());
+        }
+    }
+    None
 }
 
 impl Parser {

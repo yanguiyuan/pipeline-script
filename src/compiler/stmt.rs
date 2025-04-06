@@ -29,21 +29,16 @@ impl Compiler {
                     ctx.set_symbol(val.name(), v);
                     return;
                 }
-                dbg!(&val);
-                dbg!(&v);
                 ctx.set_symbol(val.name(), v);
             }
             Stmt::VarDecl(val) => {
                 let t = val.r#type().unwrap();
                 let element_type = t.get_element_type().unwrap();
                 let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
-                dbg!(&alloc);
                 let default_expr = val.get_default().unwrap();
                 let default_value = self.compile_expr(default_expr, ctx);
                 let result = alloc.as_reference().unwrap();
                 result.store(ctx, default_value);
-                // builder.build_store(alloc.clone(), default_value);
-                dbg!(&val);
                 ctx.set_symbol(val.name(), alloc);
             }
             Stmt::Assign(lhs, rhs) => {
@@ -61,7 +56,7 @@ impl Compiler {
                     let builder = ctx.get_builder();
                     let then_bb = current_function.append_basic_block("then");
                     let else_bb = current_function.append_basic_block("else");
-                    builder.build_cond_br(condition, then_bb, else_bb);
+                    builder.build_cond_br(condition.as_bool().unwrap(), then_bb, else_bb);
                     builder.position_at_end(then_bb);
                     let body = i.get_body();
                     let ctx = Context::with_flag(ctx, "break", false);
@@ -91,7 +86,7 @@ impl Compiler {
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_cond_bb);
                 let cond = self.compile_expr(condition, ctx);
-                builder.build_cond_br(cond, while_body_bb, while_exit_bb);
+                builder.build_cond_br(cond.as_bool().unwrap(), while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
                 // 创建新的上下文，包含循环的基本块
                 let ctx = Context::with_loop_block(ctx, "while_exit".to_string(), while_exit_bb);
@@ -112,7 +107,7 @@ impl Compiler {
                 builder.build_br(while_cond_bb);
                 builder.position_at_end(while_cond_bb);
                 let cond = self.compile_expr(expr, ctx);
-                builder.build_cond_br(cond, while_body_bb, while_exit_bb);
+                builder.build_cond_br(cond.as_bool().unwrap(), while_body_bb, while_exit_bb);
                 builder.position_at_end(while_body_bb);
                 // 创建新的上下文，包含循环的基本块
                 let ctx = Context::with_loop_block(ctx, "while_exit".to_string(), while_exit_bb);
@@ -210,11 +205,8 @@ impl Compiler {
         if let Some(binding) = binding {
             if let Expr::Variable(name) = &binding.get_expr() {
                 // 获取枚举值的数据（第二个字段）
-                let data_ptr = value
-                    .as_reference()
-                    .unwrap()
-                    .get_enum_variant_data_ptr()
-                    .unwrap();
+                let data_ptr = value.as_reference().unwrap();
+                let data_ptr = data_ptr.get_struct_field_ptr(ctx, "data").unwrap();
 
                 // 将变量添加到上下文
                 ctx.set_symbol(name.clone(), data_ptr);
@@ -241,7 +233,9 @@ impl Compiler {
                 // 获取枚举值的标签（第一个字段）
                 let tag = builder.build_struct_get(value.as_struct().unwrap(), 0);
                 // 创建条件：tag == variant_index
-                let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
+                let tag = tag.as_int32().unwrap();
+                let cond = tag.eq(ctx, &Global::const_i32(variant_index as i32));
+                // let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
                 // 创建下一个分支的基本块
                 let next_block = if branch_index < branches.len() - 1 {
                     branch_blocks[branch_index + 1]
@@ -250,7 +244,7 @@ impl Compiler {
                 };
 
                 // 创建条件分支
-                builder.build_cond_br(cond, branch_blocks[branch_index], next_block);
+                builder.build_cond_br(&cond, branch_blocks[branch_index], next_block);
 
                 // 编译分支体
                 builder.position_at_end(branch_blocks[branch_index]);
@@ -293,20 +287,17 @@ impl Compiler {
             let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
 
             // 获取枚举值的标签（第一个字段）
-
-            let tag = value
-                .as_reference()
-                .unwrap()
-                .get_value(ctx)
-                .as_enum_variant()
-                .unwrap()
-                .get_tag();
+            let value0 = value.as_reference().unwrap();
+            let value0 = value0.get_value(ctx);
+            let value0 = value0.as_struct().unwrap();
+            let value0 = value0.get_field_by_index(ctx, 0).unwrap();
+            let tag = value0.as_int32().unwrap();
 
             // 创建条件：tag == variant_index
-            let cond = tag.eq(&Global::const_i32(variant_index as i32));
+            let cond = tag.eq(ctx, &Global::const_i32(variant_index as i32));
 
             // 创建条件分支
-            builder.build_cond_br(cond.into(), then_block, else_block);
+            builder.build_cond_br(&cond, then_block, else_block);
 
             // 编译then分支
             builder.position_at_end(then_block);
@@ -365,10 +356,11 @@ impl Compiler {
             let tag = builder.build_struct_get(value.as_struct().unwrap(), 0);
 
             // 创建条件：tag == variant_index
-            let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
+            let tag = tag.as_int32().unwrap();
+            let cond = tag.eq(ctx, &Global::const_i32(variant_index as i32));
 
             // 创建条件分支
-            builder.build_cond_br(cond, then_block, else_block);
+            builder.build_cond_br(&cond, then_block, else_block);
 
             // 编译then分支
             builder.position_at_end(then_block);

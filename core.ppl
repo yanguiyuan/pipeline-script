@@ -3,7 +3,7 @@ extern fn println(obj: Any)
 extern fn panic(msg: String)
 extern fn int16(code: Int8)->Int16
 extern fn sizeof<T>() -> Int64
-/**
+extern fn malloc(size: Int64) -> Pointer<Int8>
 enum Option<T> {
     None,
     Some(T)
@@ -21,4 +21,3 @@ fn Option<T>.unwrap(self)->T{
     }
     panic("Unwrap None")
 }
-*/

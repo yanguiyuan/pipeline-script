@@ -176,6 +176,7 @@ impl Type {
                 }
                 None
             }
+            Type::Ref(t) => t.get_enum_variant_type(name),
             Type::GenericInstance { instance, .. } => instance.get_enum_variant_type(name),
             _ => None,
         }

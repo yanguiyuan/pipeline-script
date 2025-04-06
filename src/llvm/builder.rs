@@ -2,6 +2,7 @@ use crate::context::Context;
 use crate::llvm::global::Global;
 use crate::llvm::types::LLVMType;
 use crate::llvm::value::array::ArrayValue;
+use crate::llvm::value::bool::BoolValue;
 use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::pointer::PointerValue;
 use crate::llvm::value::pstruct::StructValue;
@@ -124,7 +125,7 @@ impl Builder {
                 name.as_ptr(),
             )
         };
-        let field_type = val.get_field_by_index(idx).unwrap();
+        let field_type = val.simply_get_field_by_index(idx).unwrap();
         match field_type {
             LLVMValue::String(_) => LLVMValue::String(r),
             LLVMValue::Struct(mut v) => {
@@ -168,9 +169,9 @@ impl Builder {
         let target = unsafe { LLVMPointerType(LLVMInt8Type(), 0) };
         unsafe { LLVMConstIntToPtr(val.as_llvm_value_ref(), target) }.into()
     }
-    pub fn build_struct_gep(&self, ty: LLVMType, val: LLVMValue, idx: usize) -> LLVMValue {
+    pub fn build_struct_gep(&self, ty: &LLVMType, val: LLVMValue, idx: usize) -> LLVMValue {
         let name = CString::new("").unwrap();
-        unsafe {
+        let r = unsafe {
             LLVMBuildStructGEP2(
                 self.inner,
                 ty.as_llvm_type_ref(),
@@ -178,8 +179,20 @@ impl Builder {
                 idx as c_uint,
                 name.as_ptr(),
             )
+        };
+        let ty = ty.get_struct_field_type(idx);
+        match &ty {
+            LLVMType::String(_) => ReferenceValue::new(r, ty.get_undef()).into(),
+            LLVMType::Struct(_, _, _) => ReferenceValue::new(r, ty.get_undef()).into(),
+            LLVMType::Pointer(element_type, _) => {
+                ReferenceValue::new(r, element_type.get_undef()).into()
+            }
+            LLVMType::Function(_, _, _) => ReferenceValue::new(r, ty.get_undef()).into(),
+            LLVMType::Ref(element_type, _) => {
+                ReferenceValue::new(r, element_type.get_undef()).into()
+            }
+            _ => ReferenceValue::new(r, ty.get_undef()).into(),
         }
-        .into()
     }
     pub fn build_unreachable(&self) {
         unsafe {
@@ -209,7 +222,7 @@ impl Builder {
                 }
                 LLVMType::Struct(name, fields, _) => {
                     let mut field_index = HashMap::new();
-                    for (i, (name, ty)) in fields.iter().enumerate() {
+                    for (i, (name, _)) in fields.iter().enumerate() {
                         field_index.insert(name.clone(), i);
                     }
                     StructValue::new(
@@ -281,7 +294,7 @@ impl Builder {
                 name.as_ptr(),
             )
         };
-        r.into()
+        ReferenceValue::new(r, ty.get_undef()).into()
     }
     pub fn position_at_end(&self, block: LLVMBasicBlockRef) {
         unsafe { LLVMPositionBuilderAtEnd(self.inner, block) };
@@ -291,14 +304,14 @@ impl Builder {
     }
     pub fn build_cond_br(
         &self,
-        condition: LLVMValue,
+        condition: &BoolValue,
         then_block: LLVMBasicBlockRef,
         else_block: LLVMBasicBlockRef,
     ) {
         unsafe {
             LLVMBuildCondBr(
                 self.inner,
-                condition.as_llvm_value_ref(),
+                condition.get_reference(),
                 then_block,
                 else_block,
             );
@@ -358,18 +371,10 @@ impl Builder {
         let name = CString::new("").unwrap();
         unsafe { LLVMBuildSDiv(self.inner, l, r, name.as_ptr()) }.into()
     }
-    pub fn build_eq(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
+    pub fn build_eq(&self, l: LLVMValueRef, r: LLVMValueRef) -> BoolValue {
         let name = CString::new("").unwrap();
-        unsafe {
-            LLVMBuildICmp(
-                self.inner,
-                LLVMIntEQ,
-                l.as_llvm_value_ref(),
-                r.as_llvm_value_ref(),
-                name.as_ptr(),
-            )
-        }
-        .into()
+        let r = unsafe { LLVMBuildICmp(self.inner, LLVMIntEQ, l, r, name.as_ptr()) };
+        BoolValue::new(r)
     }
     pub fn build_neq(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
         let name = CString::new("").unwrap();
@@ -439,7 +444,19 @@ impl Builder {
             struct_value.set_reference(call_res);
             return struct_value.clone().into();
         }
-        call_res.into()
+        match return_value {
+            LLVMValue::String(_) => LLVMValue::String(call_res),
+            LLVMValue::Pointer(pointer_value) => {
+                let mut pointer_value = pointer_value.clone();
+                pointer_value.set_reference(call_res);
+                pointer_value.into()
+            }
+            LLVMValue::Struct(mut v) => {
+                v.set_reference(call_res);
+                v.into()
+            }
+            _ => call_res.into(),
+        }
     }
     pub fn build_call_fn_ptr(
         &self,
@@ -477,7 +494,7 @@ impl Builder {
         }
         .into()
     }
-    pub fn build_extract_value(&self, val: &StructValue, idx: usize) -> LLVMValue {
+    pub fn build_extract_value(&self, ctx: &Context, val: &StructValue, idx: usize) -> LLVMValue {
         let name = CString::new("").unwrap();
         let r = unsafe {
             LLVMBuildExtractValue(
@@ -488,7 +505,7 @@ impl Builder {
             )
         };
 
-        let field_type = val.get_field_by_index(idx).unwrap();
+        let field_type = val.get_field_by_index(ctx, idx).unwrap();
         match field_type {
             LLVMValue::String(_) => LLVMValue::String(r),
             LLVMValue::Struct(mut v) => {

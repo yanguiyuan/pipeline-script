@@ -558,7 +558,9 @@ impl TypePostprocessor {
                 if let Expr::EnumVariant(_, _, Some(binding)) = &processed_pattern.get_expr() {
                     if let Expr::Variable(name) = &binding.get_expr() {
                         // 获取关联值的类型
-                        if let Some(Type::Enum(_, variants)) = processed_expr.get_type() {
+                        if let Type::Enum(_, variants) =
+                            processed_expr.get_type().unwrap().unwrap_ref()
+                        {
                             // 查找变体的关联类型
                             for (variant_name, variant_type) in variants {
                                 if let Expr::EnumVariant(_, pattern_variant, _) =

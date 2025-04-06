@@ -49,7 +49,10 @@ impl Preprocessor for ImportPreprocessor {
                 break;
             }
         }
-        println!("output sources:\n {:}", s);
+        println!("output sources:");
+        for (i, line) in s.lines().enumerate() {
+            println!("{:>4}: {}", i + 1, line);
+        }
         s
     }
 }

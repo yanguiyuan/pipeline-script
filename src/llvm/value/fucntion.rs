@@ -40,7 +40,7 @@ impl FunctionValue {
     pub fn append_basic_block(&self, name: impl Into<String>) -> LLVMBasicBlockRef {
         unsafe { LLVMAppendBasicBlock(self.reference, name.into().as_mut_ptr() as *mut c_char) }
     }
-    pub fn get_param(&self, ctx: &Context, name: impl AsRef<str>) -> Option<LLVMValue> {
+    pub fn get_param(&self, name: impl AsRef<str>) -> Option<LLVMValue> {
         let name_ref = name.as_ref();
         for (index, (arg_name, v)) in self.args.iter().enumerate() {
             if arg_name == name_ref {
@@ -51,7 +51,7 @@ impl FunctionValue {
                             param,
                             v.get_name(),
                             v.field_index.clone(),
-                            v.field_values.clone(),
+                            v.field_values.borrow().clone(),
                         )))
                     }
                     LLVMValue::String(_) => Some(LLVMValue::String(param)),
@@ -64,6 +64,11 @@ impl FunctionValue {
                         let mut p = p.clone();
                         p.set_reference(param);
                         Some(LLVMValue::Pointer(p))
+                    }
+                    LLVMValue::Reference(r) => {
+                        let mut r = r.clone();
+                        r.set_reference(param);
+                        Some(LLVMValue::Reference(r))
                     }
                     _ => Some(param.into()),
                 };
@@ -102,7 +107,7 @@ impl FunctionValue {
         let builder = ctx.get_builder();
         let mut function_call_args = vec![];
 
-        if self.is_closure {
+        let r = if self.is_closure {
             // 对于闭包，self.reference 就是结构体值
             let mut field_index = HashMap::new();
             field_index.insert("ptr".to_string(), 0);
@@ -118,8 +123,8 @@ impl FunctionValue {
                 ],
             );
 
-            let function_ptr = builder.build_extract_value(&closure_struct, 0);
-            let env_ptr = builder.build_extract_value(&closure_struct, 1);
+            let function_ptr = builder.build_extract_value(ctx, &closure_struct, 0);
+            let env_ptr = builder.build_extract_value(ctx, &closure_struct, 1);
 
             // 处理其他参数
             for i in args.into_iter().flatten() {
@@ -136,7 +141,11 @@ impl FunctionValue {
                 function_call_args.push(i)
             }
             builder.build_call(ctx, self, &mut function_call_args, "")
+        };
+        if self.name == "panic" || self.name == "exit" {
+            builder.build_unreachable();
         }
+        r
     }
     pub fn get_return_value(&self) -> LLVMValue {
         *self.return_type.clone()

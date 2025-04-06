@@ -24,10 +24,6 @@ impl PointerValue {
     pub fn get_element(&self, ctx: &Context) -> LLVMValue {
         if self.element.borrow().is_undef() {
             let builder = ctx.get_builder();
-            println!("{:?}", self.element.borrow().get_llvm_type(ctx));
-            if self.is_undef() {
-                todo!();
-            }
             let element =
                 builder.build_load(self.element.borrow().get_llvm_type(ctx), self.reference);
             self.element.replace(Box::new(element));
@@ -44,8 +40,20 @@ impl PointerValue {
     pub fn set_reference(&mut self, reference: LLVMValueRef) {
         self.reference = reference;
     }
-    pub fn get_struct_field_ptr(&self, name: &str) -> Option<LLVMValue> {
-        todo!()
+    pub fn get_struct_field_ptr(&self, ctx: &Context, name: &str) -> Option<LLVMValue> {
+        let element = self.element.borrow();
+        if let LLVMValue::Struct(struct_value) = &**element {
+            if let Some(index) = struct_value.get_field_index(name) {
+                let builder = ctx.get_builder();
+                let field_ptr = builder.build_struct_gep(
+                    &struct_value.get_llvm_type(ctx),
+                    LLVMValue::Pointer(self.clone()),
+                    index,
+                );
+                return Some(field_ptr);
+            }
+        }
+        None
     }
     pub fn is_undef(&self) -> bool {
         unsafe { LLVMIsUndef(self.reference) == 1 }

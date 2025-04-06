@@ -60,35 +60,33 @@ impl From<LLVMValueRef> for LLVMValue {
     fn from(value: LLVMValueRef) -> Self {
         let ty = unsafe { LLVMTypeOf(value) };
         let type_kind = unsafe { LLVMGetTypeKind(ty) };
-        unsafe {
-            match type_kind {
-                LLVMTypeKind::LLVMIntegerTypeKind => {
-                    let width = unsafe { LLVMGetIntTypeWidth(ty) };
-                    let width = width as i8;
+        match type_kind {
+            LLVMTypeKind::LLVMIntegerTypeKind => {
+                let width = unsafe { LLVMGetIntTypeWidth(ty) };
+                let width = width as i8;
 
-                    match width {
-                        1 => LLVMValue::Bool(BoolValue::new(value)),
-                        8 => LLVMValue::Int8(Int8Value::new(value)),
-                        16 => LLVMValue::Int16(Int16Value::new(value)),
-                        32 => LLVMValue::Int32(Int32Value::new(value)),
-                        64 => LLVMValue::Int64(Int64Value::new(value)),
-                        _ => {
-                            todo!()
-                        }
+                match width {
+                    1 => LLVMValue::Bool(BoolValue::new(value)),
+                    8 => LLVMValue::Int8(Int8Value::new(value)),
+                    16 => LLVMValue::Int16(Int16Value::new(value)),
+                    32 => LLVMValue::Int32(Int32Value::new(value)),
+                    64 => LLVMValue::Int64(Int64Value::new(value)),
+                    _ => {
+                        todo!()
                     }
                 }
-                // LLVMTypeKind::LLVMPointerTypeKind => {
-                //     LLVMValue::Pointer(PointerValue::new(value, LLVMValue::Undef(value)))
-                // }
-                // LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
-                LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(DoubleValue::new(value)),
-                LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
-                // LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(StructValue::new(value, UNNAMED.into(), HashMap::new(), ty)),
-                LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(FloatValue::new(value)),
-                t => {
-                    println!("{t:?}");
-                    todo!()
-                }
+            }
+            // LLVMTypeKind::LLVMPointerTypeKind => {
+            //     LLVMValue::Pointer(PointerValue::new(value, LLVMGetUndef(ty)))
+            // }
+            // LLVMTypeKind::LLVMArrayTypeKind => LLVMValue::Array(value),
+            LLVMTypeKind::LLVMDoubleTypeKind => LLVMValue::Double(DoubleValue::new(value)),
+            LLVMTypeKind::LLVMVoidTypeKind => LLVMValue::Unit,
+            // LLVMTypeKind::LLVMStructTypeKind => LLVMValue::Struct(StructValue::new(value, UNNAMED.into(), HashMap::new(), ty)),
+            LLVMTypeKind::LLVMFloatTypeKind => LLVMValue::Float(FloatValue::new(value)),
+            t => {
+                println!("{t:?}");
+                todo!()
             }
         }
     }
@@ -132,18 +130,27 @@ impl LLVMValue {
                 LLVMValue::Array(i) => i.get_reference(),
                 LLVMValue::Struct(i) => i.get_reference(),
                 LLVMValue::Reference(i) => i.get_reference(),
-                // LLVMValue::Undef(i) => *i,
                 LLVMValue::Unit => LLVMGetUndef(LLVMVoidType()),
                 LLVMValue::Function(i) => i.get_reference(),
-                t => {
-                    panic!("Unknown type: {:?}", t)
-                }
+                LLVMValue::EnumVariant(i) => i.get_reference(),
             }
         }
     }
-    pub fn as_enum_variant(&self) -> Option<&EnumVariantValue> {
+    // pub fn as_enum_variant(&self) -> Option<&EnumVariantValue> {
+    //     match self {
+    //         LLVMValue::EnumVariant(v) => Some(v),
+    //         _ => None,
+    //     }
+    // }
+    pub fn as_int32(&self) -> Option<&Int32Value> {
         match self {
-            LLVMValue::EnumVariant(v) => Some(v),
+            LLVMValue::Int32(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn as_bool(&self) -> Option<&BoolValue> {
+        match self {
+            LLVMValue::Bool(v) => Some(v),
             _ => None,
         }
     }
@@ -189,6 +196,9 @@ impl LLVMValue {
     pub fn is_function(&self) -> bool {
         matches!(self, LLVMValue::Function(_))
     }
+    pub fn is_array(&self) -> bool {
+        matches!(self, LLVMValue::Array(_))
+    }
     pub fn get_llvm_type(&self, ctx: &Context) -> LLVMType {
         let ty = unsafe { LLVMTypeOf(self.as_llvm_value_ref()) };
         match self {
@@ -206,7 +216,7 @@ impl LLVMValue {
             LLVMValue::String(_) => LLVMType::String(ty),
             LLVMValue::Function(function_value) => function_value.get_llvm_type(ctx),
             LLVMValue::Reference(reference_value) => reference_value.get_llvm_type(ctx),
-            t => panic!("{t:?}"),
+            LLVMValue::EnumVariant(enum_variant_value) => enum_variant_value.get_llvm_type(ctx),
         }
     }
     pub fn is_unit(&self) -> bool {

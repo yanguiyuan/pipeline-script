@@ -139,6 +139,7 @@ impl Compiler {
             // Type::Alias(_) => Global::i8_type(),
             Type::Bool => Global::i1_type(),
             Type::GenericInstance { instance, .. } => self.compile_type(instance),
+            Type::Alias(_) => Global::unit_type(),
             _ => panic!("Unknown type: {:?}", ty),
         }
     }

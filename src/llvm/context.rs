@@ -164,7 +164,7 @@ impl LLVMContext {
         let name = CString::new(name0).unwrap();
         let mut et = element_type
             .iter()
-            .map(|(name, t)| t.as_llvm_type_ref())
+            .map(|(_, t)| t.as_llvm_type_ref())
             .collect::<Vec<LLVMTypeRef>>();
         let t = unsafe { LLVMStructCreateNamed(self.llvm_ref, name.as_ptr()) };
         unsafe {

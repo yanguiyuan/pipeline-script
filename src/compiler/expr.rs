@@ -94,12 +94,12 @@ impl Compiler {
             return element
                 .as_pointer()
                 .unwrap()
-                .get_struct_field_ptr(field_name)
+                .get_struct_field_ptr(ctx, field_name)
                 .unwrap();
         }
         v.as_reference()
             .unwrap()
-            .get_struct_field_ptr(field_name)
+            .get_struct_field_ptr(ctx, field_name)
             .unwrap()
     }
 
@@ -152,7 +152,6 @@ impl Compiler {
     fn compile_variable(&self, name: &str, ctx: &Context) -> LLVMValue {
         // 查找全局符号或函数
         let ptr = ctx.get_symbol(name).unwrap();
-        dbg!(&ptr);
         if ptr.is_reference() {
             return ptr.as_reference().unwrap().get_value(ctx);
         }
@@ -182,7 +181,9 @@ impl Compiler {
             Op::Plus => self.compile_add(l, r, ctx),
             Op::Minus => builder.build_sub(l, r),
             Op::Mul => builder.build_mul(l, r),
-            Op::Equal => builder.build_eq(l, r),
+            Op::Equal => builder
+                .build_eq(l.as_llvm_value_ref(), r.as_llvm_value_ref())
+                .into(),
             Op::NotEqual => builder.build_neq(l, r),
             Op::Less => builder.build_less(l, r),
             Op::Greater => builder.build_greater(l, r),
@@ -218,7 +219,13 @@ impl Compiler {
 
     fn compile_index(&self, target: &ExprNode, index: &ExprNode, ctx: &Context) -> LLVMValue {
         let v = self.compile_expr(target, ctx);
-        let element_type = v.as_array().unwrap().get_element_type();
+        let element_type = if v.is_array() {
+            v.as_array().unwrap().get_element_type()
+        } else if v.is_pointer() {
+            v.as_pointer().unwrap().get_element_type(ctx)
+        } else {
+            panic!("索引操作的目标必须是数组或指针类型");
+        };
         let index = self.compile_expr(index, ctx);
         let builder = ctx.get_builder();
         let v = builder.build_array_get_in_bounds(element_type, v, index);
@@ -302,7 +309,6 @@ impl Compiler {
                 }
             }
         }
-
         // 设置标签字段（第一个字段）
         let enum_val = self.compile_type(ty0).get_undef();
         let mut enum_val = builder.build_struct_insert(
@@ -329,13 +335,11 @@ impl Compiler {
     // ===== 函数调用处理 =====
 
     fn compile_fn_call(&self, fc: &crate::ast::expr::FunctionCall, ctx: &Context) -> LLVMValue {
-        let binding = ctx.get(ContextKey::Builder).unwrap();
-        let builder = binding.as_builder();
         let name = fc.name.clone();
         let args = &fc.args;
         // 获取函数声明
         let function_value = ctx.get_symbol(&name).unwrap();
-        let (function_decl, is_fn_param) = self.get_function_declaration(&name, ctx);
+        let function_decl = self.get_function_declaration(&name, ctx);
         let index_map = function_value.as_function().unwrap().get_param_index_map();
         // 获取函数定义
         let mut arg_values = self.process_function_args(fc, args, &index_map, &function_decl, ctx);
@@ -346,26 +350,13 @@ impl Compiler {
             return result;
         }
         // 处理闭包和符号类型
-        let symbol_type = ctx.get_symbol(&name);
-        if let Some(symbol) = symbol_type {
-            return symbol.as_function().unwrap().call(ctx, arg_values);
-        }
-
-        // 处理函数指针调用
-        if is_fn_param {
-            return self.call_function_pointer(&name, function_decl, &mut arg_values, ctx);
-        }
-
-        // 普通函数调用
-        if name == "panic" || name == "exit" {
-            builder.build_unreachable();
-        }
-        panic!("Unknown function: {}", name);
+        let symbol = ctx.get_symbol(&name).unwrap();
+        symbol.as_function().unwrap().call(ctx, arg_values)
     }
 
-    fn get_function_declaration(&self, name: &str, ctx: &Context) -> (Type, bool) {
+    fn get_function_declaration(&self, name: &str, ctx: &Context) -> Type {
         if let Some(function) = ctx.get_function(name) {
-            (function.get_type(), false)
+            function.get_type()
         } else {
             let current_function = ctx.get_current_function();
             let function_index = current_function.get_param_index(name).unwrap();
@@ -373,21 +364,9 @@ impl Compiler {
                 .get_current_function_type()
                 .get_function_arg_type(function_index)
                 .unwrap();
-            (function_decl, true)
+            function_decl
         }
     }
-
-    fn build_param_index_map(
-        &self,
-        func_args: &[crate::ast::declaration::VariableDeclaration],
-    ) -> HashMap<String, usize> {
-        let mut param_name_to_index = HashMap::new();
-        for (i, param) in func_args.iter().enumerate() {
-            param_name_to_index.insert(param.name.clone(), i);
-        }
-        param_name_to_index
-    }
-
     fn process_function_args(
         &self,
         fc: &crate::ast::expr::FunctionCall,
@@ -431,8 +410,11 @@ impl Compiler {
             if pos_idx < arg_count {
                 let t = function_decl.get_function_arg_type(pos_idx).unwrap();
                 let ctx = Context::with_type(ctx, "default".into(), t.clone());
-                let mut v = self.compile_expr(&arg.value, &ctx);
-
+                let mut v = if t.is_ref() {
+                    self.compile_expr_with_ptr(&arg.value, &ctx)
+                } else {
+                    self.compile_expr(&arg.value, &ctx)
+                };
                 // 处理Any类型
                 if t.is_any() {
                     v = self.convert_to_any_type(v, &t, &ctx);
@@ -535,40 +517,6 @@ impl Compiler {
             _ => None,
         }
     }
-
-    fn call_function_pointer(
-        &self,
-        name: &str,
-        function_decl: Type,
-        arg_values: &mut [Option<LLVMValue>],
-        ctx: &Context,
-    ) -> LLVMValue {
-        let builder = ctx.get_builder();
-        let fn_struct = ctx.get_current_function().get_param(ctx, name).unwrap();
-        let struct_value = fn_struct.as_struct().unwrap();
-        let fn_ptr = builder.build_struct_get(struct_value, 0);
-        let extra_param = builder.build_struct_get(struct_value, 1);
-
-        let mut llvm_args = Vec::new();
-        for arg_val in arg_values.iter() {
-            if let Some(val) = arg_val {
-                llvm_args.push(val.clone());
-            } else {
-                panic!("函数指针调用缺少参数值");
-            }
-        }
-
-        llvm_args.push(extra_param);
-        let v = builder.build_call_fn_ptr(
-            self.get_type(ctx, &function_decl),
-            fn_ptr,
-            llvm_args.as_mut_slice(),
-            "",
-        );
-
-        v
-    }
-
     // ===== 辅助方法 =====
 
     fn compile_add(&self, l: LLVMValue, r: LLVMValue, ctx: &Context) -> LLVMValue {

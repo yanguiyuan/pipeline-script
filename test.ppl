@@ -59,3 +59,10 @@ test()|b:Int64,c:Int64|{
     println(a+b+c)
     return b+c
 }
+
+fn add<T>(a: T, b: T) -> T {
+    return a + b
+}
+
+let b = add::<Int64>(1, 2)
+println(b)

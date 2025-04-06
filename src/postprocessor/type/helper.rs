@@ -22,18 +22,12 @@ impl TypePostprocessor {
         fc: &FunctionCall,
         ctx: &Context,
     ) -> (String, Vec<Argument>, Option<Type>) {
-        dbg!(fc);
         let mut fc_name = fc.name.clone();
 
         let mut fc_args = fc.args.clone();
         let mut caller_type = None;
         if fc.is_method {
             let this = fc.args.first();
-            // let function = get_function_from_context(ctx, &fc_name).expect("Function not found");
-            // if function.self_type().is_none() {
-            //     // 非方法调用
-            //     return (fc_name, fc_args);
-            // }
             if let Some(this) = this {
                 let this = self.process_expr(&this.value, ctx);
                 let this_type = this
@@ -45,7 +39,6 @@ impl TypePostprocessor {
                     fc_args.remove(0);
                     fc_name = format!("{}:{}", this.get_variable_name().unwrap(), fc_name);
                 } else {
-                    dbg!(&this_type);
                     let this_type_name = this_type
                         .get_composite_type_name()
                         .expect("Failed to get composite type name");
@@ -87,7 +80,6 @@ impl TypePostprocessor {
         ctx: &Context,
     ) -> Vec<Argument> {
         let mut args = vec![];
-        dbg!(fc_type);
         let arg_count = fc_type.get_function_arg_count();
         // 直接返回参数，不进行命名参数处理
         // 命名参数的处理将在add_default_arguments中完成
@@ -127,9 +119,10 @@ impl TypePostprocessor {
             }
         }
         // 生成实例化类型名
-        dbg!(&fc_name);
-        let [p_type, method] = fc_name.split('.').collect::<Vec<&str>>()[..] else {
-            panic!("Invalid function name");
+        let (p_type, method) = if let Some((p, m)) = fc_name.split_once('.') {
+            (p, m)
+        } else {
+            ("", fc_name.as_str())
         };
         let composite_type_generics_name = fc
             .type_generics
@@ -148,7 +141,13 @@ impl TypePostprocessor {
         } else {
             format!("{}<{}>", p_type, composite_type_generics_name)
         };
-        let instance_name = if fc.generics.is_empty() {
+        let instance_name = if p_type.is_empty() {
+            if fc.generics.is_empty() {
+                method.to_string()
+            } else {
+                format!("{}<{}>", method, composite_function_generics_name)
+            }
+        } else if fc.generics.is_empty() {
             format!("{}.{}", instance_name, method)
         } else {
             format!(

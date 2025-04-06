@@ -40,7 +40,6 @@ impl TypePostprocessor {
                 .with_type(actual.get_type().unwrap())
             }
             Expr::FnCall(fc) => {
-                dbg!(&fc);
                 // 处理方法调用的情况
                 let (mut fc_name, fc_args, caller_type) = self.process_method_call(&fc, ctx);
                 if !fc.type_generics.is_empty() || fc_name.contains('<') {
@@ -68,8 +67,10 @@ impl TypePostprocessor {
                 }
                 // 处理模板函数实例化
                 if !fc.generics.is_empty() && &fc.name != "sizeof" {
-                    (fc_name, fc_return_type) =
+                    let (fc_name0, fc_type) =
                         self.instantiate_template_function(&fc, &fc_name, ctx, None);
+                    fc_name = fc_name0;
+                    fc_return_type = fc_type.get_function_return_type().unwrap();
                 }
 
                 // 处理函数参数
@@ -150,8 +151,7 @@ impl TypePostprocessor {
             }
             Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
-                let ty = ctx.get_symbol_type(&name);
-                let ty = ty.unwrap();
+                let ty = ctx.get_symbol_type(&name).unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())
                 }
@@ -299,7 +299,6 @@ impl TypePostprocessor {
             }
             Expr::Member(target, name) => {
                 let target = self.process_expr(&target, ctx);
-                dbg!(&target);
                 let mut ty = target.get_type().unwrap();
                 if ty.is_ref() {
                     ty = ty.unwrap_ref();
@@ -313,8 +312,6 @@ impl TypePostprocessor {
                 let ty = if ty.is_array() && name == "length" {
                     Type::Int64
                 } else {
-                    dbg!(&ty);
-                    dbg!(&name);
                     ty.get_struct_field(name.clone()).unwrap().1.clone()
                 };
                 ExprNode::new(Expr::Member(Box::new(target), name.clone())).with_type(ty)

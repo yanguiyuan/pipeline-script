@@ -7,6 +7,7 @@ use llvm_sys::prelude::LLVMValueRef;
 pub struct ArrayValue {
     reference: LLVMValueRef,
     element: LLVMType,
+    #[allow(unused)]
     length: usize,
 }
 

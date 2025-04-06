@@ -13,7 +13,7 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone)]
 pub struct ExprNode {
-    expr: Expr,
+    pub(crate) expr: Expr,
     pos: Position,
     ty: Option<Type>,
 }
@@ -175,6 +175,15 @@ impl ExprNode {
     pub fn get_expr_mut(&mut self) -> &mut Expr {
         &mut self.expr
     }
+    pub fn get_member_root(&self) -> ExprNode {
+        match &self.expr {
+            Expr::Member(expr, _) => expr.as_ref().clone(),
+            _ => panic!("Not a member expression"),
+        }
+    }
+    pub fn is_member(&self) -> bool {
+        matches!(&self.expr, Expr::Member(_, _))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -332,12 +341,6 @@ impl ExprNode {
     pub fn get_member_name(&self) -> String {
         match &self.expr {
             Expr::Member(_, name) => name.clone(),
-            _ => panic!("not member expr"),
-        }
-    }
-    pub fn get_member_root(&self) -> ExprNode {
-        match &self.expr {
-            Expr::Member(root, _) => *root.clone(),
             _ => panic!("not member expr"),
         }
     }

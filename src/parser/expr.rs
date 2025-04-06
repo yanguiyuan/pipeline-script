@@ -3,7 +3,7 @@ use crate::context::Context;
 use crate::core::error::Error;
 use crate::lexer::position::Position;
 use crate::lexer::token::Token;
-use crate::parser::helper::is_enum;
+use crate::parser::helper::{get_struct_from_context, is_enum};
 use crate::parser::Parser;
 use std::collections::HashMap;
 
@@ -56,9 +56,9 @@ impl Parser {
                             }))
                             .with_position(pos));
                         }
-                        // Token::Less => {
-                        //     generics = self.parse_generic_list()?;
-                        // }
+                        Token::Less => {
+                            generics = self.parse_generic_list()?;
+                        }
                         Token::ParenLeft => {
                             // 解析结构体构造
                             let p0 = self.parse_special_token(Token::ParenLeft)?;
@@ -190,19 +190,22 @@ impl Parser {
                 let (mut args, p1) = self.parse_fn_args(ctx)?;
                 let p1 = p1 + p0;
                 let mut name = expr.get_member_name();
-                let new_name = format!(
-                    "{}.{}",
-                    expr.get_member_root().get_variable_name().unwrap(),
-                    name
-                );
                 let mut is_method = false;
-                let function = ctx.get_function(&new_name);
-                if let Some(function) = function {
-                    if function.self_type().is_none() {
-                        name = new_name;
-                    } else {
-                        args.insert(0, Argument::new(expr.get_member_root()));
-                        is_method = true;
+
+                // 检查是否是结构体方法调用
+                if expr.is_member() {
+                    let root = expr.get_member_root();
+                    if let Expr::Variable(root_name) = &root.expr {
+                        // 检查是否是已知的结构体
+                        if let Some(_) = get_struct_from_context(ctx, root_name) {
+                            name = format!("{}.{}", root_name, name);
+                            args.insert(0, Argument::new(root));
+                            is_method = true;
+                        } else {
+                            // 普通成员访问，保持原始函数名，添加self参数
+                            args.insert(0, Argument::new(root));
+                            is_method = true;
+                        }
                     }
                 }
 

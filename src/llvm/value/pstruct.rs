@@ -4,6 +4,7 @@ use crate::llvm::types::LLVMType;
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::LLVMIsUndef;
 use llvm_sys::prelude::LLVMValueRef;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -12,7 +13,7 @@ pub struct StructValue {
     name: String,
     pub(crate) field_index: HashMap<String, usize>,
     // 缓存字段值
-    pub(crate) field_values: Vec<LLVMValue>,
+    pub(crate) field_values: RefCell<Vec<LLVMValue>>,
 }
 
 impl StructValue {
@@ -26,7 +27,7 @@ impl StructValue {
             reference,
             name,
             field_index,
-            field_values,
+            field_values: RefCell::new(field_values),
         }
     }
     pub fn get_reference(&self) -> LLVMValueRef {
@@ -36,7 +37,6 @@ impl StructValue {
         let index = self.field_index.get(name).unwrap();
         let builder = ctx.get_builder();
         builder.build_struct_get(self, *index)
-        // self.field_values[self.field_index[name]].clone()
     }
     pub fn get_llvm_type(&self, ctx: &Context) -> LLVMType {
         let llvm_module = ctx.get_llvm_module();
@@ -47,7 +47,10 @@ impl StructValue {
             None => {
                 let mut field_type = Vec::new();
                 for (name, index) in &self.field_index {
-                    field_type.push((name.clone(), self.field_values[*index].get_llvm_type(ctx)));
+                    field_type.push((
+                        name.clone(),
+                        self.field_values.borrow()[*index].get_llvm_type(ctx),
+                    ));
                 }
                 Global::struct_type(self.name.clone(), field_type)
             }
@@ -56,7 +59,7 @@ impl StructValue {
     pub fn with_field(&self, reference: LLVMValueRef, index: usize, value: LLVMValue) -> Self {
         let mut clone = self.clone();
         clone.reference = reference;
-        clone.field_values[index] = value;
+        clone.field_values.borrow_mut()[index] = value;
         clone
     }
     pub fn get_name(&self) -> String {
@@ -65,8 +68,25 @@ impl StructValue {
     pub fn get_field_index(&self, name: &str) -> Option<usize> {
         self.field_index.get(name).cloned()
     }
-    pub fn get_field_by_index(&self, index: usize) -> Option<LLVMValue> {
-        self.field_values.get(index).cloned()
+    pub fn get_field_by_index(&self, ctx: &Context, index: usize) -> Option<LLVMValue> {
+        let r = self.field_values.borrow().get(index).cloned();
+        match r {
+            Some(v) => {
+                if v.is_undef() {
+                    let builder = ctx.get_builder();
+                    let new_value = builder.build_struct_get(self, index);
+                    // 更新本地缓存
+                    self.field_values.borrow_mut()[index] = new_value.clone();
+                    Some(new_value)
+                } else {
+                    Some(v)
+                }
+            }
+            None => None,
+        }
+    }
+    pub fn simply_get_field_by_index(&self, index: usize) -> Option<LLVMValue> {
+        self.field_values.borrow().get(index).cloned()
     }
     pub fn set_reference(&mut self, reference: LLVMValueRef) {
         self.reference = reference;

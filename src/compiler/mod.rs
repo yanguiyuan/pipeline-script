@@ -220,7 +220,7 @@ impl Compiler {
         // 注册形参进入作用域
         for arg in function.args() {
             let arg_name = arg.name();
-            let mut arg_value = function_value.get_param(&ctx, arg_name.clone()).unwrap();
+            let mut arg_value = function_value.get_param(arg_name.clone()).unwrap();
             if let LLVMValue::Function(f) = &mut arg_value {
                 f.set_closure()
             }

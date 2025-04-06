@@ -35,6 +35,7 @@ impl Global {
         };
         LLVMValue::Array(ArrayValue::new(a, ty, array.len()))
     }
+    #[allow(unused)]
     pub fn const_unit() -> LLVMValue {
         LLVMValue::Unit
     }
