@@ -29,7 +29,8 @@ const b = v.get(0)
 const x = b.unwrap()
 println(x)
 
-let a = Option.Some(13)
-if let(Option.Some(g) = a){
-    println(g)
+let a = Option.None
+match(a){
+    Option.Some(x)->println(x),
+    Option.None->println("None"),
 }
