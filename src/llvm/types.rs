@@ -4,6 +4,7 @@ use crate::llvm::value::fucntion::FunctionValue;
 use crate::llvm::value::int::{Int16Value, Int32Value, Int64Value, Int8Value};
 use crate::llvm::value::pointer::PointerValue;
 use crate::llvm::value::pstruct::StructValue;
+use crate::llvm::value::reference::ReferenceValue;
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
     LLVMGetElementType, LLVMGetIntTypeWidth, LLVMGetTypeKind, LLVMGetUndef, LLVMInt32Type,
@@ -28,6 +29,7 @@ pub enum LLVMType {
     Array(Box<LLVMType>, LLVMTypeRef),
     Function(Box<LLVMType>, Vec<(String, LLVMType)>, LLVMTypeRef),
     Pointer(Box<LLVMType>, LLVMTypeRef),
+    Ref(Box<LLVMType>, LLVMTypeRef),
     String(LLVMTypeRef),
     Unit(LLVMTypeRef),
 }
@@ -97,6 +99,7 @@ impl LLVMType {
             LLVMType::Array(_, i) => *i,
             LLVMType::Function(_, _, i) => *i,
             LLVMType::Pointer(_, i) => *i,
+            LLVMType::Ref(_, i) => *i,
             LLVMType::Unit(i) => *i,
             LLVMType::Struct(_, _, i) => *i,
             LLVMType::String(i) => *i,
@@ -175,6 +178,10 @@ impl LLVMType {
                     undef_args,
                 ))
             }
+            LLVMType::Ref(element_type, type_reference) => {
+                let reference = unsafe { LLVMGetUndef(*type_reference) };
+                LLVMValue::Reference(ReferenceValue::new(reference, element_type.get_undef()))
+            }
             t => {
                 println!("{t:?}");
                 todo!()
@@ -213,6 +220,7 @@ impl LLVMType {
             LLVMType::Float(_) => 4,
             LLVMType::Double(_) => 8,
             LLVMType::Pointer(_, _) => 8, // 指针大小为8字节（64位系统）
+            LLVMType::Ref(_, _) => 8,     // 引用大小为8字节（64位系统）
             LLVMType::Struct(_, fields, _) => {
                 // 结构体大小为所有字段大小之和
                 fields.iter().map(|f| f.1.size()).sum()

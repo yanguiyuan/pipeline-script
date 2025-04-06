@@ -44,7 +44,6 @@ impl TypePostprocessor {
             module.merge_into_main(ctx, &name);
         }
         module.sort_global_block();
-        dbg!(&module);
         self.process_module(&module, ctx);
         self.module.clone()
     }
@@ -112,6 +111,9 @@ impl TypePostprocessor {
 
     fn process_function_types(&mut self, functions: &mut HashMap<String, Function>, ctx: &Context) {
         for (name, f) in functions.iter_mut() {
+            if f.is_template {
+                continue;
+            }
             let mut ty = f.get_type();
             if let Some(return_type) = ty.get_function_return_type() {
                 ty = Self::process_type(&ty, ctx);

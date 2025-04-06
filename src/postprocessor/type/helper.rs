@@ -127,6 +127,7 @@ impl TypePostprocessor {
             }
         }
         // 生成实例化类型名
+        dbg!(&fc_name);
         let [p_type, method] = fc_name.split('.').collect::<Vec<&str>>()[..] else {
             panic!("Invalid function name");
         };
@@ -339,10 +340,11 @@ impl TypePostprocessor {
         let mut fields = vec![];
 
         for (name, ty) in captures {
-            env_props.insert(
-                name.clone(),
-                ExprNode::new(Expr::Variable(name.clone())).with_type(ty.clone()),
-            );
+            let mut v = ExprNode::new(Expr::Variable(name.clone())).with_type(ty.clone());
+            if ty.is_ref() {
+                v = ExprNode::new(Expr::Address(Box::new(v))).with_type(ty.clone());
+            }
+            env_props.insert(name.clone(), v);
             fields.push(StructField::new(name.clone(), ty.clone()))
         }
 

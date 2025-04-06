@@ -141,6 +141,11 @@ impl Builder {
                 function_value.set_reference(r);
                 function_value.into()
             }
+            LLVMValue::Reference(reference_value) => {
+                let mut reference_value = reference_value.clone();
+                reference_value.set_reference(r);
+                reference_value.into()
+            }
             _ => r.into(),
         }
     }

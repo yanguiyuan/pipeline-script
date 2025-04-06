@@ -1,11 +1,6 @@
 import core
-fn test(f:Fn(Int64,Int64)->Int64){
-    const b = f(4,6)
-    println(b)
+fn add<T>(a: T, b: T) -> T {
+    return a + b
 }
-let a = 10
-test()|b:Int64,c:Int64|{
-    println("Hello World")
-    println(a+b+c)
-    return b+c
-}
+
+add::<Int64>(1, 2)

@@ -29,18 +29,21 @@ impl Compiler {
                     ctx.set_symbol(val.name(), v);
                     return;
                 }
+                dbg!(&val);
+                dbg!(&v);
                 ctx.set_symbol(val.name(), v);
             }
             Stmt::VarDecl(val) => {
                 let t = val.r#type().unwrap();
                 let element_type = t.get_element_type().unwrap();
                 let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
+                dbg!(&alloc);
                 let default_expr = val.get_default().unwrap();
                 let default_value = self.compile_expr(default_expr, ctx);
                 let result = alloc.as_reference().unwrap();
                 result.store(ctx, default_value);
                 // builder.build_store(alloc.clone(), default_value);
-
+                dbg!(&val);
                 ctx.set_symbol(val.name(), alloc);
             }
             Stmt::Assign(lhs, rhs) => {

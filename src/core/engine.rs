@@ -109,6 +109,7 @@ impl Engine {
             type_preprocessor.register_builtin_symbol_type(name, ty.clone());
         }
         let module = type_preprocessor.process(module_key, &ctx);
+        dbg!(&module);
         let mut compiler = Compiler::new(module.clone());
         for (name, value) in self.builtin_symbol.iter() {
             compiler.register_builtin_symbol(name, value.clone());

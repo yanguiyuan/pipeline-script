@@ -168,6 +168,10 @@ impl Global {
         let t = unsafe { LLVMPointerType(element_type.as_llvm_type_ref(), 0) };
         LLVMType::Pointer(Box::new(element_type), t)
     }
+    pub fn ref_type(element_type: LLVMType) -> LLVMType {
+        let t = unsafe { LLVMPointerType(element_type.as_llvm_type_ref(), 0) };
+        LLVMType::Ref(Box::new(element_type), t)
+    }
     pub fn string_type() -> LLVMType {
         let t = unsafe { LLVMPointerType(Global::i8_type().as_llvm_type_ref(), 0) };
         LLVMType::String(t)

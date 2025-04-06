@@ -135,7 +135,7 @@ impl Compiler {
                 )
             }
             Type::Float => Global::float_type(),
-            Type::Ref(t) => Global::pointer_type(self.compile_type(t)),
+            Type::Ref(t) => Global::ref_type(self.compile_type(t)),
             // Type::Alias(_) => Global::i8_type(),
             Type::Bool => Global::i1_type(),
             Type::GenericInstance { instance, .. } => self.compile_type(instance),

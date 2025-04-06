@@ -152,6 +152,7 @@ impl Compiler {
     fn compile_variable(&self, name: &str, ctx: &Context) -> LLVMValue {
         // 查找全局符号或函数
         let ptr = ctx.get_symbol(name).unwrap();
+        dbg!(&ptr);
         if ptr.is_reference() {
             return ptr.as_reference().unwrap().get_value(ctx);
         }
@@ -175,7 +176,6 @@ impl Compiler {
 
     fn compile_binary_op(&self, op: &Op, l: &ExprNode, r: &ExprNode, ctx: &Context) -> LLVMValue {
         let l = self.compile_expr(l, ctx);
-        dbg!(&l);
         let r = self.compile_expr(r, ctx);
         let builder = ctx.get_builder();
         match op {
@@ -338,12 +338,6 @@ impl Compiler {
         let (function_decl, is_fn_param) = self.get_function_declaration(&name, ctx);
         let index_map = function_value.as_function().unwrap().get_param_index_map();
         // 获取函数定义
-        // let func = ctx.get_function(&name).unwrap();
-        // let func_args = func.args();
-        // 构建参数映射和参数值数组
-        // let param_name_to_index = self.build_param_index_map(func_args);
-        dbg!(fc);
-        dbg!(args);
         let mut arg_values = self.process_function_args(fc, args, &index_map, &function_decl, ctx);
         // 处理特殊内建函数
         if let Some(result) =

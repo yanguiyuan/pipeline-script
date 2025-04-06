@@ -93,6 +93,13 @@ impl From<LLVMValueRef> for LLVMValue {
         }
     }
 }
+
+impl From<ReferenceValue> for LLVMValue {
+    fn from(value: ReferenceValue) -> Self {
+        LLVMValue::Reference(value)
+    }
+}
+
 impl LLVMValue {
     pub fn id(&self) -> i32 {
         match self {
@@ -198,6 +205,7 @@ impl LLVMValue {
             LLVMValue::Unit => LLVMType::Unit(ty),
             LLVMValue::String(_) => LLVMType::String(ty),
             LLVMValue::Function(function_value) => function_value.get_llvm_type(ctx),
+            LLVMValue::Reference(reference_value) => reference_value.get_llvm_type(ctx),
             t => panic!("{t:?}"),
         }
     }
