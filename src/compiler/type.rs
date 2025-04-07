@@ -42,6 +42,9 @@ impl Compiler {
                 let mut max_data_type: Option<LLVMType> = None;
                 for (_, variant_type) in variants.iter() {
                     if let Some(t) = variant_type {
+                        if t.is_alias() {
+                            continue;
+                        }
                         let llvm_type = self.compile_type(t);
                         if let Some(max_type) = &max_data_type {
                             // 简单比较，选择大小更大的类型
@@ -57,9 +60,6 @@ impl Compiler {
                 // 添加数据字段
                 if let Some(data_type) = max_data_type {
                     fields.push(("data".into(), data_type));
-                } else {
-                    // 如果没有变体有数据，添加一个空字段
-                    fields.push(("data".into(), Global::unit_type()));
                 }
 
                 // 创建命名结构体类型
@@ -139,7 +139,6 @@ impl Compiler {
             // Type::Alias(_) => Global::i8_type(),
             Type::Bool => Global::i1_type(),
             Type::GenericInstance { instance, .. } => self.compile_type(instance),
-            Type::Alias(_) => Global::unit_type(),
             _ => panic!("Unknown type: {:?}", ty),
         }
     }

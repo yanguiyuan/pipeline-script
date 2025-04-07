@@ -82,6 +82,11 @@ impl TypePostprocessor {
 
                 ExprNode::new(Expr::FnCall(new_fc)).with_type(fc_return_type)
             }
+            Expr::Unary(op, e) => {
+                let e = self.process_expr(&e, ctx);
+                ExprNode::new(Expr::Unary(op.clone(), Box::new(e.clone())))
+                    .with_type(e.get_type().unwrap())
+            }
             Expr::Binary(op, l, r) => {
                 let l = self.process_expr(&l, ctx);
                 let r = self.process_expr(&r, ctx);
@@ -151,7 +156,6 @@ impl TypePostprocessor {
             }
             Expr::Float(f) => ExprNode::new(Expr::Float(f)).with_type(Type::Float),
             Expr::Variable(name) => {
-                dbg!(&name);
                 let ty = ctx.get_symbol_type(&name).unwrap();
                 if !ctx.is_local_variable(&name) && !ty.is_function() && !ty.is_module() {
                     ctx.add_capture(name.clone(), ty.clone())

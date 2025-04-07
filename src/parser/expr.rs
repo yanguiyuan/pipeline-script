@@ -11,6 +11,14 @@ impl Parser {
     pub fn parse_primary_expr(&mut self, ctx: &Context) -> crate::core::result::Result<ExprNode> {
         let (token, mut pos) = self.token_stream.next_token();
         match token {
+            Token::Not => {
+                let expr = self.parse_primary_expr(ctx)?;
+                Ok(ExprNode::from(Expr::Unary(Op::Not, Box::new(expr))).with_position(pos))
+            }
+            Token::Minus => {
+                let expr = self.parse_primary_expr(ctx)?;
+                Ok(ExprNode::from(Expr::Unary(Op::Negate, Box::new(expr))).with_position(pos))
+            }
             Token::Vertical => {
                 let peek = self.token_stream.peek().0;
                 let mut l = vec![];
@@ -57,7 +65,18 @@ impl Parser {
                             .with_position(pos));
                         }
                         Token::Less => {
-                            generics = self.parse_generic_list()?;
+                            let mut flag = false;
+                            ctx.apply_module(self.module, |m| {
+                                let r = m.get_struct(&id);
+                                if r.is_some() {
+                                    flag = true;
+                                }
+                            });
+                            if flag {
+                                generics = self.parse_generic_list()?;
+                            } else {
+                                return Ok(ExprNode::from(Expr::Variable(id)).with_position(pos));
+                            }
                         }
                         Token::ParenLeft => {
                             // 解析结构体构造
@@ -306,6 +325,26 @@ impl Parser {
                     ExprNode::new(Expr::Binary(Op::Less, Box::new(expr0), Box::new(expr1)))
                         .with_position(p0),
                 )
+            }
+            Token::LessEqual => {
+                let p0 = self.parse_special_token(Token::LessEqual)?;
+                let expr1 = self.parse_expr(ctx)?;
+                Ok(ExprNode::new(Expr::Binary(
+                    Op::LessEqual,
+                    Box::new(expr0),
+                    Box::new(expr1),
+                ))
+                .with_position(p0))
+            }
+            Token::GreaterEqual => {
+                let p0 = self.parse_special_token(Token::GreaterEqual)?;
+                let expr1 = self.parse_expr(ctx)?;
+                Ok(ExprNode::new(Expr::Binary(
+                    Op::GreaterEqual,
+                    Box::new(expr0),
+                    Box::new(expr1),
+                ))
+                .with_position(p0))
             }
             Token::Greater => {
                 let p0 = self.parse_special_token(Token::Greater)?;

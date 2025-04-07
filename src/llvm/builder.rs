@@ -9,16 +9,19 @@ use crate::llvm::value::pstruct::StructValue;
 use crate::llvm::value::reference::ReferenceValue;
 use crate::llvm::value::LLVMValue;
 use llvm_sys::core::{
-    LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2,
-    LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildGEP2, LLVMBuildGlobalString,
-    LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2, LLVMBuildInsertValue,
-    LLVMBuildLoad2, LLVMBuildMul, LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore,
-    LLVMBuildStructGEP2, LLVMBuildSub, LLVMBuildUnreachable, LLVMBuildZExt, LLVMConstArray2,
-    LLVMConstIntToPtr, LLVMDisposeBuilder, LLVMGetArrayLength2, LLVMInt8Type, LLVMPointerType,
+    LLVMBuildAdd, LLVMBuildAlloca, LLVMBuildAnd, LLVMBuildArrayAlloca, LLVMBuildBr, LLVMBuildCall2,
+    LLVMBuildCondBr, LLVMBuildExtractValue, LLVMBuildFAdd, LLVMBuildFNeg, LLVMBuildGEP2,
+    LLVMBuildGlobalString, LLVMBuildGlobalStringPtr, LLVMBuildICmp, LLVMBuildInBoundsGEP2,
+    LLVMBuildInsertValue, LLVMBuildLoad2, LLVMBuildMul, LLVMBuildNeg, LLVMBuildNot, LLVMBuildOr,
+    LLVMBuildRet, LLVMBuildRetVoid, LLVMBuildSDiv, LLVMBuildStore, LLVMBuildStructGEP2,
+    LLVMBuildSub, LLVMBuildUnreachable, LLVMBuildZExt, LLVMConstArray2, LLVMConstIntToPtr,
+    LLVMDisposeBuilder, LLVMGetArrayLength2, LLVMInt8Type, LLVMPointerType,
     LLVMPositionBuilderAtEnd,
 };
 use llvm_sys::prelude::{LLVMBasicBlockRef, LLVMBuilderRef, LLVMValueRef};
-use llvm_sys::LLVMIntPredicate::{LLVMIntEQ, LLVMIntNE, LLVMIntSGT, LLVMIntSLT};
+use llvm_sys::LLVMIntPredicate::{
+    LLVMIntEQ, LLVMIntNE, LLVMIntSGE, LLVMIntSGT, LLVMIntSLE, LLVMIntSLT,
+};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::{c_uint, CString};
@@ -524,6 +527,74 @@ impl Builder {
             }
             _ => r.into(),
         }
+    }
+    pub fn build_less_equal(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe {
+            LLVMBuildICmp(
+                self.inner,
+                LLVMIntSLE,
+                l.as_llvm_value_ref(),
+                r.as_llvm_value_ref(),
+                name.as_ptr(),
+            )
+        }
+        .into()
+    }
+
+    pub fn build_greater_equal(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe {
+            LLVMBuildICmp(
+                self.inner,
+                LLVMIntSGE,
+                l.as_llvm_value_ref(),
+                r.as_llvm_value_ref(),
+                name.as_ptr(),
+            )
+        }
+        .into()
+    }
+
+    pub fn build_and(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe {
+            LLVMBuildAnd(
+                self.inner,
+                l.as_llvm_value_ref(),
+                r.as_llvm_value_ref(),
+                name.as_ptr(),
+            )
+        }
+        .into()
+    }
+
+    pub fn build_or(&self, l: LLVMValue, r: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe {
+            LLVMBuildOr(
+                self.inner,
+                l.as_llvm_value_ref(),
+                r.as_llvm_value_ref(),
+                name.as_ptr(),
+            )
+        }
+        .into()
+    }
+
+    pub fn build_fneg(&self, val: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe { LLVMBuildFNeg(self.inner, val.as_llvm_value_ref(), name.as_ptr()) }.into()
+    }
+
+    pub fn build_neg(&self, val: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe { LLVMBuildNeg(self.inner, val.as_llvm_value_ref(), name.as_ptr()) }.into()
+    }
+
+    pub fn build_not(&self, val: LLVMValue) -> LLVMValue {
+        let name = CString::new("").unwrap();
+        unsafe { LLVMBuildNot(self.inner, val.as_llvm_value_ref(), name.as_ptr()) }.into()
     }
 }
 

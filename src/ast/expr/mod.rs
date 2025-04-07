@@ -248,9 +248,13 @@ pub enum Op {
     Mod,
     Greater,
     Less,
+    GreaterEqual,
+    LessEqual,
     Equal,
     NotEqual,
     Negate,
+    // 取反
+    Not,
     And,
     Or,
 }
@@ -269,6 +273,9 @@ impl Display for Op {
             Op::Negate => write!(f, "!"),
             Op::And => write!(f, "&&"),
             Op::Or => write!(f, "||"),
+            Op::GreaterEqual => write!(f, ">="),
+            Op::LessEqual => write!(f, "<="),
+            Op::Not => write!(f, "!"),
         }
     }
 }

@@ -67,17 +67,17 @@ impl Context {
         }
     }
 
-    // pub fn apply_module(&self,key:DefaultKey,mut apply:impl FnMut(&Module)){
-    //     let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
-    //     match slot_map{
-    //         ContextValue::ModuleSlotMap(slot_map)=>{
-    //             let slot_map = slot_map.read().unwrap();
-    //             let module = slot_map.get(key).unwrap();
-    //             apply(module)
-    //         }
-    //         _=>panic!("not a module slot map")
-    //     }
-    // }
+    pub fn apply_module(&self, key: DefaultKey, mut apply: impl FnMut(&Module)) {
+        let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
+        match slot_map {
+            ContextValue::ModuleSlotMap(slot_map) => {
+                let slot_map = slot_map.read().unwrap();
+                let module = slot_map.get(key).unwrap();
+                apply(module)
+            }
+            _ => panic!("not a module slot map"),
+        }
+    }
     pub fn register_module(&self, module: Module) -> DefaultKey {
         let slot_map = self.get(ContextKey::ModuleSlotMap).unwrap();
         match slot_map {

@@ -34,6 +34,7 @@ impl Compiler {
             Stmt::VarDecl(val) => {
                 let t = val.r#type().unwrap();
                 let element_type = t.get_element_type().unwrap();
+
                 let alloc = builder.build_alloca(val.name(), &self.get_type(ctx, &element_type));
                 let default_expr = val.get_default().unwrap();
                 let default_value = self.compile_expr(default_expr, ctx);
@@ -222,12 +223,14 @@ impl Compiler {
         end_block: LLVMBasicBlockRef,
         ctx: &Context,
     ) {
+        let builder = ctx.get_builder();
+        let function = ctx.get_current_function();
+
         for (branch_index, branch) in branches.iter().enumerate() {
             let pattern = branch.get_pattern();
 
             // 检查模式是否是枚举变体
             if let Expr::EnumVariant(enum_name, variant_name, binding) = &pattern.get_expr() {
-                let builder = ctx.get_builder();
                 // 获取变体索引
                 let variant_index = self.compile_enum_variant_index(enum_name, variant_name, ctx);
                 // 获取枚举值的标签（第一个字段）
@@ -235,19 +238,20 @@ impl Compiler {
                 // 创建条件：tag == variant_index
                 let tag = tag.as_int32().unwrap();
                 let cond = tag.eq(ctx, &Global::const_i32(variant_index as i32));
-                // let cond = builder.build_eq(tag, Global::const_i32(variant_index as i32).into());
-                // 创建下一个分支的基本块
+
+                // 创建分支基本块
+                let branch_block = branch_blocks[branch_index];
                 let next_block = if branch_index < branches.len() - 1 {
-                    branch_blocks[branch_index + 1]
+                    function.append_basic_block("next_branch")
                 } else {
                     end_block
                 };
 
                 // 创建条件分支
-                builder.build_cond_br(&cond, branch_blocks[branch_index], next_block);
+                builder.build_cond_br(&cond, branch_block, next_block);
 
                 // 编译分支体
-                builder.position_at_end(branch_blocks[branch_index]);
+                builder.position_at_end(branch_block);
 
                 // 如果模式有关联值，需要提取并绑定
                 self.compile_match_branch_binding(binding, value, ctx);
@@ -259,8 +263,14 @@ impl Compiler {
 
                 // 跳转到匹配结束的基本块
                 builder.build_br(end_block);
+
+                // 设置当前基本块为下一个分支的基本块
+                builder.position_at_end(next_block);
             }
         }
+
+        // 设置当前基本块为结束基本块
+        builder.position_at_end(end_block);
     }
     // 编译if-let语句
     fn compile_if_let_statement(

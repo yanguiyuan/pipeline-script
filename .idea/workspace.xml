@@ -11,13 +11,22 @@
     </cargoProject>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat:提交value">
+    <list default="true" id="50702526-b2ff-434e-9510-91045f7244c0" name="更改" comment="feat:函数默认值支持">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/main.ppl" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ast/expr/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ast/expr/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/compiler/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/stmt.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/compiler/type.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/compiler/type.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/context/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/context/mod.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/core/engine.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/engine.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lexer/token.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lexer/token.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/llvm/builder.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/llvm/builder.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/expr.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/parser/stmt.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/parser/stmt.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/expr.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/postprocessor/type/mod.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.ppl" beforeDir="false" afterPath="$PROJECT_DIR$/test.ppl" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,32 +71,32 @@
     <option name="showMembers" value="true" />
     <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Cargo.Run pipeline-script.executor&quot;: &quot;Run&quot;,
-    &quot;Cargo.Test preprocessor::test_regex.executor&quot;: &quot;Run&quot;,
-    &quot;Cargo.Test tests::test.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.rust.reset.selective.auto.import&quot;: &quot;true&quot;,
-    &quot;ToolWindow.Build.ShowToolbar&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;compile-stage-refactor&quot;,
-    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/01-Projects/pipeline-script&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;org.rust.cargo.project.model.PROJECT_DISCOVERY&quot;: &quot;true&quot;,
-    &quot;org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon&quot;: &quot;&quot;,
-    &quot;org.rust.first.attach.projects&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Cargo.Run pipeline-script.executor": "Run",
+    "Cargo.Test preprocessor::test_regex.executor": "Run",
+    "Cargo.Test tests::test.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.rust.reset.selective.auto.import": "true",
+    "ToolWindow.Build.ShowToolbar": "false",
+    "git-widget-placeholder": "compile-stage-refactor",
+    "go.import.settings.migrated": "true",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/01-Projects/pipeline-script",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.PROJECT_DISCOVERY": "true",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
+    "org.rust.first.attach.projects": "true",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\01-Projects\pipeline-script\src\ast" />
@@ -283,7 +292,7 @@
       <workItem from="1743773965671" duration="10501000" />
       <workItem from="1743837873188" duration="19765000" />
       <workItem from="1743920682439" duration="23615000" />
-      <workItem from="1744028934592" duration="1570000" />
+      <workItem from="1744028934592" duration="6377000" />
     </task>
     <task id="LOCAL-00001" summary="refactor:重构项目结构">
       <option name="closed" value="true" />
@@ -501,7 +510,15 @@
       <option name="project" value="LOCAL" />
       <updated>1743954139567</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="feat:函数默认值支持">
+      <option name="closed" value="true" />
+      <created>1744031832622</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1744031832622</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -519,7 +536,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="refactor:重构项目结构" />
     <MESSAGE value="feat:泛型返回值" />
     <MESSAGE value="feat:外置闭包" />
     <MESSAGE value="fix: 相同字符串常量地址相同" />
@@ -544,7 +560,8 @@
     <MESSAGE value="feat:完成重构" />
     <MESSAGE value="feat:match报错案例" />
     <MESSAGE value="feat:提交value" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat:提交value" />
+    <MESSAGE value="feat:函数默认值支持" />
+    <option name="LAST_COMMIT_MESSAGE" value="feat:函数默认值支持" />
     <option name="OPTIMIZE_IMPORTS_BEFORE_PROJECT_COMMIT" value="true" />
   </component>
   <component name="XDebuggerManager">
@@ -561,9 +578,19 @@
           <option name="timeStamp" value="9" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/core/engine.rs</url>
-          <line>128</line>
-          <option name="timeStamp" value="10" />
+          <url>file://$PROJECT_DIR$/src/compiler/stmt.rs</url>
+          <line>37</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/compiler/type.rs</url>
+          <line>27</line>
+          <option name="timeStamp" value="17" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/parser/stmt.rs</url>
+          <line>150</line>
+          <option name="timeStamp" value="18" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

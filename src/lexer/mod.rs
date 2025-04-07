@@ -165,7 +165,7 @@ impl Lexer {
                             return r;
                         }
                         ('!', _) => {
-                            let r = Some((Token::Negate, self.with_pos(1)));
+                            let r = Some((Token::Not, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
@@ -197,13 +197,26 @@ impl Lexer {
                             self.next_char();
                             return r;
                         }
+
                         ('=', _) => {
                             let r = Some((Token::Assign, self.with_pos(1)));
                             self.next_char();
                             return r;
                         }
+                        ('>', '=') => {
+                            let r = Some((Token::GreaterEqual, self.with_pos(2)));
+                            self.next_char();
+                            self.next_char();
+                            return r;
+                        }
                         ('>', _) => {
                             let r = Some((Token::Greater, self.with_pos(1)));
+                            self.next_char();
+                            return r;
+                        }
+                        ('<', '=') => {
+                            let r = Some((Token::LessEqual, self.with_pos(2)));
+                            self.next_char();
                             self.next_char();
                             return r;
                         }

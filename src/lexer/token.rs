@@ -47,6 +47,10 @@ pub enum Token {
     Greater,
     /// <
     Less,
+    /// <=
+    LessEqual,
+    /// >=
+    GreaterEqual,
     /// ==
     Equal,
     /// !=
@@ -54,7 +58,7 @@ pub enum Token {
     ///->
     Arrow,
     /// !
-    Negate,
+    Not,
     /// &&
     And,
     /// |
@@ -95,12 +99,14 @@ impl Display for Token {
             Token::NotEqual => write!(f, "Symbol(!=)"),
             Token::Arrow => write!(f, "Symbol(->)"),
             Token::Eof => write!(f, "EOF"),
-            Token::Negate => write!(f, "Symbol(!)"),
+            Token::Not => write!(f, "Symbol(!)"),
             Token::And => write!(f, "Symbol(&&)"),
             Token::Vertical => write!(f, "Symbol(|)"),
             Token::Annotation => write!(f, "Symbol(@)"),
             Token::BitAnd => write!(f, "Symbol(&)"),
             Token::FormatString(s) => write!(f, "FormatString({s})"),
+            Token::LessEqual => write!(f, "Symbol(<=)"),
+            Token::GreaterEqual => write!(f, "Symbol(>=)"),
             _ => todo!(),
         }
     }
@@ -136,7 +142,7 @@ impl Token {
             Token::ScopeSymbol => 24,
             Token::NotEqual => 25,
             Token::Arrow => 26,
-            Token::Negate => 27,
+            Token::Not => 27,
             Token::And => 28,
             Token::Vertical => 29,
             Token::Annotation => 30,

@@ -62,6 +62,7 @@ impl Compiler {
             ),
             Expr::None => LLVMValue::Unit,
             Expr::Boolean(b) => Global::const_bool(*b).into(),
+            Expr::Unary(op, expr) => self.compile_unary(op, expr, ctx),
             t => todo!("Unknown expr: {:?}", t),
         }
     }
@@ -102,52 +103,6 @@ impl Compiler {
             .unwrap()
     }
 
-    // fn compile_enum_variant_ptr(
-    //     &self,
-    //     variant_name: &str,
-    //     value: &Option<Box<ExprNode>>,
-    //     ctx: &Context,
-    // ) -> LLVMValue {
-    //     // 获取枚举类型
-    //     let enum_type = ty0.clone();
-    //
-    //     // 创建枚举实例
-    //     let builder = ctx.get_builder();
-    //
-    //     // 分配内存
-    //     let enum_ptr = builder.build_alloca("enum_instance", &enum_type.as_llvm_type());
-    //
-    //     // 获取变体索引
-    //     let mut variant_index = 0;
-    //     if let Type::Enum(_, variants) = &enum_type {
-    //         for (i, (name, _)) in variants.iter().enumerate() {
-    //             if name == variant_name {
-    //                 variant_index = i;
-    //                 break;
-    //             }
-    //         }
-    //     }
-    //
-    //     // 设置标签字段（第一个字段）
-    //     let tag_ptr = builder.build_struct_gep(enum_type.as_llvm_type(), enum_ptr, 0);
-    //     builder.build_store(tag_ptr, Global::const_i32(variant_index as i32));
-    //
-    //     // 如果有关联值，设置数据字段（第二个字段）
-    //     if let Some(val) = value {
-    //         // 编译关联值
-    //         let val_value = self.compile_expr(val, ctx);
-    //
-    //         // 设置数据字段
-    //         let data_ptr = builder.build_struct_gep(enum_type.as_llvm_type(), enum_ptr.clone(), 1);
-    //         builder.build_store(data_ptr, val_value);
-    //     }
-    //
-    //     // 返回枚举实例
-    //     enum_ptr
-    // }
-
-    // ===== 值相关编译函数 =====
-
     fn compile_variable(&self, name: &str, ctx: &Context) -> LLVMValue {
         // 查找全局符号或函数
         let ptr = ctx.get_symbol(name).unwrap();
@@ -186,6 +141,10 @@ impl Compiler {
             Op::NotEqual => builder.build_neq(l, r),
             Op::Less => builder.build_less(l, r),
             Op::Greater => builder.build_greater(l, r),
+            Op::LessEqual => builder.build_less_equal(l, r),
+            Op::GreaterEqual => builder.build_greater_equal(l, r),
+            Op::And => builder.build_and(l, r),
+            Op::Or => builder.build_or(l, r),
             _ => todo!("compile binary op: {:?}", op),
         }
     }
@@ -437,7 +396,6 @@ impl Compiler {
         // 获取函数值
         let function_value = ctx.get_symbol(&fc.name).unwrap().as_function().unwrap();
         let args_count = function_value.get_args_count();
-        dbg!(&function_value);
         // 处理默认参数
         for (i, arg_val) in arg_values.iter_mut().enumerate() {
             if arg_val.is_none() && i < args_count {
@@ -525,5 +483,23 @@ impl Compiler {
             return builder.build_fadd(l, r);
         }
         builder.build_add(l, r)
+    }
+
+    fn compile_unary(&self, op: &Op, expr: &ExprNode, ctx: &Context) -> LLVMValue {
+        let builder = ctx.get_builder();
+        let val = self.compile_expr(expr, ctx);
+
+        match op {
+            Op::Negate => {
+                let ty = val.get_llvm_type(ctx);
+                if ty.is_float() {
+                    builder.build_fneg(val)
+                } else {
+                    builder.build_neg(val)
+                }
+            }
+            Op::Not => builder.build_not(val),
+            _ => todo!("Unknown unary op: {:?}", op),
+        }
     }
 }

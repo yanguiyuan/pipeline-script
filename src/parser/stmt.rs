@@ -150,7 +150,7 @@ impl Parser {
     ) -> crate::core::result::Result<(IfBranchStmt, Position)> {
         let mut p0 = self.parse_keyword("if")?;
         let p1 = self.parse_special_token(Token::BraceLeft)?;
-        let e = self.parse_expr(ctx)?;
+        let e = self.parse_expr(ctx).unwrap();
         let p2 = e.position();
         let p3 = self.parse_special_token(Token::BraceRight)?;
         let block = self.parse_block(ctx)?;
@@ -216,7 +216,7 @@ impl Parser {
     pub fn parse_if_stmt(&mut self, ctx: &Context) -> crate::core::result::Result<StmtNode> {
         let mut branches = vec![];
         let mut else_body = None;
-        let (b, pos) = self.parse_if_branch(ctx)?;
+        let (b, pos) = self.parse_if_branch(ctx).unwrap();
         branches.push(b);
 
         loop {

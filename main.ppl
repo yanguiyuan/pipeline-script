@@ -1,5 +1,5 @@
 import core
-/*
+// 测试例子：结构体定义，方法绑定以及泛型实例化
 struct Vec<T> {
     data: Pointer<T>,
     len: Int64,
@@ -28,16 +28,78 @@ v.push(10)
 const b = v.get(0)
 const x = b.unwrap()
 println(x)
-
-let a = Option.None
+let a = Option.Some(100)
 match(a){
     Option.Some(x)->println(x),
     Option.None->println("None"),
 }
-*/
-
+// 测试例子：Option类型枚举以及if let语句
+a = Option.None
+if let( Option.Some(x) = a){
+    println("This is:")
+    println(x)
+}else{
+    println("This is None")
+}
+// 测试例子：函数参数默认值
 fn add(a: Int64 = 5, b: Int64 = 7) -> Int64 {
     return a + b
 }
 const result = add(b=10)
 println(result)
+// 测试例子：递归函数以及循环语句
+fn fib(n: Int64) -> Int64 {
+    if (n <= 1) {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+let i = 0
+while(i<10){
+    println(fib(i))
+    i = i + 1
+}
+// 测试例子：枚举类型以及match语句
+enum Color {
+    Red,
+    Green,
+    Blue,
+    Yellow,
+}
+let c = Color.Green
+match(c){
+    Color.Red->println("Red"),
+    Color.Green->println("Green"),
+    Color.Blue->println("Blue"),
+    Color.Yellow->println("Yellow"),
+}
+
+// 测试例子：数组类型以及冒泡排序算法
+let a = [11,5,7,9,10]
+
+fn bubble_sort(arr: Pointer<Int64>, len: Int64) {
+    let l = len
+    while (l > 1) {
+        let swapped = false
+        let i = 0
+        while (i < l - 1) {
+            if (arr[i] > arr[i + 1]) {
+                let temp = arr[i]
+                arr[i] = arr[i + 1]
+                arr[i + 1] = temp
+                swapped = true
+            }
+            i = i + 1
+        }
+        if (!swapped) {
+            break
+        }
+        l = l - 1
+    }
+}
+bubble_sort(a,5)
+let i = 0
+while (i < 5) {
+    println(a[i])
+    i = i + 1
+}
