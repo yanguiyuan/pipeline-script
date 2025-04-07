@@ -85,6 +85,8 @@ impl Compiler {
                 .unwrap()
                 .register_struct(name, HashMap::new(), t);
         }
+        let builder = Global::create_builder();
+        let ctx = Context::with_builder(&ctx, builder);
         // 编译函数声明
         for (name, item) in self.module.get_functions().iter() {
             if item.is_template {
@@ -144,18 +146,20 @@ impl Compiler {
                 Box::new(return_type.get_undef()),
                 args.iter()
                     .map(|arg| {
-                        (
-                            arg.name().clone(),
-                            self.compile_type(&arg.r#type().unwrap()).get_undef(),
-                        )
+                        if let Some(default_expr) = arg.get_default() {
+                            (arg.name().clone(), self.compile_expr(default_expr, &ctx))
+                        } else {
+                            (
+                                arg.name().clone(),
+                                self.compile_type(&arg.r#type().unwrap()).get_undef(),
+                            )
+                        }
                     })
                     .collect(),
             );
             ctx.set_symbol(name.clone(), function_value.into());
         }
 
-        let builder = Global::create_builder();
-        let ctx = Context::with_builder(&ctx, builder);
         // 编译函数实现
         for (_, item) in self.module.get_functions().iter() {
             if item.is_extern || item.is_template {

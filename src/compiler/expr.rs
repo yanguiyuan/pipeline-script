@@ -40,8 +40,7 @@ impl Compiler {
     }
 
     pub(crate) fn compile_expr(&self, expr: &ExprNode, ctx: &Context) -> LLVMValue {
-        let binding = ctx.get(ContextKey::Builder).unwrap();
-        let builder = binding.as_builder();
+        let builder = ctx.get_builder();
         let ty0 = expr.get_type().unwrap();
         match expr.get_expr() {
             Expr::FnCall(ref fc) => self.compile_fn_call(fc, ctx),
@@ -438,7 +437,7 @@ impl Compiler {
         // 获取函数值
         let function_value = ctx.get_symbol(&fc.name).unwrap().as_function().unwrap();
         let args_count = function_value.get_args_count();
-
+        dbg!(&function_value);
         // 处理默认参数
         for (i, arg_val) in arg_values.iter_mut().enumerate() {
             if arg_val.is_none() && i < args_count {

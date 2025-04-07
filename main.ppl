@@ -1,5 +1,5 @@
 import core
-
+/*
 struct Vec<T> {
     data: Pointer<T>,
     len: Int64,
@@ -34,3 +34,10 @@ match(a){
     Option.Some(x)->println(x),
     Option.None->println("None"),
 }
+*/
+
+fn add(a: Int64 = 5, b: Int64 = 7) -> Int64 {
+    return a + b
+}
+const result = add(b=10)
+println(result)
